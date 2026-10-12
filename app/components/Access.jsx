@@ -1,13 +1,13 @@
 // Pembatasan halaman per jabatan (mengikuti hak akses backend).
 import { Link } from "react-router";
-import { canEditFinance, canSeeActivities, roleLabel } from "../lib/format.js";
+import { canSeeActivities, canSeeFinance, roleLabel } from "../lib/format.js";
 import { useAuthStore } from "../stores/auth.js";
 import { Icon } from "./Icon.jsx";
 import { EmptyState } from "./ui.jsx";
 
 export const ACCESS = {
-  activities: { can: canSeeActivities, who: "Admin, Kasubdit, dan PIC" },
-  finance: { can: canEditFinance, who: "Admin, Kasubdit, dan Finance" },
+  activities: { can: canSeeActivities, who: "Admin, Kasubdit, PIC, dan Pimpinan" },
+  finance: { can: canSeeFinance, who: "Admin, Kasubdit, Finance, dan Pimpinan" },
 };
 
 // halaman awal yang pasti bisa dibuka jabatan ini

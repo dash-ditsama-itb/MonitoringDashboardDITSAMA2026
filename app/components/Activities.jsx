@@ -154,7 +154,7 @@ export function ActivitiesTable({ fixedProgram, title = "Data Kegiatan", sub }) 
           <div className="card-sub">{sub || (pagination ? `${pagination.totalRecords.toLocaleString("id-ID")} kegiatan` : "Memuat…")}</div>
         </div>
         <div className="tbl-actions">
-          {!external && (
+          {!external && editablePrograms(session).length > 0 && (
             <ImportButton path="/activity/import" hint="Unggah .xlsx/.csv dengan format yang sama seperti file Ekspor"
               describe={(d) => `${d.importedCount ?? 0} kegiatan diimpor` + (d.skippedCount ? `, ${d.skippedCount} dilewati (program di luar akses Anda).` : ".")}
               onDone={refreshActivities} />

@@ -104,13 +104,16 @@ export function attendance(participants) {
 export const skName = (name) => String(name || "").replace(/^\d{10,}-/, "");
 
 // ---------------------------------------------------------------- akses ---
-// mengikuti hak akses backend: Finance hanya Keuangan, PIC tidak bisa membuka Keuangan
-export const isAllAccess = (s) => !!s && ["admin", "kasubdit"].includes(s.role);
-export const canSeeActivities = (s) => !!s && ["admin", "kasubdit", "pic"].includes(s.role);
+// mengikuti hak akses backend: Finance hanya Keuangan, PIC tidak bisa membuka Keuangan,
+// Pimpinan (leader) melihat semua tanpa bisa menambah, mengubah, atau menghapus
+export const isReadOnly = (s) => s?.role === "leader";
+export const isAllAccess = (s) => !!s && ["admin", "kasubdit", "leader"].includes(s.role);
+export const canSeeActivities = (s) => !!s && ["admin", "kasubdit", "pic", "leader"].includes(s.role);
+export const canSeeFinance = (s) => !!s && ["admin", "kasubdit", "finance", "leader"].includes(s.role);
 export const canEditFinance = (s) => !!s && ["admin", "kasubdit", "finance"].includes(s.role);
 // program kegiatan yang boleh diisi/diubah (program external, mis. SUGT, datanya dari sistem lain)
 export function editablePrograms(s) {
-  if (!canSeeActivities(s)) return [];
+  if (!canSeeActivities(s) || isReadOnly(s)) return [];
   const own = PROGRAMS.filter((p) => !p.external);
   if (s.role === "pic") return own.filter((p) => (s.programs || []).includes(p.api));
   return own;

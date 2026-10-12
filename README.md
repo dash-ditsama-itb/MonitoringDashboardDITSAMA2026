@@ -52,6 +52,7 @@ Buka `http://localhost:5173/MonitoringDashboardDITSAMA2026/`.
   - Admin & Kasubdit: semua menu, boleh mengubah semua data.
   - PIC: semua menu kecuali Keuangan; hanya boleh mengubah kegiatan program miliknya.
   - Finance: hanya Keuangan.
+  - Pimpinan: semua menu, hanya melihat (tanpa tambah, ubah, hapus, atau impor; ekspor tetap bisa).
   Menu yang tidak bisa dibuka tetap tampil tetapi nonaktif.
 - Impor Keuangan membaca semua tab sheet yang punya kolom `Nilai PKS` atau `Nilai Pengajuan`;
   program diambil dari kolom Program atau nama tab (mis. `SIAP_2026`).
