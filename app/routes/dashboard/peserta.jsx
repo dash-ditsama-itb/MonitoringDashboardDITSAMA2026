@@ -5,7 +5,7 @@ import { Icon } from "../../components/Icon.jsx";
 import {
   Bar, EmptyState, ErrorNote, Kpi, PageHead, Pagination, SearchInput, Segmented, SelectField, Sheet, SkeletonCard, Spinner,
 } from "../../components/ui.jsx";
-import { fmtNum, withoutAll } from "../../lib/format.js";
+import { fmtNum, fmtScore, withoutAll } from "../../lib/format.js";
 import { useApi } from "../../stores/data.js";
 import { useUiStore } from "../../stores/ui.js";
 
@@ -97,7 +97,7 @@ function Charts({ d }) {
           backgroundColor: d.charts.scoreTrend.map((x) => (x.examKey === sel ? NAVY : "#9EC1E6")), borderRadius: 5, maxBarThickness: 60 }],
       },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false },
-        tooltip: { callbacks: { label: (x) => `Rata-rata ${x.parsed.y} · ${d.charts.scoreTrend[x.dataIndex].gradedCount} peserta dinilai` } } },
+        tooltip: { callbacks: { label: (x) => `Rata-rata ${fmtScore(x.parsed.y)} ·${d.charts.scoreTrend[x.dataIndex].gradedCount} peserta dinilai` } } },
         scales: { x: { grid: { display: false } }, y: { beginAtZero: true, suggestedMax: 100 } } },
     };
     const idx = {
@@ -202,7 +202,7 @@ function Participants({ query, exams }) {
   const rows = data?.data || [];
   const [open, setOpen] = useState(null);
   const scoreChips = (p) => exams.filter((u) => p.scores?.[u.key]?.value != null).map((u) => (
-    <span key={u.key} className="score" title={u.label}><small>{u.label.replace(/ \d{4}$/, "")}</small><b>{p.scores[u.key].value}</b><IdxChip ix={p.scores[u.key].index} /></span>
+    <span key={u.key} className="score" title={u.label}><small>{u.label.replace(/ \d{4}$/, "")}</small><b>{fmtScore(p.scores[u.key].value)}</b><IdxChip ix={p.scores[u.key].index} /></span>
   ));
   return (
     <section className="card tbl-card">
@@ -249,7 +249,7 @@ function Participants({ query, exams }) {
             </dl>
             <h3 className="detail-h">Nilai ujian</h3>
             <table className="mini-tbl"><thead><tr><th>Ujian</th><th className="num">Nilai</th><th>Indeks</th></tr></thead>
-              <tbody>{exams.map((u) => { const s = open.scores?.[u.key]; return <tr key={u.key}><td>{u.label}</td><td className="num">{s?.value ?? "–"}</td><td><IdxChip ix={s?.index} /></td></tr>; })}</tbody></table>
+              <tbody>{exams.map((u) => { const s = open.scores?.[u.key]; return <tr key={u.key}><td>{u.label}</td><td className="num">{fmtScore(s?.value)}</td><td><IdxChip ix={s?.index} /></td></tr>; })}</tbody></table>
           </>
         )}
       </Sheet>
