@@ -75,6 +75,7 @@ export const isProgramDone = (p) => p.totalActivities > 0 && p.completedActiviti
 
 // status program dari aktivitasnya: [label, nada pill]
 export function programStatus(p) {
+  if (!p.totalActivities) return ["Data belum ada", "idle"];
   if (isProgramDone(p)) return ["Selesai", "ok"];
   if (p.completedActivities > 0 || p.ongoingActivities > 0) return ["Sedang berlangsung", ""];
   return ["Belum dilaksanakan", "idle"];

@@ -9,7 +9,7 @@ import {
   isProgramDone, lastPerformed, ProgramProgress, programStatus, ProgressSummary,
 } from "../../components/ProgressSummary.jsx";
 import {
-  Bar, EmptyState, ErrorNote, LevelBadge, PageHead, ProgramAbout, SeeMore, Sheet, SkeletonCard,
+  Bar, EmptyState, ErrorNote, LevelBadge, PageHead, ProgramAbout, ProgramLink, SeeMore, Sheet, SkeletonCard,
 } from "../../components/ui.jsx";
 import { PROGRAMS, TOTAL_PROGRAMS } from "../../config.js";
 import { canSeeActivities, fmtDate, fmtNum, pct, phaseLabel, progColor, withoutAll } from "../../lib/format.js";
@@ -49,6 +49,7 @@ function PortfolioPage() {
         sub={filters.length ? "Filter: " + filters.join(" · ") : "Semua program DITSAMA 2026"}>
         {loading && d && <span className="tb-loading"><Icon name="spinner" size={14} className="spin" />Memperbarui…</span>}
       </PageHead>
+      <ProgramLink program={program} />
       <ErrorNote error={error} onRetry={() => reload()} />
       {program && <ProgramAbout program={program} />}
       {!d ? <PortfolioSkeleton /> : (

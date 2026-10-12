@@ -189,6 +189,18 @@ export function Bar({ value, tone }) {
   return <span className={"meter" + (tone ? " " + tone : "")}><span style={{ width: v + "%" }} /></span>;
 }
 
+// tombol ke web program (mis. SUGT), tampil di bawah judul bila program punya `url`
+export function ProgramLink({ program }) {
+  if (!program?.url) return null;
+  return (
+    <div className="prog-link">
+      <a className="btn btn-sm" href={program.url} target="_blank" rel="noopener">
+        <Icon name="external" size={15} />Buka detail web {program.label}
+      </a>
+    </div>
+  );
+}
+
 // kartu "Tentang program" — dipotong 3 baris, tombol Selengkapnya bila lebih panjang
 export function ProgramAbout({ program }) {
   const ref = useRef(null);

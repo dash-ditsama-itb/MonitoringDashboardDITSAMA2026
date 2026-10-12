@@ -46,16 +46,16 @@ export const KPI = {
   progress: {
     title: "Program Selesai",
     arti: "Jumlah program yang seluruh aktivitasnya sudah selesai, dibanding total program DITSAMA.",
-    rumus: "Jumlah program Selesai ÷ total program (10, termasuk SUGT) × 100%. Keterangan di bawah bar: aktivitas Selesai ÷ seluruh aktivitas.",
+    rumus: "Jumlah program Selesai ÷ total program (10) × 100%. Keterangan di bawah bar: aktivitas Selesai ÷ seluruh aktivitas.",
     skor: STATUS_KEGIATAN,
-    catatan: "Program dihitung Selesai bila punya aktivitas dan semuanya Selesai. SUGT dipantau di luar sistem ini sehingga belum terhitung. Ikut filter yang dipilih.",
+    catatan: "Program dihitung Selesai bila punya aktivitas dan semuanya Selesai. Ikut filter yang dipilih.",
   },
   programProgress: {
     title: "Kemajuan Program",
     arti: "Jumlah aktivitas program yang sudah selesai dibanding seluruh aktivitasnya.",
     rumus: "Aktivitas Selesai / seluruh aktivitas program; persentasenya = Selesai ÷ seluruh aktivitas × 100%.",
     skor: STATUS_KEGIATAN,
-    catatan: "Status program: Selesai bila semua aktivitas Selesai; Sedang berlangsung bila ada aktivitas Selesai atau Berlangsung; selain itu Belum dilaksanakan. Angka ini sama di Portofolio Program dan di dashboard program.",
+    catatan: "Status program: Selesai bila semua aktivitas Selesai; Sedang berlangsung bila ada aktivitas Selesai atau Berlangsung; Belum dilaksanakan bila ada aktivitas tapi belum ada yang Selesai atau Berlangsung; Data belum ada bila belum ada aktivitas tercatat. Angka ini sama di Portofolio Program dan di dashboard program.",
   },
   lastActivity: {
     title: "Aktivitas Terakhir",
@@ -95,7 +95,7 @@ export const KPI = {
     title: "Status Program",
     arti: "Tahap pelaksanaan program.",
     rumus: "Ditentukan dari status aktivitas program.",
-    skor: [["Selesai", "semua aktivitas Selesai"], ["Sedang berlangsung", "ada aktivitas Selesai atau Berlangsung"], ["Belum dilaksanakan", "belum ada aktivitas yang Selesai atau Berlangsung"]],
+    skor: [["Selesai", "semua aktivitas Selesai"], ["Sedang berlangsung", "ada aktivitas Selesai atau Berlangsung"], ["Belum dilaksanakan", "ada aktivitas, tetapi belum ada yang Selesai atau Berlangsung"], ["Data belum ada", "belum ada aktivitas tercatat"]],
   },
 
   // ---------------------------------------------------- analisis peserta ---

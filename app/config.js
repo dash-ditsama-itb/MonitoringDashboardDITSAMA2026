@@ -7,6 +7,7 @@ export const API_URL = String(import.meta.env.VITE_API_URL || "").replace(/\/+$/
 
 // Daftar program monitoring. `key` dipakai di URL dashboard, `api` = nilai enum di backend.
 // fullName & desc tampil sebagai judul + kartu "Tentang program" di dashboard.
+// url opsional: tombol "Buka detail web …" di bawah judul program.
 export const PROGRAMS = [
   { key: "SIAP",          api: "siap_itb",           label: "SIAP ITB",
     fullName: "Sekolah Intensif Akademik Pra-ITB",
@@ -35,10 +36,14 @@ export const PROGRAMS = [
   { key: "MAUNG",         api: "maung",              label: "MAUNG",
     fullName: "Sekolah Manusia Unggul",
     desc: "Sekolah Maung (Sekolah Manusia Unggul) 2026 merupakan program Dinas Pendidikan Provinsi Jawa Barat melalui Bidang Guru dan Tenaga Kependidikan, yang diselenggarakan sebagai langkah awal penyiapan SMA dan SMK Manusia Unggul di Jawa Barat. Program ini merupakan salah satu upaya Pemerintah Provinsi Jawa Barat dalam memastikan kesiapan pendidik untuk mewujudkan generasi yang unggul, berkarakter, dan berdaya saing global. Melalui program ini, 2.946 guru pada 41 SMA/SMK Manusia Unggul diases dan dipetakan kompetensinya, meliputi pedagogi, penguasaan substansi, kepemimpinan, serta karakter berlandaskan filosofi Pancawaluya. Hasil asesmen menjadi dasar penyusunan rencana pengembangan kompetensi bagi setiap guru." },
+  { key: "SUGT",          api: "sugt",               label: "SUGT",
+    fullName: "Sekolah Unggul Garuda Transformasi",
+    url: "https://internal.sugtitb.com",
+    desc: "" },
 ];
 
-// Total program DITSAMA = program monitoring + SUGT (dipantau di luar sistem ini, lihat SUGT_URL)
-export const TOTAL_PROGRAMS = PROGRAMS.length + 1;
+// Total program DITSAMA (semua program monitoring, termasuk SUGT)
+export const TOTAL_PROGRAMS = PROGRAMS.length;
 
 // Daftar program KHUSUS menu Keuangan (boleh beda dari program monitoring)
 export const FIN_PROGRAMS = [
@@ -83,6 +88,3 @@ export const SDM_POSITIONS = ["Dosen", "Asisten", "Staff", "Mitra"];
 
 // Jenis PKS -> persen DPKS (dihitung otomatis di backend)
 export const PKS_TYPES = [["Pm", "Pm", 10], ["Pd", "Pd", 20], ["DP", "DP · dana pemerintah", 0]];
-
-// Link dashboard/website SUGT (dibuka di tab baru dari menu "Program SUGT")
-export const SUGT_URL = "https://internal.sugtitb.com";

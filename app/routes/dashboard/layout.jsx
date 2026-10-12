@@ -4,7 +4,7 @@ import { useShallow } from "zustand/react/shallow";
 import { FeedbackHost } from "../../components/feedback.jsx";
 import { Icon } from "../../components/Icon.jsx";
 import { SelectField, Sheet, Spinner } from "../../components/ui.jsx";
-import { PROGRAMS, SUGT_URL } from "../../config.js";
+import { PROGRAMS } from "../../config.js";
 import { ACCESS } from "../../components/Access.jsx";
 import { AccessOverlay, AuthGate } from "../../components/AuthGate.jsx";
 import { isAllAccess, levelLabel, programByApi, progColor, roleLabel, withoutAll } from "../../lib/format.js";
@@ -98,7 +98,6 @@ function Shell({ session }) {
               </NavItem>
             );
           })}
-          <a className="nav-item" href={SUGT_URL} target="_blank" rel="noopener"><Icon name="external" />Program SUGT</a>
         </nav>
         <button className="rail-foot" type="button" onClick={() => setProfileOpen(true)}>
           <span className="ava">{(session.name || "?").slice(0, 1).toUpperCase()}</span>

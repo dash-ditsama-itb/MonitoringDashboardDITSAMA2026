@@ -7,7 +7,7 @@ import { Gantt } from "../../components/Gantt.jsx";
 import { Icon } from "../../components/Icon.jsx";
 import { InfoTip } from "../../components/InfoTip.jsx";
 import { lastPerformed, ProgramProgress } from "../../components/ProgressSummary.jsx";
-import { ErrorNote, PageHead, ProgramAbout, SkeletonCard, Spinner } from "../../components/ui.jsx";
+import { ErrorNote, PageHead, ProgramAbout, ProgramLink, SkeletonCard, Spinner } from "../../components/ui.jsx";
 import { canEditActivity, fmtDate, phaseLabel, programByKey, PROG_COLORS } from "../../lib/format.js";
 import { PHASES } from "../../config.js";
 import { useAuthStore } from "../../stores/auth.js";
@@ -35,6 +35,7 @@ function ProgramPage({ loaderData }) {
       <PageHead title={<>{program.fullName}<span className="title-abbr">{program.label}</span></>}>
         {loading && d && <span className="tb-loading"><Spinner size={14} />Memperbarui…</span>}
       </PageHead>
+      <ProgramLink program={program} />
       <ErrorNote error={error} onRetry={() => reload()} />
       <ProgramAbout program={program} />
       {!d ? <><div className="grid g-2"><SkeletonCard /><SkeletonCard /></div></> : (
