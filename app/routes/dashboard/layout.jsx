@@ -149,7 +149,11 @@ function ProfileSheet({ open, onClose }) {
       <dl className="facts">
         <div><dt>Jabatan</dt><dd>{roleLabel(session.role)}</dd></div>
         <div><dt>Akses program</dt><dd>{progs}</dd></div>
-        <div><dt>Hak ubah</dt><dd>{session.role === "finance" ? "Data keuangan" : session.role === "pic" ? "Data kegiatan program Anda (Keuangan tidak tersedia)" : "Semua data kegiatan & keuangan"}</dd></div>
+        <div><dt>Hak ubah</dt><dd>{{
+          finance: "Data keuangan",
+          pic: "Data kegiatan program Anda (Keuangan tidak tersedia)",
+          leader: "Hanya melihat: tidak dapat menambah, mengubah, atau menghapus data",
+        }[session.role] || "Semua data kegiatan & keuangan"}</dd></div>
       </dl>
     </Sheet>
   );

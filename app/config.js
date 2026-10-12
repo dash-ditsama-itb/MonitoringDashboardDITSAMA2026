@@ -58,6 +58,7 @@ export const ROLES = [
   ["kasubdit", "Kasubdit"],
   ["finance", "Finance"],
   ["pic", "PIC"],
+  ["leader", "Pimpinan"],
 ];
 
 // Fase kegiatan, urut tetap: Persiapan -> Proses -> Fase 1..10 -> Pelaporan
