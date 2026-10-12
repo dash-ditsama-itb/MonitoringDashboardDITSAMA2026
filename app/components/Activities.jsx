@@ -4,7 +4,7 @@ import { PROGRAMS } from "../config.js";
 import { api } from "../lib/api.js";
 import {
   activityStatus, attendance, canEditActivity, editablePrograms, fmtDate, fmtDateLong, fmtDateTime, fmtRelative,
-  levelLabel, phaseLabel, programLabel, progressLabel, skName, topIssueLevel,
+  levelLabel, phaseLabel, programByApi, programLabel, progressLabel, skName, topIssueLevel,
 } from "../lib/format.js";
 import { useAuthStore } from "../stores/auth.js";
 import { invalidate, useApi } from "../stores/data.js";
@@ -136,6 +136,8 @@ export function ActivitiesTable({ fixedProgram, title = "Data Kegiatan", sub }) 
   }
 
   const canAdd = editablePrograms(session).length > 0 && (!fixedProgram || canEditActivity(session, fixedProgram));
+  // program yang datanya dari sistem lain (SUGT): tanpa impor/tambah, keterangan kosong menyesuaikan
+  const external = programByApi(fixedProgram)?.external;
   const programOptions = [["", "Semua program"], ...(session?.role === "pic" ? [["mine", "Program saya"]] : []),
     ...PROGRAMS.map((p) => [p.api, p.label])];
   const showProgram = !fixedProgram && programs.length !== 1;
@@ -152,9 +154,11 @@ export function ActivitiesTable({ fixedProgram, title = "Data Kegiatan", sub }) 
           <div className="card-sub">{sub || (pagination ? `${pagination.totalRecords.toLocaleString("id-ID")} kegiatan` : "Memuat…")}</div>
         </div>
         <div className="tbl-actions">
-          <ImportButton path="/activity/import" hint="Unggah .xlsx/.csv dengan format yang sama seperti file Ekspor"
-            describe={(d) => `${d.importedCount ?? 0} kegiatan diimpor` + (d.skippedCount ? `, ${d.skippedCount} dilewati (program di luar akses Anda).` : ".")}
-            onDone={refreshActivities} />
+          {!external && (
+            <ImportButton path="/activity/import" hint="Unggah .xlsx/.csv dengan format yang sama seperti file Ekspor"
+              describe={(d) => `${d.importedCount ?? 0} kegiatan diimpor` + (d.skippedCount ? `, ${d.skippedCount} dilewati (program di luar akses Anda).` : ".")}
+              onDone={refreshActivities} />
+          )}
           <ExportButton path="/activity/export" filename="data-kegiatan.xlsx"
             query={{ programs, search: st.search, sortBy, sortOrder }} />
           {canAdd && (
@@ -194,6 +198,8 @@ export function ActivitiesTable({ fixedProgram, title = "Data Kegiatan", sub }) 
               action={<button type="button" className="btn btn-sm" onClick={() => update({ search: "", page: 1 })}>Hapus pencarian</button>}>
               Coba kata kunci lain: nama kegiatan, nama PIC, atau lokasi.
             </EmptyState>
+          : external
+            ? <EmptyState title="Data belum ada">Data {programByApi(fixedProgram).label} nanti ditarik langsung dari web {programByApi(fixedProgram).label}.</EmptyState>
           : <EmptyState title="Belum ada kegiatan"
               action={canAdd && <button type="button" className="btn btn-primary btn-sm" onClick={() => setForm({ activity: null })}><Icon name="plus" size={15} />Tambah kegiatan</button>}>
               Kegiatan yang Anda catat atau impor dari Excel akan muncul di sini.

@@ -43,9 +43,9 @@ function ProgramPage({ loaderData }) {
           <ProgramProgress program={program} kpi={d.kpi} last={lastPerformed(d.activities)} />
           <div className="grid g-2">
             <MilestoneCard title="Sedang Berlangsung" info="ongoing" tone="red" items={d.milestones.ongoing} program={program}
-              empty="Tidak ada kegiatan dalam rentang H-2 sampai H+7." />
+              empty={program.external ? "Data belum ada." : "Tidak ada kegiatan dalam rentang H-2 sampai H+7."} />
             <MilestoneCard title="Agenda Mendatang" info="upcoming" tone="yellow" items={d.milestones.upcoming} program={program}
-              empty="Belum ada agenda. Tambahkan lewat Data Kegiatan dengan jenis “Agenda mendatang”." />
+              empty={program.external ? "Data belum ada." : "Belum ada agenda. Tambahkan lewat Data Kegiatan dengan jenis “Agenda mendatang”."} />
           </div>
           <section className="card">
             <div className="card-head"><div><h2 className="card-title with-info">Linimasa fase kegiatan<InfoTip k="timeline" /></h2><div className="card-sub">Rentang tanggal tiap fase program ini</div></div></div>

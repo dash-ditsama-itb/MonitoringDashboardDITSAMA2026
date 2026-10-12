@@ -108,11 +108,12 @@ export const skName = (name) => String(name || "").replace(/^\d{10,}-/, "");
 export const isAllAccess = (s) => !!s && ["admin", "kasubdit"].includes(s.role);
 export const canSeeActivities = (s) => !!s && ["admin", "kasubdit", "pic"].includes(s.role);
 export const canEditFinance = (s) => !!s && ["admin", "kasubdit", "finance"].includes(s.role);
-// program kegiatan yang boleh diisi/diubah
+// program kegiatan yang boleh diisi/diubah (program external, mis. SUGT, datanya dari sistem lain)
 export function editablePrograms(s) {
   if (!canSeeActivities(s)) return [];
-  if (s.role === "pic") return PROGRAMS.filter((p) => (s.programs || []).includes(p.api));
-  return PROGRAMS;
+  const own = PROGRAMS.filter((p) => !p.external);
+  if (s.role === "pic") return own.filter((p) => (s.programs || []).includes(p.api));
+  return own;
 }
 export const canEditActivity = (s, programApi) => editablePrograms(s).some((p) => p.api === programApi);
 

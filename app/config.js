@@ -8,6 +8,7 @@ export const API_URL = String(import.meta.env.VITE_API_URL || "").replace(/\/+$/
 // Daftar program monitoring. `key` dipakai di URL dashboard, `api` = nilai enum di backend.
 // fullName & desc tampil sebagai judul + kartu "Tentang program" di dashboard.
 // url opsional: tombol "Buka detail web …" di bawah judul program.
+// external: data program ditarik dari sistem lain, jadi tidak bisa ditambah/diimpor/diubah dari dashboard ini.
 export const PROGRAMS = [
   { key: "SIAP",          api: "siap_itb",           label: "SIAP ITB",
     fullName: "Sekolah Intensif Akademik Pra-ITB",
@@ -38,7 +39,7 @@ export const PROGRAMS = [
     desc: "Sekolah Maung (Sekolah Manusia Unggul) 2026 merupakan program Dinas Pendidikan Provinsi Jawa Barat melalui Bidang Guru dan Tenaga Kependidikan, yang diselenggarakan sebagai langkah awal penyiapan SMA dan SMK Manusia Unggul di Jawa Barat. Program ini merupakan salah satu upaya Pemerintah Provinsi Jawa Barat dalam memastikan kesiapan pendidik untuk mewujudkan generasi yang unggul, berkarakter, dan berdaya saing global. Melalui program ini, 2.946 guru pada 41 SMA/SMK Manusia Unggul diases dan dipetakan kompetensinya, meliputi pedagogi, penguasaan substansi, kepemimpinan, serta karakter berlandaskan filosofi Pancawaluya. Hasil asesmen menjadi dasar penyusunan rencana pengembangan kompetensi bagi setiap guru." },
   { key: "SUGT",          api: "sugt",               label: "SUGT",
     fullName: "Sekolah Unggul Garuda Transformasi",
-    url: "https://internal.sugtitb.com",
+    url: "https://internal.sugtitb.com", external: true,
     desc: "" },
 ];
 
