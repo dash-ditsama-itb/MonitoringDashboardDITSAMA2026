@@ -6,6 +6,7 @@ import { Icon } from "../../components/Icon.jsx";
 import { SelectField, Sheet, Spinner } from "../../components/ui.jsx";
 import { PROGRAMS } from "../../config.js";
 import { ACCESS } from "../../components/Access.jsx";
+import { SUGT_PROGRAM } from "../../components/Sugt.jsx";
 import { AccessOverlay, AuthGate } from "../../components/AuthGate.jsx";
 import { isAllAccess, levelLabel, programByApi, progColor, roleLabel, withoutAll } from "../../lib/format.js";
 import { useAuthStore } from "../../stores/auth.js";
@@ -168,14 +169,21 @@ function ControlPanel({ open, hidden }) {
   const dash = useUiStore((s) => s.dash);
   const patch = useUiStore((s) => s.patch);
   const set = useUiStore((s) => s.set);
-  const { data, loading, reload } = useApi("/dashboard", withoutAll(dash));
-  const fo = data?.data?.filterOptions;
+  // SUGT punya data sendiri (tanpa tahun, bulan, fase, kegiatan, isu): filter lain dinonaktifkan
+  const isSugt = dash.program === SUGT_PROGRAM;
+  const main = useApi("/dashboard", isSugt ? {} : withoutAll(dash));
+  const sugt = useApi("/dashboard/sugt", {}, { enabled: isSugt });
+  const { loading, reload } = isSugt ? sugt : main;
+  const fo = main.data?.data?.filterOptions;
+  const programs = [...(fo?.programs || []).filter((p) => p !== SUGT_PROGRAM), SUGT_PROGRAM];
   const opts = (list) => [ALL, ...(list || [])];
   const keep = (list, v) => (v === ALL || (list || []).includes(v) ? v : ALL);
   const active = Object.values(dash).filter((v) => v !== ALL).length;
+  const reset = { year: ALL, month: ALL, phase: ALL, activity: ALL, issueLevel: ALL };
   const sel = (key, label, list, fmt) => (
     <SelectField label={label} value={keep(list, dash[key])} options={opts(list).map((o) => [o, fmt && o !== ALL ? fmt(o) : o])}
-      onChange={(v) => patch("dash", { [key]: v, ...(key === "program" ? { activity: ALL } : {}) })} />
+      disabled={isSugt && key !== "program"}
+      onChange={(v) => patch("dash", { [key]: v, ...(key === "program" ? (v === SUGT_PROGRAM ? reset : { activity: ALL }) : {}) })} />
   );
   return (
     <aside className={"control" + (open ? " open" : "") + (hidden ? " hide" : "")} aria-label="Filter dashboard">
@@ -184,7 +192,8 @@ function ControlPanel({ open, hidden }) {
         <button className="icon-btn on-dark" type="button" onClick={() => set({ controlOpen: false, controlHidden: !open })} aria-label="Tutup filter"><Icon name="x" size={18} /></button>
       </div>
       <div className="control-body">
-        {sel("program", "Program", fo?.programs)}
+        {sel("program", "Program", programs)}
+        {isSugt && <p className="control-note">Filter lain tidak berlaku untuk SUGT.</p>}
         {sel("year", "Tahun", fo?.years)}
         {sel("month", "Bulan", fo?.months)}
         {sel("phase", "Fase", fo?.phases)}
@@ -192,7 +201,7 @@ function ControlPanel({ open, hidden }) {
         {sel("issueLevel", "Level isu", fo?.issueLevels, (v) => levelLabel(v.toLowerCase()))}
         <div className="control-actions">
           {active > 0 && <button className="btn btn-sm on-dark" type="button" onClick={() => patch("dash", { program: ALL, year: ALL, month: ALL, phase: ALL, activity: ALL, issueLevel: ALL })}>Reset</button>}
-          <button className="btn btn-sm on-dark" type="button" disabled={loading} onClick={() => reload({ refresh: true })}>
+          <button className="btn btn-sm on-dark" type="button" disabled={loading} onClick={() => reload(isSugt ? undefined : { refresh: true })}>
             {loading ? <Spinner size={14} /> : <Icon name="refresh" size={15} />}Muat ulang
           </button>
         </div>

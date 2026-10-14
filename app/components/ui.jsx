@@ -14,11 +14,11 @@ export function Kpi({ value, label, hint, tone, icon }) {
 }
 
 // <label>Teks<select/></label> — opts: string[] atau [value, text][]
-export function SelectField({ label, value, options, onChange, className }) {
+export function SelectField({ label, value, options, onChange, className, disabled }) {
   return (
     <label className={"field" + (className ? " " + className : "")}>
       <span className="field-lab">{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)}>
+      <select value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled}>
         {options.map((o) => {
           const [v, t] = Array.isArray(o) ? o : [o, o];
           return <option key={v} value={v}>{t}</option>;

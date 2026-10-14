@@ -8,7 +8,7 @@ import { InfoTip } from "../../components/InfoTip.jsx";
 import {
   isProgramDone, lastPerformed, ProgramProgress, programStatus, ProgressSummary,
 } from "../../components/ProgressSummary.jsx";
-import { isSugtDone, SugtSummaryCard, sugtStatus, sugtUnits } from "../../components/Sugt.jsx";
+import { isSugtDone, SUGT_PROGRAM, SugtPanel, SugtSummaryCard, sugtStatus, sugtUnits } from "../../components/Sugt.jsx";
 import {
   Bar, EmptyState, ErrorNote, LevelBadge, PageHead, ProgramAbout, SeeMore, Sheet, SkeletonCard,
 } from "../../components/ui.jsx";
@@ -24,7 +24,10 @@ export const handle = { control: true };
 export default function Portfolio() {
   // halaman awal dashboard; Finance langsung diarahkan ke Keuangan
   const session = useAuthStore((s) => s.session);
-  return canSeeActivities(session) ? <PortfolioPage /> : <Navigate to="/dashboard/financial" replace />;
+  const program = useUiStore((s) => s.dash.program);
+  if (!canSeeActivities(session)) return <Navigate to="/dashboard/financial" replace />;
+  // filter Program = SUGT: datanya dari aplikasi SUGT, tampil sebagai dashboard SUGT
+  return program === SUGT_PROGRAM ? <div className="page"><SugtPanel /></div> : <PortfolioPage />;
 }
 
 function PortfolioPage() {

@@ -93,6 +93,7 @@ a{color:var(--blue-ink);text-underline-offset:3px}
 .control-body{display:flex;flex-direction:column;gap:12px}
 .control .field-lab{color:#fff;font-weight:600}
 .control select{border:0;color:var(--navy);font-weight:600}
+.control select:disabled{opacity:.55;cursor:not-allowed}
 .control-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
 
 /* panggung konten */
@@ -569,6 +570,7 @@ dialog.confirm[open]{animation:pop .2s var(--ease)}
 .ms-list li:last-child{border-bottom:0}
 .ms-list li.busy{opacity:.5}
 /* SUGT */
+.control-note{margin:-4px 0 0;font-size:12.5px;line-height:1.5;color:rgba(228,237,249,.8)}
 .sugt-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 20px;margin:0;padding:18px 20px;align-content:center}
 .sugt-facts dt{font-size:12.5px;font-weight:600;color:var(--muted)}
 .sugt-facts dd{margin:2px 0 0;font-size:20px;font-weight:800;color:var(--navy);font-variant-numeric:tabular-nums}
