@@ -37,6 +37,11 @@ const MESSAGES = {
   "A file field containing the spreadsheet is required.": "Pilih file spreadsheet dulu.",
   "Lecturer not found.": "Dosen tidak ditemukan untuk filter ini.",
   "Something went wrong": "Terjadi kesalahan di server. Coba lagi sebentar lagi.",
+  "SUGT dashboard is not configured.": "Koneksi ke aplikasi SUGT belum diatur di server (SUGT_JWT_SECRET).",
+  "Failed to reach SUGT dashboard.": "Aplikasi SUGT tidak dapat dihubungi. Coba lagi sebentar lagi.",
+  "SUGT dashboard rejected the credentials.": "Aplikasi SUGT menolak akses server. Periksa pengaturan SUGT_JWT_* di backend.",
+  "Unsupported SUGT summary version.": "Format data dari aplikasi SUGT berubah dan belum didukung.",
+  "Invalid response received from SUGT dashboard.": "Format data dari aplikasi SUGT berubah dan belum didukung.",
 };
 
 const FIELD_LABELS = {
@@ -60,7 +65,10 @@ function readableMessage(body, status, retryAfter) {
     if (first.path?.[0] === "email") return "Format email tidak valid.";
     return field ? `${field} tidak valid. Periksa kembali isiannya.` : "Isian tidak valid. Periksa kembali formulir.";
   }
-  if (typeof msg === "string") return MESSAGES[msg] || msg;
+  if (typeof msg === "string") {
+    if (msg.startsWith("SUGT dashboard responded")) return "Aplikasi SUGT sedang bermasalah. Coba lagi sebentar lagi.";
+    return MESSAGES[msg] || msg;
+  }
   return `Server membalas error (HTTP ${status}).`;
 }
 

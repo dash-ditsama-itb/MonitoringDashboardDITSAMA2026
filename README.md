@@ -20,7 +20,8 @@ app/
 │       ├── peserta.jsx      # /dashboard/peserta
 │       ├── dosen.jsx        # /dashboard/dosen
 │       ├── input.jsx        # /dashboard/input     — Data Kegiatan
-│       └── program.jsx      # /dashboard/program/:programKey
+│       ├── program.jsx      # /dashboard/program/:programKey
+│       └── sugt.jsx         # /dashboard/sugt      — ringkasan SUGT (dari aplikasi SUGT lewat backend)
 ├── stores/                  # zustand: auth (sesi), data (cache data backend), ui (filter/tabel)
 ├── lib/                     # api.js (fetch + pesan error), format.js (label, tanggal, akses)
 ├── components/              # tabel kegiatan & keuangan, form, Chart.js, Gantt, Kalender, dll.

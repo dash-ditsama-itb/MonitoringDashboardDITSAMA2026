@@ -46,9 +46,9 @@ export const KPI = {
   progress: {
     title: "Program Selesai",
     arti: "Jumlah program yang seluruh aktivitasnya sudah selesai, dibanding total program DITSAMA.",
-    rumus: "Jumlah program Selesai ÷ total program (10, termasuk SUGT) × 100%. Keterangan di bawah bar: aktivitas Selesai ÷ seluruh aktivitas.",
+    rumus: "Jumlah program Selesai ÷ total program (10, termasuk SUGT) × 100%. Keterangan di bawah bar: aktivitas Selesai ÷ seluruh aktivitas (tanpa SUGT).",
     skor: STATUS_KEGIATAN,
-    catatan: "Program dihitung Selesai bila punya aktivitas dan semuanya Selesai. SUGT dipantau di luar sistem ini sehingga belum terhitung. Ikut filter yang dipilih.",
+    catatan: "Program dihitung Selesai bila punya aktivitas dan semuanya Selesai. SUGT dihitung Selesai bila Kegiatan Terlaksana-nya 100%. Ikut filter yang dipilih.",
   },
   programProgress: {
     title: "Kemajuan Program",
@@ -96,6 +96,49 @@ export const KPI = {
     arti: "Tahap pelaksanaan program.",
     rumus: "Ditentukan dari status aktivitas program.",
     skor: [["Selesai", "semua aktivitas Selesai"], ["Sedang berlangsung", "ada aktivitas Selesai atau Berlangsung"], ["Belum dilaksanakan", "belum ada aktivitas yang Selesai atau Berlangsung"]],
+  },
+
+  // ---------------------------------------------------------------- SUGT ---
+  sugtProgress: {
+    title: "Kegiatan Terlaksana SUGT",
+    arti: "Kemajuan program SUGT di seluruh sekolah.",
+    rumus: "Setiap sekolah punya 10 kegiatan: 8 sesi (2 luring, 6 daring), 1 pretest, dan 1 posttest. Terlaksana = sesi yang sudah berjalan + pretest/posttest yang sudah lengkap, dibagi jumlah sekolah × 10.",
+    catatan: "Pretest atau posttest sebuah sekolah baru dihitung terlaksana bila keempat isiannya lengkap (2 jalur × 2 jenis peserta). Angka sama dengan dashboard aplikasi SUGT.",
+  },
+  sugtOffline: {
+    title: "Sesi Luring",
+    arti: "Sesi tatap muka di sekolah yang sudah terlaksana.",
+    rumus: "Sesi luring terlaksana ÷ seluruh sesi luring yang direncanakan (2 per sekolah) × 100%.",
+  },
+  sugtOnline: {
+    title: "Sesi Daring",
+    arti: "Sesi online yang sudah terlaksana.",
+    rumus: "Sesi daring terlaksana ÷ seluruh sesi daring yang direncanakan (6 per sekolah) × 100%.",
+  },
+  sugtPretest: {
+    title: "Pretest",
+    arti: "Isian pretest yang sudah lengkap.",
+    rumus: "Isian pretest yang sudah dicentang ÷ seluruh isian (4 per sekolah: 2 jalur × 2 jenis peserta) × 100%.",
+  },
+  sugtPosttest: {
+    title: "Posttest",
+    arti: "Isian posttest yang sudah lengkap.",
+    rumus: "Isian posttest yang sudah dicentang ÷ seluruh isian (4 per sekolah: 2 jalur × 2 jenis peserta) × 100%.",
+    catatan: "Tetap 0% sampai posttest mulai dicatat.",
+  },
+  sugtParticipantFeedback: {
+    title: "Umpan Balik Peserta",
+    arti: "Penilaian peserta terhadap pelaksanaan SUGT.",
+    rumus: "Rata-rata nilai (skala 1–10) tiap aspek dari semua formulir umpan balik peserta, dibulatkan 1 desimal.",
+    skor: [["Baik (hijau)", "≥ 8,0"], ["Perlu perhatian (kuning)", "6,0 – 7,9"], ["Kritis (merah)", "< 6,0"]],
+    catatan: "“—” berarti belum ada penilaian untuk aspek itu (bukan 0). Hands-on RBL hanya dinilai peserta kelas siswa.",
+  },
+  sugtPerjadinFeedback: {
+    title: "Evaluasi Perjalanan Dinas",
+    arti: "Penilaian tim yang berangkat ke sekolah terhadap perjalanan dinasnya.",
+    rumus: "Rata-rata nilai (skala 1–10) tiap aspek dari semua evaluasi perjalanan dinas, dibulatkan 1 desimal.",
+    skor: [["Baik (hijau)", "≥ 8,0"], ["Perlu perhatian (kuning)", "6,0 – 7,9"], ["Kritis (merah)", "< 6,0"]],
+    catatan: "“—” berarti belum ada penilaian (bukan 0). Penginapan dilewati bila perjalanan tanpa hotel; Bantuan Pendamping hanya dinilai narasumber dan pimpinan.",
   },
 
   // ---------------------------------------------------- analisis peserta ---

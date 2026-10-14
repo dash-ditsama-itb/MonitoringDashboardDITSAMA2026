@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { Navigate } from "react-router";
+import { Link, Navigate } from "react-router";
 import { Calendar } from "../../components/Calendar.jsx";
 import { ChartCanvas } from "../../components/ChartCanvas.jsx";
 import { Gantt } from "../../components/Gantt.jsx";
@@ -8,6 +8,7 @@ import { InfoTip } from "../../components/InfoTip.jsx";
 import {
   isProgramDone, lastPerformed, ProgramProgress, programStatus, ProgressSummary,
 } from "../../components/ProgressSummary.jsx";
+import { isSugtDone, SugtSummaryCard, sugtStatus, sugtUnits } from "../../components/Sugt.jsx";
 import {
   Bar, EmptyState, ErrorNote, LevelBadge, PageHead, ProgramAbout, SeeMore, Sheet, SkeletonCard,
 } from "../../components/ui.jsx";
@@ -53,12 +54,14 @@ function PortfolioPage() {
       {program && <ProgramAbout program={program} />}
       {!d ? <PortfolioSkeleton /> : (
         <>
-          <Progress kpi={d.kpi} portfolio={d.portfolio} program={shown} last={last} />
+          <Progress kpi={d.kpi} portfolio={d.portfolio} sugt={d.sugt} program={shown} last={last} />
 
           <div className="grid g-5-7">
             <Performance strip={d.performanceStrip} title={"Performa kegiatan " + (shown ? shown.label : "semua program")} />
-            <PortfolioList items={d.portfolio} program={shown} />
+            <PortfolioList items={d.portfolio} sugt={d.sugt} program={shown} />
           </div>
+
+          {!shown && <SugtSummaryCard s={d.sugt} />}
 
           <div className="grid g-2">
             <Issues items={d.issues} />
@@ -101,13 +104,13 @@ function PortfolioSkeleton() {
   );
 }
 
-// semua program: jumlah program selesai / total program; satu program: aktivitas selesai / total aktivitasnya
-function Progress({ kpi, portfolio, program, last }) {
+// semua program: jumlah program selesai (termasuk SUGT) / total program; satu program: aktivitas selesai / total aktivitasnya
+function Progress({ kpi, portfolio, sugt, program, last }) {
   if (program) return <ProgramProgress program={program} kpi={kpi} last={last} showProgram />;
   const note = kpi.totalActivities
     ? `${fmtNum(kpi.totalDone)} dari ${fmtNum(kpi.totalActivities)} total aktivitas program selesai (${kpi.progress}%)`
     : "Belum ada aktivitas tercatat";
-  const done = portfolio.filter(isProgramDone).length;
+  const done = portfolio.filter(isProgramDone).length + (isSugtDone(sugt) ? 1 : 0);
   const p = pct(done, TOTAL_PROGRAMS);
   return <ProgressSummary label="Program Selesai" info="progress" kpi={kpi} progress={p}
     value={`${done}/${TOTAL_PROGRAMS}`} unit={`program (${p}%)`} note={note} last={last} showProgram />;
@@ -141,7 +144,7 @@ function Performance({ strip, title }) {
   );
 }
 
-function PortfolioList({ items, program }) {
+function PortfolioList({ items, sugt, program }) {
   // tampilkan semua program monitoring (yang belum punya aktivitas tetap muncul), atau hanya program terpilih
   const rows = (program ? [program] : PROGRAMS).map((pr) => ({
     pics: [], completedActivities: 0, ongoingActivities: 0, totalActivities: 0,
@@ -178,8 +181,29 @@ function PortfolioList({ items, program }) {
             </li>
           );
         })}
+        {!program && <SugtRow s={sugt} />}
       </ul>
     </section>
+  );
+}
+
+// SUGT: kegiatan = 8 sesi + pretest + posttest per sekolah; tidak punya Nilai Performa seperti program lain
+function SugtRow({ s }) {
+  const u = s && sugtUnits(s);
+  const [label, tone] = s ? sugtStatus(s) : ["Tidak tersedia", "idle"];
+  return (
+    <li>
+      <span className="port-dot" style={{ background: progColor("sugt") }} />
+      <div className="port-nm"><Link className="row-link" to="/dashboard/sugt"><b>SUGT</b></Link>
+        <small>{s ? "Sesi, pretest & posttest per sekolah" : "Data SUGT tidak dapat dimuat"}</small></div>
+      <div className="port-cnt" title={u ? `${u.completed} dari ${u.total} kegiatan terlaksana` : undefined}>
+        {u ? <>{fmtNum(u.completed)}<span className="muted">/{fmtNum(u.total)}</span></> : <span className="muted">–</span>}</div>
+      <div className="port-score"><Bar value={u?.percent} tone={tone === "ok" ? "ok" : ""} />
+        <b>{u ? u.percent + "%" : <span className="muted">–</span>}</b></div>
+      <span className={"pill " + tone}>{label}</span>
+      <div className="port-perf"><small>Performa</small><Bar value={null} />
+        <b><span className="muted" title="SUGT dinilai lewat umpan balik peserta; lihat dashboard SUGT">–</span></b></div>
+    </li>
   );
 }
 

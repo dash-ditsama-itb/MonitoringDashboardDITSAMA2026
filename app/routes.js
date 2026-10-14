@@ -11,6 +11,7 @@ export default [
       route("dosen", "./routes/dashboard/dosen.jsx"),
       route("input", "./routes/dashboard/input.jsx"),
       route("program/:programKey", "./routes/dashboard/program.jsx"),
+      route("sugt", "./routes/dashboard/sugt.jsx"),
     ]),
   ]),
 
