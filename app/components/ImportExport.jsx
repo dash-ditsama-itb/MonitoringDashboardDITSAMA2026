@@ -22,6 +22,20 @@ export function ExportButton({ path, query, filename, label = "Ekspor" }) {
   );
 }
 
+/**
+ * Ringkasan hasil impor dari backend: baru (importedCount), diperbarui lewat kolom ID (updatedCount),
+ * tidak berubah/duplikat (duplicateCount), dilewati (skippedCount, alasannya dari `skipReason`).
+ */
+export function importSummary(d, noun, skipReason) {
+  const n = (v) => (v || 0).toLocaleString("id-ID");
+  const parts = [];
+  if (d.importedCount) parts.push(`${n(d.importedCount)} ${noun} baru`);
+  if (d.updatedCount) parts.push(`${n(d.updatedCount)} diperbarui`);
+  if (d.duplicateCount) parts.push(`${n(d.duplicateCount)} sudah ada (tidak berubah)`);
+  if (d.skippedCount) parts.push(`${n(d.skippedCount)} dilewati (${skipReason})`);
+  return parts.length ? parts.join(", ") + "." : `Tidak ada ${noun} yang diimpor.`;
+}
+
 /** onDone(data) dipanggil setelah impor berhasil; describe(data) -> teks toast. */
 export function ImportButton({ path, onDone, describe, hint }) {
   const ref = useRef(null);

@@ -12,7 +12,7 @@ import { useUiStore } from "../stores/ui.js";
 import { ActivityForm } from "./ActivityForm.jsx";
 import { confirmAction, toast } from "./feedback.jsx";
 import { Icon } from "./Icon.jsx";
-import { ExportButton, ImportButton } from "./ImportExport.jsx";
+import { ExportButton, ImportButton, importSummary } from "./ImportExport.jsx";
 import {
   Bar, EmptyState, ErrorNote, LevelBadge, Pagination, SearchInput, Sheet, Skeleton, Spinner, StatusBadge,
 } from "./ui.jsx";
@@ -152,8 +152,8 @@ export function ActivitiesTable({ fixedProgram, title = "Data Kegiatan", sub }) 
           <div className="card-sub">{sub || (pagination ? `${pagination.totalRecords.toLocaleString("id-ID")} kegiatan` : "Memuat…")}</div>
         </div>
         <div className="tbl-actions">
-          {editablePrograms(session).length > 0 && <ImportButton path="/activity/import" hint="Unggah .xlsx/.csv dengan format yang sama seperti file Ekspor"
-            describe={(d) => `${d.importedCount ?? 0} kegiatan diimpor` + (d.skippedCount ? `, ${d.skippedCount} dilewati (program di luar akses Anda).` : ".")}
+          {editablePrograms(session).length > 0 && <ImportButton path="/activity/import" hint="Unggah .xlsx/.csv dengan format file Ekspor (tab dengan kolom Nama Kegiatan, mis. DataMasuk). Baris yang ID-nya sudah ada akan memperbarui kegiatan tersebut"
+            describe={(d) => importSummary(d, "kegiatan", session?.role === "pic" ? "program tidak dikenal atau di luar akses Anda" : "program tidak dikenal")}
             onDone={refreshActivities} />}
           <ExportButton path="/activity/export" filename="data-kegiatan.xlsx"
             query={{ programs, search: st.search, sortBy, sortOrder }} />

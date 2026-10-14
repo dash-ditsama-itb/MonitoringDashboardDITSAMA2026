@@ -47,7 +47,12 @@ Buka `http://localhost:5173/MonitoringDashboardDITSAMA2026/`.
   panel samping, tandai selesai, hapus satu atau banyak sekaligus, impor & ekspor Excel.
 - **Keuangan**: filter program/tahun/bulan/jenis pengajuan, tabel transaksi PKS & pengajuan dengan
   pencarian, urutan, halaman, ubah, hapus massal, impor & ekspor Excel.
-- File impor memakai format yang sama dengan file hasil **Ekspor**.
+- File impor memakai format yang sama dengan file hasil **Ekspor**. Baris yang kolom `ID`-nya sudah ada
+  memperbarui data tersebut (alur: Ekspor → ubah di Excel → Impor); baris tanpa ID dicocokkan otomatis
+  atau ditambahkan sebagai data baru. Hasil impor menyebut jumlah data baru, diperbarui, tidak berubah,
+  dan dilewati.
+- Impor Kegiatan membaca tab yang punya kolom `Nama Kegiatan` (mis. `DataMasuk`); baris dengan program
+  yang tidak dikenal (mis. SUGT) dilewati.
 - Hak akses mengikuti jabatan (sama dengan backend):
   - Admin & Kasubdit: semua menu, boleh mengubah semua data.
   - PIC: semua menu kecuali Keuangan; hanya boleh mengubah kegiatan program miliknya.
