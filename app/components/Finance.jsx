@@ -1,7 +1,7 @@
 // Tabel transaksi Keuangan (PKS & pengajuan) + form tambah/ubah.
 import { useEffect, useState } from "react";
 import { FIN_PROGRAMS, PKS_TYPES } from "../config.js";
-import { api } from "../lib/api.js";
+import { api, errorText } from "../lib/api.js";
 import {
   canEditFinance, finProgramLabel, finTypeLabel, fmtDate, fmtDateTime, fmtRelative, fmtRupiah, fromDateInput, isPks, toDateInput,
 } from "../lib/format.js";
@@ -57,7 +57,7 @@ export function FinanceTable({ filters, ui, update }) {
     });
     if (!ok) return;
     try { await api("/financial/" + r.id, { method: "DELETE" }); toast("Transaksi dihapus."); refreshFinance(); }
-    catch (e) { toast(e.message, "err"); }
+    catch (e) { toast(errorText(e), "err"); }
   }
   async function bulkDelete() {
     const ids = [...selected];
@@ -69,7 +69,7 @@ export function FinanceTable({ filters, ui, update }) {
     try {
       await api("/financial", { method: "DELETE", body: { financialIds: ids } });
       toast(`${ids.length} transaksi dihapus.`); setSelected(new Set()); refreshFinance();
-    } catch (e) { toast(e.message, "err"); }
+    } catch (e) { toast(errorText(e), "err"); }
   }
 
   const singleProgram = filters.programs.length === 1 && filters.programs[0] !== "all" ? filters.programs[0] : "";
@@ -275,7 +275,7 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
       }
       refreshFinance();
       onClose();
-    } catch (e) { setErr(e.message); }
+    } catch (e) { setErr(errorText(e)); }
     finally { setBusy(false); }
   }
 

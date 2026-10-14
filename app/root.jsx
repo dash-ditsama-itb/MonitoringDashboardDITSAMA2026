@@ -37,11 +37,11 @@ export function ErrorBoundary({ error }) {
   let title = "Terjadi kesalahan";
   let detail = "Silakan muat ulang halaman.";
   if (isRouteErrorResponse(error)) {
-    title = error.status === 404 ? "Halaman tidak ditemukan" : `${error.status} ${error.statusText}`;
+    if (error.status === 404) title = "Halaman tidak ditemukan";
     detail = typeof error.data === "string" ? error.data : detail;
-  } else if (error instanceof Error) {
-    detail = error.message;
   }
+  // rincian teknis untuk developer saja
+  if (typeof window !== "undefined") console.error(error);
   return (
     <main style={{ padding: "2rem", fontFamily: "system-ui, sans-serif" }}>
       <title>{title}</title>

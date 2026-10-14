@@ -2,7 +2,7 @@
 // Kunci = path + query. Setelah simpan/hapus, panggil invalidate("/activities", ...) agar halaman memuat ulang.
 import { useEffect, useRef } from "react";
 import { create } from "zustand";
-import { api } from "../lib/api.js";
+import { api, errorText } from "../lib/api.js";
 import { useAuthStore } from "./auth.js";
 
 let seq = 0;
@@ -17,7 +17,7 @@ export const useDataStore = create((set, get) => ({
     try {
       patch = { data: await api(path, { query }), error: null };
     } catch (e) {
-      patch = { error: e.message || "Gagal memuat data." };
+      patch = { error: errorText(e, "Gagal memuat data. Coba lagi sebentar lagi.") };
     }
     if (get().entries[key]?.req !== req) return;   // sudah ada permintaan yang lebih baru
     set((s) => ({ entries: { ...s.entries, [key]: { ...s.entries[key], ...patch, loading: false } } }));

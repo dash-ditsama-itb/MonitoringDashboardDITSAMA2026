@@ -1,7 +1,7 @@
 // Tabel Data Kegiatan (server: pencarian, urutan, halaman, hapus massal, impor/ekspor) + panel rincian.
 import { useEffect, useMemo, useState } from "react";
 import { PROGRAMS } from "../config.js";
-import { api } from "../lib/api.js";
+import { api, errorText } from "../lib/api.js";
 import {
   activityStatus, attendance, canEditActivity, editablePrograms, fmtDate, fmtDateLong, fmtDateTime, fmtRelative,
   levelLabel, phaseLabel, programLabel, progressLabel, skName, topIssueLevel,
@@ -31,7 +31,7 @@ export function useActivityActions() {
   const run = async (id, fn, okText) => {
     setBusyId(id);
     try { await fn(); toast(okText); refreshActivities(); return true; }
-    catch (e) { toast(e.message, "err"); return false; }
+    catch (e) { toast(errorText(e), "err"); return false; }
     finally { setBusyId(null); }
   };
   return {
@@ -132,7 +132,7 @@ export function ActivitiesTable({ fixedProgram, title = "Data Kegiatan", sub }) 
       toast(`${ids.length} kegiatan dihapus.`);
       setSelected(new Set());
       refreshActivities();
-    } catch (e) { toast(e.message, "err"); }
+    } catch (e) { toast(errorText(e), "err"); }
   }
 
   const canAdd = editablePrograms(session).length > 0 && (!fixedProgram || canEditActivity(session, fixedProgram));

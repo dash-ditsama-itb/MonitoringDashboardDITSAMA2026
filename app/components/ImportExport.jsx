@@ -1,6 +1,6 @@
 // Tombol Impor (unggah .xlsx/.csv) dan Ekspor (unduh .xlsx) untuk tabel data.
 import { useRef, useState } from "react";
-import { download, upload } from "../lib/api.js";
+import { download, errorText, upload } from "../lib/api.js";
 import { toast } from "./feedback.jsx";
 import { Icon } from "./Icon.jsx";
 import { Spinner } from "./ui.jsx";
@@ -12,7 +12,7 @@ export function ExportButton({ path, query, filename, label = "Ekspor" }) {
   const run = async () => {
     setBusy(true);
     try { await download(path, query, filename); toast("File Excel diunduh."); }
-    catch (e) { toast(e.message, "err"); }
+    catch (e) { toast(errorText(e), "err"); }
     finally { setBusy(false); }
   };
   return (
@@ -47,7 +47,7 @@ export function ImportButton({ path, onDone, describe, hint }) {
       const out = await upload(path, file);
       toast(describe ? describe(out.data || {}) : "Impor selesai.");
       onDone?.(out.data);
-    } catch (e) { toast(e.message, "err"); }
+    } catch (e) { toast(errorText(e), "err"); }
     finally { setBusy(false); if (ref.current) ref.current.value = ""; }
   };
   return (

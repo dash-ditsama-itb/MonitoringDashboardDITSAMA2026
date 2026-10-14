@@ -1,7 +1,7 @@
 // Form tambah / ubah kegiatan (panel samping). Mengirim ke POST /activity atau PATCH /activity/:id.
 import { useEffect, useMemo, useState } from "react";
 import { ISSUE_LEVELS, PHASES, PROGRESS, SDM_POSITIONS } from "../config.js";
-import { api, upload } from "../lib/api.js";
+import { api, errorText, upload } from "../lib/api.js";
 import { attendance, editablePrograms, fromDateInput, skName, splitPeople, toDateInput } from "../lib/format.js";
 import { useAuthStore } from "../stores/auth.js";
 import { invalidate } from "../stores/data.js";
@@ -143,7 +143,7 @@ export function ActivityForm({ open, activity, defaultProgram, initialMode, onCl
       updRow("hr", s.uid, { skId: out.data.skId, skName: file.name, skUrl: "", skBusy: false });
     } catch (e) {
       updRow("hr", s.uid, { skBusy: false });
-      toast(e.message === "File SK tidak valid. Periksa kembali isiannya." ? "File SK harus PDF, DOC, atau DOCX (maks. 10 MB)." : e.message, "err");
+      toast(e.message === "File SK tidak valid. Periksa kembali isiannya." ? "File SK harus PDF, DOC, atau DOCX (maks. 10 MB)." : errorText(e), "err");
     }
   }
 
@@ -166,7 +166,7 @@ export function ActivityForm({ open, activity, defaultProgram, initialMode, onCl
       if (again) setF((cur) => ({ ...formFrom(null, session, cur.program), mode: cur.mode, pic: cur.pic }));
       else onClose();
     } catch (e) {
-      setErr(e.message);
+      setErr(errorText(e));
     } finally { setBusy(false); }
   }
 

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { PROGRAMS, ROLES } from "../config.js";
-import { api } from "../lib/api.js";
+import { api, errorText } from "../lib/api.js";
 import { useAuthStore } from "../stores/auth.js";
 import { Icon } from "./Icon.jsx";
 import { Spinner } from "./ui.jsx";
@@ -100,7 +100,7 @@ export function AuthGate() {
     if (mode === "login" && err.raw?.message === "User is not yet verified.") {
       return go("verify", { ok: false, text: "Email Anda belum diverifikasi. Masukkan kode dari email, atau kirim ulang kode." });
     }
-    setMsg({ ok: false, text: err.message });
+    setMsg({ ok: false, text: errorText(err) });
   }
 
   async function resend() {
@@ -109,7 +109,7 @@ export function AuthGate() {
       await post(mode === "verify" ? "/auth/otp/email" : "/auth/otp/password-reset", { email });
       setMsg({ ok: true, text: `Kode baru terkirim ke ${email}.` });
     });
-    if (err) setMsg({ ok: false, text: err.message });
+    if (err) setMsg({ ok: false, text: errorText(err) });
   }
 
   const [title, sub] = COPY[mode];
@@ -205,7 +205,7 @@ export function AccessOverlay() {
       const out = await api("/auth/access", { method: "POST", body: { password: pass }, token: session.loginToken });
       unlock(out.data.accessToken);
     } catch (err) {
-      setMsg({ ok: false, text: err.message });
+      setMsg({ ok: false, text: errorText(err) });
     } finally { setBusy(false); }
   }
 

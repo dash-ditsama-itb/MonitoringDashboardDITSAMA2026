@@ -10,7 +10,9 @@ export class ApiError extends Error {
   }
 }
 
-// pesan backend (Inggris) -> Bahasa Indonesia
+// Pesan untuk pengguna (bukan developer): pesan backend (Inggris) -> Bahasa Indonesia.
+// Rincian teknis (status, isi balasan) hanya ditulis ke console.error.
+const SUGT_DOWN = "Data SUGT belum bisa dimuat saat ini. Coba lagi sebentar lagi.";
 const MESSAGES = {
   "Invalid email or password.": "Email atau password salah.",
   "User is not yet verified.": "Email belum diverifikasi. Masukkan kode yang dikirim ke email Anda.",
@@ -37,12 +39,30 @@ const MESSAGES = {
   "A file field containing the spreadsheet is required.": "Pilih file spreadsheet dulu.",
   "Lecturer not found.": "Dosen tidak ditemukan untuk filter ini.",
   "Something went wrong": "Terjadi kesalahan di server. Coba lagi sebentar lagi.",
-  "SUGT dashboard is not configured.": "Koneksi ke aplikasi SUGT belum diatur di server (SUGT_JWT_SECRET).",
-  "Failed to reach SUGT dashboard.": "Aplikasi SUGT tidak dapat dihubungi. Coba lagi sebentar lagi.",
-  "SUGT dashboard rejected the credentials.": "Aplikasi SUGT menolak akses server. Periksa pengaturan SUGT_JWT_* di backend.",
-  "Unsupported SUGT summary version.": "Format data dari aplikasi SUGT berubah dan belum didukung.",
-  "Invalid response received from SUGT dashboard.": "Format data dari aplikasi SUGT berubah dan belum didukung.",
+  "SUGT dashboard is not configured.": SUGT_DOWN,
+  "Failed to reach SUGT dashboard.": SUGT_DOWN,
+  "SUGT dashboard rejected the credentials.": SUGT_DOWN,
+  "Unsupported SUGT summary version.": SUGT_DOWN,
+  "Invalid response received from SUGT dashboard.": SUGT_DOWN,
 };
+
+// pesan umum bila balasan server tidak dikenali
+const GENERIC = "Terjadi kesalahan. Coba lagi sebentar lagi.";
+function byStatus(status) {
+  if (status === 404) return "Data tidak ditemukan (mungkin sudah dihapus). Muat ulang halaman.";
+  if (status === 403) return MESSAGES["Forbidden."];
+  if (status === 400 || status === 422) return "Permintaan tidak dapat diproses. Periksa kembali isian Anda.";
+  if (status >= 502 && status <= 504) return "Sumber data sedang tidak dapat dihubungi. Coba lagi sebentar lagi.";
+  if (status >= 500) return MESSAGES["Something went wrong"];
+  return GENERIC;
+}
+
+/** Teks error yang aman ditampilkan ke pengguna; error tak terduga dicatat di console. */
+export function errorText(e, fallback = GENERIC) {
+  if (e instanceof ApiError) return e.message;
+  console.error(e);
+  return fallback;
+}
 
 const FIELD_LABELS = {
   email: "Email", password: "Password", name: "Nama", role: "Jabatan", programs: "Program", code: "Kode",
@@ -59,17 +79,18 @@ function readableMessage(body, status, retryAfter) {
   const msg = body?.message;
   if (msg && typeof msg === "object" && Array.isArray(msg.errors)) {
     const first = msg.errors[0] || {};
-    const field = FIELD_LABELS[first.path?.[0]] || first.path?.[0];
+    const field = FIELD_LABELS[first.path?.[0]];
     const custom = { "Programs are required for PIC role.": "Pilih minimal satu program untuk PIC." }[first.message];
     if (custom) return custom;
     if (first.path?.[0] === "email") return "Format email tidak valid.";
     return field ? `${field} tidak valid. Periksa kembali isiannya.` : "Isian tidak valid. Periksa kembali formulir.";
   }
   if (typeof msg === "string") {
-    if (msg.startsWith("SUGT dashboard responded")) return "Aplikasi SUGT sedang bermasalah. Coba lagi sebentar lagi.";
-    return MESSAGES[msg] || msg;
+    if (MESSAGES[msg]) return MESSAGES[msg];
+    if (msg.startsWith("SUGT dashboard")) return SUGT_DOWN;
+    if (/ not found: /.test(msg)) return "Sebagian data tidak ditemukan (mungkin sudah dihapus). Muat ulang halaman.";
   }
-  return `Server membalas error (HTTP ${status}).`;
+  return byStatus(status);
 }
 
 function buildUrl(path, query) {
@@ -82,7 +103,10 @@ function buildUrl(path, query) {
 }
 
 async function send(path, { method = "GET", query, body, form, token, signal } = {}) {
-  if (!API_URL) throw new ApiError("Alamat server belum diatur (VITE_API_URL di .env).", 0);
+  if (!API_URL) {
+    console.error("VITE_API_URL belum diatur: isi di .env (lokal) atau Variables repo (GitHub Pages).");
+    throw new ApiError("Dashboard belum terhubung ke server. Hubungi admin.", 0);
+  }
   const auth = token === undefined ? useAuthStore.getState().session?.token : token;
   const headers = {};
   if (auth) headers.Authorization = "Bearer " + auth;
@@ -93,6 +117,7 @@ async function send(path, { method = "GET", query, body, form, token, signal } =
     return await fetch(buildUrl(path, query), { method, headers, body: payload, signal });
   } catch (e) {
     if (e?.name === "AbortError") throw e;
+    console.error(`[api] ${method} ${path} gagal terhubung:`, e);
     throw new ApiError("Tidak bisa menghubungi server. Periksa koneksi internet Anda.", 0);
   }
 }
@@ -101,6 +126,7 @@ async function failure(res) {
   let body = null;
   try { body = await res.json(); } catch { /* bukan JSON */ }
   const err = new ApiError(readableMessage(body, res.status, res.headers.get("Retry-After")), res.status, body);
+  console.error(`[api] ${res.status} ${res.url}`, body);
   const auth = useAuthStore.getState();
   // token kedaluwarsa / tidak sah -> keluar; Password Akses belum diverifikasi -> minta lagi
   if (res.status === 401 && auth.session) auth.logout("Sesi Anda berakhir. Silakan masuk lagi.");
@@ -112,7 +138,11 @@ async function failure(res) {
 export async function api(path, opts) {
   const res = await send(path, opts);
   if (!res.ok) throw await failure(res);
-  return res.json();
+  try { return await res.json(); }
+  catch (e) {
+    console.error(`[api] balasan ${res.url} bukan JSON:`, e);
+    throw new ApiError(GENERIC, res.status);
+  }
 }
 
 /** Unduh file (ekspor Excel) dengan filter yang sama seperti tabel. */
