@@ -6,9 +6,9 @@ import { Gantt } from "../../components/Gantt.jsx";
 import { Icon } from "../../components/Icon.jsx";
 import { InfoTip } from "../../components/InfoTip.jsx";
 import {
-  isProgramDone, lastPerformed, ProgramProgress, programStatus, ProgressSummary,
+  isProgramDone, lastPerformed, Performance, ProgramProgress, programStatus, ProgressSummary,
 } from "../../components/ProgressSummary.jsx";
-import { isSugtDone, SUGT_PROGRAM, SugtPanel, SugtSummaryCard, sugtStatus, sugtUnits } from "../../components/Sugt.jsx";
+import { isSugtDone, SUGT_PROGRAM, sugtFeedback, SugtPanel, sugtStatus, sugtUnits } from "../../components/Sugt.jsx";
 import {
   Bar, EmptyState, ErrorNote, LevelBadge, PageHead, ProgramAbout, SeeMore, Sheet, SkeletonCard,
 } from "../../components/ui.jsx";
@@ -60,11 +60,10 @@ function PortfolioPage() {
           <Progress kpi={d.kpi} portfolio={d.portfolio} sugt={d.sugt} program={shown} last={last} />
 
           <div className="grid g-5-7">
-            <Performance strip={d.performanceStrip} title={"Performa kegiatan " + (shown ? shown.label : "semua program")} />
+            <Performance strip={shown ? d.performanceStrip : withProgramFeedback(d.performanceStrip, d.portfolio, d.sugt)}
+              title={"Performa kegiatan " + (shown ? shown.label : "semua program")} />
             <PortfolioList items={d.portfolio} sugt={d.sugt} program={shown} />
           </div>
-
-          {!shown && <SugtSummaryCard s={d.sugt} />}
 
           <div className="grid g-2">
             <Issues items={d.issues} />
@@ -119,32 +118,10 @@ function Progress({ kpi, portfolio, sugt, program, last }) {
     value={`${done}/${TOTAL_PROGRAMS}`} unit={`program (${p}%)`} note={note} last={last} showProgram />;
 }
 
-const PERF = [
-  ["achievementValue", "Nilai Capaian Peserta", "target"],
-  ["attendancePercentage", "Performa Kehadiran Peserta", "userCheck"],
-  ["activityProgress", "Performa Keberjalanan Aktivitas", "trend"],
-  ["feedback", "Umpan Balik Peserta", "message"],
-  ["issueAlert", "Nilai Isu & Peringatan", "alert"],
-];
-function Performance({ strip, title }) {
-  return (
-    <section className="card">
-      <div className="card-head"><div><h2 className="card-title">{title}</h2><div className="card-sub">Rata-rata seluruh kegiatan sesuai filter · tekan (i) untuk cara hitungnya</div></div></div>
-      <ul className="perf">
-        {PERF.map(([k, label, icon]) => {
-          const v = strip[k];
-          return (
-            <li key={k}>
-              <span className="perf-ic"><Icon name={icon} size={16} /></span>
-              <span className="perf-lab">{label}<InfoTip k={k} />{!v && <small>belum ada kegiatan yang mengisi</small>}</span>
-              <Bar value={v} tone={!v ? "" : v < 60 ? "crit" : v < 80 ? "warn" : "ok"} />
-              <b className={"perf-val" + (v ? "" : " muted")}>{v}%</b>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
-  );
+// filter Semua program: Umpan Balik Peserta = rata-rata umpan balik tiap program (termasuk SUGT), bobot sama
+function withProgramFeedback(strip, portfolio, sugt) {
+  const vals = [...portfolio.map((p) => p.performanceStrip?.feedback), sugtFeedback(sugt)].filter((v) => v > 0);
+  return { ...strip, feedback: vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0 };
 }
 
 function PortfolioList({ items, sugt, program }) {
@@ -190,10 +167,11 @@ function PortfolioList({ items, sugt, program }) {
   );
 }
 
-// SUGT: kegiatan = 8 sesi + pretest + posttest per sekolah; tidak punya Nilai Performa seperti program lain
+// SUGT: kegiatan = 8 sesi + pretest + posttest per sekolah; Performa = umpan balik SUGT (satu-satunya indikatornya)
 function SugtRow({ s }) {
   const u = s && sugtUnits(s);
   const [label, tone] = s ? sugtStatus(s) : ["Tidak tersedia", "idle"];
+  const perf = sugtFeedback(s);
   return (
     <li>
       <span className="port-dot" style={{ background: progColor("sugt") }} />
@@ -204,8 +182,9 @@ function SugtRow({ s }) {
       <div className="port-score"><Bar value={u?.percent} tone={tone === "ok" ? "ok" : ""} />
         <b>{u ? u.percent + "%" : <span className="muted">–</span>}</b></div>
       <span className={"pill " + tone}>{label}</span>
-      <div className="port-perf"><small>Performa</small><Bar value={null} />
-        <b><span className="muted" title="SUGT dinilai lewat umpan balik peserta; lihat dashboard SUGT">–</span></b></div>
+      <div className="port-perf"><small>Performa</small>
+        <Bar value={perf} tone={perf == null ? "" : perf < 60 ? "crit" : perf < 80 ? "warn" : "ok"} />
+        <b>{perf == null ? <span className="muted" title="Belum ada umpan balik SUGT">–</span> : perf + "%"}</b></div>
     </li>
   );
 }

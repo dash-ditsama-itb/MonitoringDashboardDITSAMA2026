@@ -70,6 +70,38 @@ export function ProgressSummary({ label, info, progress, value, unit, note, stat
   );
 }
 
+// lima indikator performa kegiatan (strip dari backend, nilai 0–100; 0 = belum terisi, tidak ada = tidak tersedia)
+export const PERF = [
+  ["achievementValue", "Nilai Capaian Peserta", "target"],
+  ["attendancePercentage", "Performa Kehadiran Peserta", "userCheck"],
+  ["activityProgress", "Performa Keberjalanan Aktivitas", "trend"],
+  ["feedback", "Umpan Balik Peserta", "message"],
+  ["issueAlert", "Nilai Isu & Peringatan", "alert"],
+];
+
+/** Kartu Performa 5 indikator. info: ganti kunci keterangan per indikator, empty: teks indikator kosong. */
+export function Performance({ strip, title, sub = "Rata-rata seluruh kegiatan sesuai filter · tekan (i) untuk cara hitungnya",
+  info = {}, empty = "belum ada kegiatan yang mengisi" }) {
+  return (
+    <section className="card">
+      <div className="card-head"><div><h2 className="card-title">{title}</h2><div className="card-sub">{sub}</div></div></div>
+      <ul className="perf">
+        {PERF.map(([k, label, icon]) => {
+          const v = strip[k];
+          return (
+            <li key={k}>
+              <span className="perf-ic"><Icon name={icon} size={16} /></span>
+              <span className="perf-lab">{label}<InfoTip k={info[k] || k} />{!v && <small>{empty}</small>}</span>
+              <Bar value={v} tone={!v ? "" : v < 60 ? "crit" : v < 80 ? "warn" : "ok"} />
+              <b className={"perf-val" + (v ? "" : " muted")}>{v == null ? "–" : v + "%"}</b>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
 // program dihitung Selesai bila punya aktivitas dan semuanya Selesai
 export const isProgramDone = (p) => p.totalActivities > 0 && p.completedActivities === p.totalActivities;
 
