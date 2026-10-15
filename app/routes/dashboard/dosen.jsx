@@ -11,11 +11,15 @@ import { useUiStore } from "../../stores/ui.js";
 
 const ALL = "Semua";
 const METODE_COL = { Luring: "#204074", Hibrida: "#9EC1E6", Daring: "#E08A2E" };
-const FILTERS = [["program", "programs", "Program"], ["mapel", "mapels", "Mata kuliah"], ["metode", "metodes", "Metode"],
+// format Riset (Dosen_RISET): "Mata kuliah" & "Kelas" = Kelas Peserta, tanpa metode
+const FILTERS = [["program", "programs", "Program"], ["mapel", "mapels", "Mata kuliah / kelas peserta"], ["metode", "metodes", "Metode"],
   ["kelas", "kelas", "Kelas"], ["bahasa", "bahasas", "Bahasa"]];
 const score = (v) => (v == null ? "–" : Number(v).toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+const tone = (v) => (v >= 4.5 ? "ok" : v >= 4 ? "" : v >= 3 ? "warn" : "crit");
 // "Dr. Budi Santoso, S.Si., M.Si." -> "Budi Santoso"
 const nice = (n) => String(n || "").split(",")[0].replace(/^((prof|dr|drs|dra|ir)\.?\s+)+/i, "").trim();
+// formulir per sesi tidak punya metode ("–")
+const hasMethod = (methods) => methods.some((m) => m !== "–");
 
 export default function Dosen() {
   return <RequireAccess area="activities" page="Portofolio Dosen"><DosenPage /></RequireAccess>;
@@ -63,7 +67,7 @@ function DosenPage() {
         <>
           <div className="kpi-row six">
             <Kpi label="Dosen dinilai" value={fmtNum(d.kpi.totalLecturers)} icon="grad" />
-            <Kpi label="Mata kuliah" value={fmtNum(d.kpi.totalSubjects)} icon="book" />
+            <Kpi label="Mata kuliah / kelas" value={fmtNum(d.kpi.totalSubjects)} icon="book" />
             <Kpi label="Peserta mengisi" value={fmtNum(d.kpi.totalRespondents)} icon="users" />
             <Kpi label="Total penilaian" value={fmtNum(d.kpi.totalRatings)} icon="clipboard" />
             <Kpi label="Rata-rata (1–5)" value={score(d.kpi.averageScore)} icon="star" />
@@ -71,7 +75,7 @@ function DosenPage() {
           </div>
           <Charts d={d} onSelect={select} />
           <section className="card">
-            <div className="card-head"><div><h2 className="card-title">Mata kuliah</h2><div className="card-sub">Klik kartu untuk memfilter per mata kuliah</div></div></div>
+            <div className="card-head"><div><h2 className="card-title">Mata kuliah / kelas peserta</h2><div className="card-sub">Klik kartu untuk memfilter per mata kuliah atau kelas peserta</div></div></div>
             {!d.subjects.length ? <div className="empty-inline">Belum ada data.</div> : (
               <div className="subj-cards">
                 {d.subjects.map((s) => (
@@ -149,13 +153,59 @@ function Charts({ d, onSelect }) {
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "top", align: "end" } },
       scales: { x: { grid: { display: false } }, y: { min: 1, max: 5, ticks: { stepSize: 1 } } } },
   }), [d]);
+  // hanya formulir per sesi (mis. Riset): grafik metode kosong, diganti kartu per aspek
+  const showMethod = hasMethod(methods);
+  const aspects = d.aspects || [];
+  const methodCard = (
+    <section className="card"><div className="card-head"><div><h2 className="card-title">Rata-rata per metode</h2><div className="card-sub">Luring / Hibrida / Daring per mata kuliah</div></div></div>
+      <ChartCanvas config={metode} height={300} /></section>
+  );
   return (
-    <div className="grid g-2">
-      <section className="card"><div className="card-head"><div><h2 className="card-title">15 dosen dengan nilai tertinggi</h2><div className="card-sub">Rata-rata 1–5 · klik batang untuk membuka portofolio</div></div></div>
-        <ChartCanvas config={rank} height={Math.max(240, top.length * 24 + 40)} /></section>
-      <section className="card"><div className="card-head"><div><h2 className="card-title">Rata-rata per metode</h2><div className="card-sub">Luring / Hibrida / Daring per mata kuliah</div></div></div>
-        <ChartCanvas config={metode} height={300} /></section>
-    </div>
+    <>
+      <div className="grid g-2">
+        <section className="card"><div className="card-head"><div><h2 className="card-title">15 dosen dengan nilai tertinggi</h2><div className="card-sub">Rata-rata 1–5 · klik batang untuk membuka portofolio</div></div></div>
+          <ChartCanvas config={rank} height={Math.max(240, top.length * 24 + 40)} /></section>
+        {showMethod || !aspects.length ? methodCard : <AspectCard aspects={aspects} />}
+      </div>
+      {showMethod && aspects.length > 0 && <AspectCard aspects={aspects} />}
+    </>
+  );
+}
+
+// rata-rata per kategori & butir dari formulir per sesi (mis. Dosen_RISET)
+function AspectCard({ aspects }) {
+  return (
+    <section className="card">
+      <div className="card-head"><div><h2 className="card-title">Penilaian per aspek</h2>
+        <div className="card-sub">Formulir per sesi (mis. Riset) · rata-rata 1–5 sesuai filter · klik kategori untuk rincian butir</div></div></div>
+      <AspectList aspects={aspects} />
+    </section>
+  );
+}
+
+function AspectList({ aspects }) {
+  const [open, setOpen] = useState(() => new Set());
+  const toggle = (c) => setOpen((s) => { const n = new Set(s); if (n.has(c)) n.delete(c); else n.add(c); return n; });
+  return (
+    <ul className="asp">
+      {aspects.map((a) => {
+        const on = open.has(a.category);
+        return (
+          <li key={a.category}>
+            <button type="button" className="asp-lab" aria-expanded={on} onClick={() => toggle(a.category)}>
+              <span>{a.category}</span><small>{a.items.length} butir<Icon name={on ? "up" : "down"} size={14} /></small>
+            </button>
+            <Bar value={(a.averageScore / 5) * 100} tone={tone(a.averageScore)} />
+            <b>{score(a.averageScore)}</b>
+            {on && (
+              <div className="asp-sub">{a.items.map((it) => (
+                <div key={it.item}><span>{it.item}</span><Bar value={(it.averageScore / 5) * 100} tone={tone(it.averageScore)} /><b>{score(it.averageScore)}</b></div>
+              ))}</div>
+            )}
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
@@ -176,19 +226,30 @@ function LecturerDetail({ lecturerKey, filters, onClose }) {
           </div>
           <div className="grid g-2 inner">
             <div>
+              {d.aspects?.length > 0 && <><h3 className="detail-h">Per aspek</h3><AspectList aspects={d.aspects} /></>}
               <h3 className="detail-h">Sebaran nilai</h3>
               <ul className="dist-list">{d.scoreDistribution.map((s) => (
                 <li key={s.score}><b>{s.score}</b><Bar value={s.percentage} /><span className="num">{s.count}</span></li>
               ))}</ul>
-              <h3 className="detail-h">Per metode</h3>
-              <table className="mini-tbl"><thead><tr><th>Metode</th><th className="num">Penilaian</th><th className="num">Rata-rata</th></tr></thead>
-                <tbody>{d.methods.map((m) => <tr key={m.method}><td>{m.method}</td><td className="num">{m.ratingsCount}</td><td className="num cell-strong">{score(m.averageScore)}</td></tr>)}</tbody></table>
+              {hasMethod(d.methods.map((m) => m.method)) && <>
+                <h3 className="detail-h">Per metode</h3>
+                <table className="mini-tbl"><thead><tr><th>Metode</th><th className="num">Penilaian</th><th className="num">Rata-rata</th></tr></thead>
+                  <tbody>{d.methods.map((m) => <tr key={m.method}><td>{m.method}</td><td className="num">{m.ratingsCount}</td><td className="num cell-strong">{score(m.averageScore)}</td></tr>)}</tbody></table>
+              </>}
+              {d.sessions?.length > 0 && <>
+                <h3 className="detail-h">Sesi kegiatan</h3>
+                <ul className="sesi">{d.sessions.map((s) => (
+                  <li key={s.date + s.class}><span>{s.date}{s.class !== "–" && " · " + s.class}</span>
+                    <span><b>{score(s.averageScore)}</b> · {fmtNum(s.ratingsCount)} formulir</span></li>
+                ))}</ul>
+              </>}
             </div>
             <div>
-              <h3 className="detail-h">Komentar peserta</h3>
-              {!d.comments.length ? <p className="muted small">Belum ada komentar yang menyebut dosen ini.</p>
+              <h3 className="detail-h">Komentar &amp; saran peserta</h3>
+              {!d.comments.length ? <p className="muted small">Belum ada komentar atau saran untuk dosen ini.</p>
                 : d.comments.slice(0, 12).map((c, i) => (
-                  <figure className="quote" key={i}><blockquote>{c.text}</blockquote><figcaption>{[c.program, c.class, c.method].filter(Boolean).join(" · ")}</figcaption></figure>
+                  <figure className="quote" key={i}><blockquote>{c.text}</blockquote>
+                    <figcaption>{[c.program, c.class, c.method !== "–" && c.method, c.date].filter(Boolean).join(" · ")}</figcaption></figure>
                 ))}
               {d.comments.length > 12 && <p className="muted small">+{d.comments.length - 12} komentar lain</p>}
             </div>
