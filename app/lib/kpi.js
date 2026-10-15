@@ -31,8 +31,8 @@ export const KPI = {
   feedback: {
     title: "Umpan Balik Peserta",
     arti: "Kepuasan atau umpan balik peserta terhadap kegiatan.",
-    rumus: "Rata-rata Umpan Balik dari kegiatan yang mengisinya.",
-    catatan: "Nilai kosong atau 0 tidak dihitung.",
+    rumus: "Rata-rata Umpan Balik dari kegiatan yang mengisinya. Pada filter Program = Semua: rata-rata umpan balik tiap program (termasuk SUGT), setiap program berbobot sama, mis. (90 + 85 + 60 + 90) ÷ 4 = 81%.",
+    catatan: "Nilai kosong atau 0 tidak dihitung, termasuk program yang belum punya umpan balik.",
   },
   issueAlert: {
     title: "Nilai Isu & Peringatan",
@@ -76,7 +76,7 @@ export const KPI = {
     arti: "Persentase aktivitas program yang sudah selesai.",
     rumus: "Aktivitas Selesai ÷ seluruh aktivitas program × 100%.",
     skor: STATUS_KEGIATAN,
-    catatan: "Program tanpa aktivitas ditampilkan “–”.",
+    catatan: "Program tanpa aktivitas ditampilkan “–”. SUGT: Performa = umpan balik SUGT, karena hanya indikator itu yang tersedia dari aplikasi SUGT.",
   },
   performanceScore: {
     title: "Nilai Kinerja",
@@ -104,6 +104,12 @@ export const KPI = {
     arti: "Kemajuan program SUGT di seluruh sekolah.",
     rumus: "Setiap sekolah punya 10 kegiatan: 8 sesi (2 luring, 6 daring), 1 pretest, dan 1 posttest. Terlaksana = sesi yang sudah berjalan + pretest/posttest yang sudah lengkap, dibagi jumlah sekolah × 10.",
     catatan: "Pretest atau posttest sebuah sekolah baru dihitung terlaksana bila keempat isiannya lengkap (2 jalur × 2 jenis peserta). Angka sama dengan dashboard aplikasi SUGT.",
+  },
+  sugtFeedback: {
+    title: "Umpan Balik SUGT",
+    arti: "Gabungan penilaian peserta dan evaluasi perjalanan dinas SUGT.",
+    rumus: "(Rata-rata aspek Umpan Balik Peserta + rata-rata aspek Evaluasi Perjalanan Dinas) ÷ 2, lalu skala 1–10 diubah ke persen (× 10). Mis. (9,05 + 9,06) ÷ 2 = 9,06 → 91%.",
+    catatan: "Aspek yang belum dinilai (“—”) tidak ikut dirata-rata. Bila salah satu bagian belum ada penilaian, dipakai bagian yang ada saja.",
   },
   sugtOffline: {
     title: "Sesi Luring",
