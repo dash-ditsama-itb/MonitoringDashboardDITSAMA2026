@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { PROGRAMS, ROLES } from "../config.js";
-import { api, errorText } from "../lib/api.js";
+import { useEffect, useState } from "react";
+import { API_URL, PROGRAMS, ROLES } from "../config.js";
+import { api, ApiError, errorText } from "../lib/api.js";
 import { useAuthStore } from "../stores/auth.js";
 import { Icon } from "./Icon.jsx";
 import { Spinner } from "./ui.jsx";
@@ -11,7 +11,10 @@ const COPY = {
   verify: ["Verifikasi email", "Masukkan 6 digit kode yang kami kirim ke email Anda."],
   forgot: ["Lupa password", "Masukkan email akun Anda. Kami kirim kode untuk membuat password baru."],
   reset: ["Buat password baru", "Masukkan kode dari email dan password baru Anda."],
+  microsoft: ["Pilih jabatan", "Akun Microsoft Anda belum terdaftar. Pilih jabatan untuk menyelesaikan pendaftaran."],
 };
+
+const hasMicrosoftToken = () => typeof window !== "undefined" && /[#&]microsoft_token=/.test(window.location.hash);
 
 function Brand() {
   const [failed, setFailed] = useState(false);
@@ -47,6 +50,24 @@ function PasswordInput({ value, onChange, autoComplete, placeholder }) {
   );
 }
 
+function MicrosoftLogo() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 21 21" aria-hidden="true">
+      <rect x="1" y="1" width="9" height="9" fill="#F25022" /><rect x="11" y="1" width="9" height="9" fill="#7FBA00" />
+      <rect x="1" y="11" width="9" height="9" fill="#00A4EF" /><rect x="11" y="11" width="9" height="9" fill="#FFB900" />
+    </svg>
+  );
+}
+
+function Who({ name, email }) {
+  return (
+    <div className="gate-who">
+      <span className="ava">{(name || "?").slice(0, 1).toUpperCase()}</span>
+      <div><b>{name}</b><small>{email}</small></div>
+    </div>
+  );
+}
+
 function Msg({ msg }) {
   if (!msg) return null;
   return <div className={"note " + (msg.ok ? "ok" : "err")} role={msg.ok ? "status" : "alert"}><Icon name={msg.ok ? "checkCircle" : "alert"} size={16} /><span>{msg.text}</span></div>;
@@ -56,10 +77,11 @@ function Msg({ msg }) {
 export function AuthGate() {
   const login = useAuthStore((s) => s.login);
   const notice = useAuthStore((s) => s.notice);
-  const [mode, setMode] = useState("login");
+  const [mode, setMode] = useState(() => (hasMicrosoftToken() ? "sso" : "login"));
   const [f, setF] = useState({ name: "", role: "pic", email: "", password: "", code: "", programs: [] });
   const [msg, setMsg] = useState(notice ? { ok: false, text: notice } : null);
   const [busy, setBusy] = useState(false);
+  const [sso, setSso] = useState(null);
 
   const field = (k) => ({ value: f[k], onChange: (e) => setF({ ...f, [k]: e.target.value }) });
   const go = (m, message = null) => { setMode(m); setMsg(message); setF((x) => ({ ...x, code: "", password: m === "login" ? x.password : "" })); };
@@ -71,6 +93,25 @@ export function AuthGate() {
     try { await fn(); } catch (e) { return e; } finally { setBusy(false); }
   };
   const post = (path, body) => api(path, { method: "POST", body, token: null });
+  const requirePrograms = () => {
+    if (f.role === "pic" && !f.programs.length) throw new ApiError("Pilih minimal satu program yang Anda pegang.", 0);
+  };
+  const rolePayload = () => ({ role: f.role, ...(f.role === "pic" ? { programs: f.programs } : {}) });
+
+  // kembali dari Microsoft: backend menaruh token sementara di fragmen URL (#microsoft_token / #microsoft_error)
+  useEffect(() => {
+    const hash = new URLSearchParams(window.location.hash.slice(1));
+    const token = hash.get("microsoft_token");
+    if (!token && !hash.has("microsoft_error")) return;
+    window.history.replaceState(window.history.state, "", window.location.pathname + window.location.search);
+    if (!token) return go("login", { ok: false, text: "Masuk dengan Microsoft gagal atau dibatalkan. Silakan coba lagi." });
+    run(async () => {
+      const out = await post("/auth/microsoft/login", { token });
+      if (out.data.accessToken) return login(out.data.user, out.data.accessToken);
+      setSso({ token, name: out.data.name, email: out.data.email });
+      go("microsoft");
+    }).then((err) => err && go("login", { ok: false, text: errorText(err) }));
+  }, []);
 
   async function submit(e) {
     e.preventDefault();
@@ -79,11 +120,8 @@ export function AuthGate() {
         const out = await post("/auth/login", { email, password: f.password });
         login(out.data.user, out.data.accessToken);
       } else if (mode === "signup") {
-        if (f.role === "pic" && !f.programs.length) throw new Error("Pilih minimal satu program yang Anda pegang.");
-        await post("/auth/register", {
-          name: f.name.trim(), role: f.role, email, password: f.password,
-          ...(f.role === "pic" ? { programs: f.programs } : {}),
-        });
+        requirePrograms();
+        await post("/auth/register", { name: f.name.trim(), email, password: f.password, ...rolePayload() });
         go("verify", { ok: true, text: `Kode verifikasi terkirim ke ${email}. Cek juga folder spam.` });
       } else if (mode === "verify") {
         await post("/auth/otp/email/verify", { email, code: f.code.trim() });
@@ -94,6 +132,10 @@ export function AuthGate() {
       } else if (mode === "reset") {
         await post("/auth/otp/password-reset/verify", { email, code: f.code.trim(), newPassword: f.password });
         go("login", { ok: true, text: "Password berhasil diganti. Silakan masuk dengan password baru." });
+      } else if (mode === "microsoft") {
+        requirePrograms();
+        const out = await post("/auth/microsoft/register", { token: sso.token, ...rolePayload() });
+        login(out.data.user, out.data.accessToken);
       }
     });
     if (!err) return;
@@ -112,9 +154,20 @@ export function AuthGate() {
     if (err) setMsg({ ok: false, text: errorText(err) });
   }
 
+  if (mode === "sso") {
+    return (
+      <Shell>
+        <div className="gate-form" role="status">
+          <Brand />
+          <p className="gate-busy"><Spinner />Memproses masuk dengan Microsoft…</p>
+        </div>
+      </Shell>
+    );
+  }
+
   const [title, sub] = COPY[mode];
   const isEntry = mode === "login" || mode === "signup";
-  const button = { login: "Masuk", signup: "Daftar", verify: "Verifikasi", forgot: "Kirim kode", reset: "Simpan password baru" }[mode];
+  const button = { login: "Masuk", signup: "Daftar", verify: "Verifikasi", forgot: "Kirim kode", reset: "Simpan password baru", microsoft: "Selesaikan pendaftaran" }[mode];
 
   return (
     <Shell>
@@ -131,11 +184,15 @@ export function AuthGate() {
           <p className="gate-sub">{sub}</p>
         </div>
 
+        {mode === "microsoft" && <Who name={sso.name} email={sso.email} />}
+
         {mode === "signup" && (
+          <label className="field"><span className="field-lab">Nama lengkap</span>
+            <input type="text" autoComplete="name" placeholder="mis. Budi Santoso" required {...field("name")} />
+          </label>
+        )}
+        {(mode === "signup" || mode === "microsoft") && (
           <>
-            <label className="field"><span className="field-lab">Nama lengkap</span>
-              <input type="text" autoComplete="name" placeholder="mis. Budi Santoso" required {...field("name")} />
-            </label>
             <label className="field"><span className="field-lab">Jabatan</span>
               <select {...field("role")}>{ROLES.map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select>
             </label>
@@ -155,9 +212,11 @@ export function AuthGate() {
           </>
         )}
 
-        <label className="field"><span className="field-lab">Email</span>
-          <input type="email" autoComplete="email" placeholder="nama@itb.ac.id" required readOnly={mode === "verify" || mode === "reset"} {...field("email")} />
-        </label>
+        {mode !== "microsoft" && (
+          <label className="field"><span className="field-lab">Email</span>
+            <input type="email" autoComplete="email" placeholder="nama@itb.ac.id" required readOnly={mode === "verify" || mode === "reset"} {...field("email")} />
+          </label>
+        )}
 
         {(mode === "verify" || mode === "reset") && (
           <label className="field"><span className="field-lab">Kode verifikasi</span>
@@ -178,6 +237,15 @@ export function AuthGate() {
         <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
           {busy && <Spinner />}{button}
         </button>
+
+        {isEntry && (
+          <>
+            <div className="gate-or"><span>atau</span></div>
+            <a className="btn btn-block" href={`${API_URL}/auth/microsoft`}>
+              <MicrosoftLogo />{mode === "signup" ? "Daftar" : "Masuk"} dengan Microsoft
+            </a>
+          </>
+        )}
 
         <div className="gate-links">
           {mode === "login" && <button type="button" className="link-btn" onClick={() => go("forgot")}>Lupa password?</button>}
@@ -213,10 +281,7 @@ export function AccessOverlay() {
     <Shell>
       <form className="gate-form" onSubmit={check}>
         <Brand />
-        <div className="gate-who">
-          <span className="ava">{(session.name || "?").slice(0, 1).toUpperCase()}</span>
-          <div><b>{session.name}</b><small>{session.email}</small></div>
-        </div>
+        <Who name={session.name} email={session.email} />
         <div>
           <h2 className="gate-title"><Icon name="lock" size={20} />Password Akses</h2>
           <p className="gate-sub">Satu langkah lagi. Masukkan Password Akses tim untuk membuka data dashboard.</p>

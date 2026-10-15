@@ -24,6 +24,7 @@ const MESSAGES = {
   "Code has expired. Please request again.": "Kode sudah kedaluwarsa. Minta kode baru.",
   "Invalid code passed. Check your inbox.": "Kode salah. Periksa lagi email Anda.",
   "New password cannot be the same with the old password.": "Password baru tidak boleh sama dengan password lama.",
+  "Please restart the process.": "Sesi masuk dengan Microsoft berakhir. Silakan ulangi masuk dengan Microsoft.",
   "Invalid access password.": "Password Akses salah.",
   "Access password verification required.": "Masukkan Password Akses untuk melanjutkan.",
   "Forbidden.": "Anda tidak punya akses untuk tindakan ini.",

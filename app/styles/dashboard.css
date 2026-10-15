@@ -731,6 +731,10 @@ dialog.confirm[open]{animation:pop .2s var(--ease)}
 .gate-who{display:flex;align-items:center;gap:10px;background:var(--subtle);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px}
 .gate-who b{display:block;font-size:13.5px}
 .gate-who small{color:var(--muted);font-size:12px}
+.gate-or{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:12.5px}
+.gate-or::before,.gate-or::after{content:"";flex:1;border-top:1px solid var(--line)}
+.gate-form a.btn{text-decoration:none}
+.gate-busy{display:flex;align-items:center;gap:8px;margin:0;color:var(--muted);font-size:14px}
 
 /* ------------------------------------------------------ responsive --- */
 @media (max-width:1280px){
