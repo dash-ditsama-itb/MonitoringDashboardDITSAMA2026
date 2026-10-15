@@ -11,7 +11,7 @@ const COPY = {
   verify: ["Verifikasi email", "Masukkan 6 digit kode yang kami kirim ke email Anda."],
   forgot: ["Lupa password", "Masukkan email akun Anda. Kami kirim kode untuk membuat password baru."],
   reset: ["Buat password baru", "Masukkan kode dari email dan password baru Anda."],
-  microsoft: ["Pilih jabatan", "Akun Microsoft Anda belum terdaftar. Pilih jabatan untuk menyelesaikan pendaftaran."],
+  microsoft: ["Pilih jabatan", "Akun ITB Anda belum terdaftar. Pilih jabatan untuk menyelesaikan pendaftaran."],
 };
 
 const hasMicrosoftToken = () => typeof window !== "undefined" && /[#&]microsoft_token=/.test(window.location.hash);
@@ -50,13 +50,9 @@ function PasswordInput({ value, onChange, autoComplete, placeholder }) {
   );
 }
 
-function MicrosoftLogo() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 21 21" aria-hidden="true">
-      <rect x="1" y="1" width="9" height="9" fill="#F25022" /><rect x="11" y="1" width="9" height="9" fill="#7FBA00" />
-      <rect x="1" y="11" width="9" height="9" fill="#00A4EF" /><rect x="11" y="11" width="9" height="9" fill="#FFB900" />
-    </svg>
-  );
+// Akun ITB = login Microsoft (SSO) milik ITB; pengguna cukup melihat "Akun ITB"
+function ItbLogo() {
+  return <img src={import.meta.env.BASE_URL + "assets/itb-logo.png"} alt="" width="18" height="18" aria-hidden="true" />;
 }
 
 function Who({ name, email }) {
@@ -104,7 +100,7 @@ export function AuthGate() {
     const token = hash.get("microsoft_token");
     if (!token && !hash.has("microsoft_error")) return;
     window.history.replaceState(window.history.state, "", window.location.pathname + window.location.search);
-    if (!token) return go("login", { ok: false, text: "Masuk dengan Microsoft gagal atau dibatalkan. Silakan coba lagi." });
+    if (!token) return go("login", { ok: false, text: "Masuk dengan Akun ITB gagal atau dibatalkan. Silakan coba lagi." });
     run(async () => {
       const out = await post("/auth/microsoft/login", { token });
       if (out.data.accessToken) return login(out.data.user, out.data.accessToken);
@@ -159,7 +155,7 @@ export function AuthGate() {
       <Shell>
         <div className="gate-form" role="status">
           <Brand />
-          <p className="gate-busy"><Spinner />Memproses masuk dengan Microsoft…</p>
+          <p className="gate-busy"><Spinner />Memproses masuk dengan Akun ITB…</p>
         </div>
       </Shell>
     );
@@ -242,7 +238,7 @@ export function AuthGate() {
           <>
             <div className="gate-or"><span>atau</span></div>
             <a className="btn btn-block" href={`${API_URL}/auth/microsoft`}>
-              <MicrosoftLogo />{mode === "signup" ? "Daftar" : "Masuk"} dengan Microsoft
+              <ItbLogo />{mode === "signup" ? "Daftar" : "Masuk"} dengan Akun ITB
             </a>
           </>
         )}
