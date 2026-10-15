@@ -532,7 +532,7 @@ dialog.confirm[open]{animation:pop .2s var(--ease)}
 .perf-lab small{display:block;font-size:11.5px;font-weight:500;color:var(--muted)}
 .perf-val{text-align:right;font-size:15px;color:var(--navy);font-variant-numeric:tabular-nums}
 .port{list-style:none;margin:0;padding:0}
-.port li{display:grid;grid-template-columns:10px minmax(0,1fr) 98px minmax(64px,120px) 136px minmax(64px,110px);align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.port li{display:grid;grid-template-columns:10px minmax(0,1fr) 112px minmax(64px,120px) 136px minmax(64px,110px);align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
 .port li .pill,.port-st{justify-self:end}
 .port .port-head{padding:0 0 8px;font-size:12px;font-weight:700;color:var(--muted)}
 .port-head>span{display:flex;align-items:center;gap:2px;white-space:nowrap}
@@ -550,6 +550,19 @@ dialog.confirm[open]{animation:pop .2s var(--ease)}
 .port-perf small{display:none}
 .port-score .meter{flex:1}
 .port-score b{font-size:13px;font-variant-numeric:tabular-nums;min-width:36px;text-align:right}
+/* kartu < 700px: baris 1 titik · nama/PIC · status — baris 2 progres · jumlah — baris 3 performa */
+@container (max-width:700px){
+  .port li{grid-template-columns:10px minmax(0,1fr) 132px;column-gap:10px;row-gap:8px;padding:12px 0}
+  .port .port-head{display:flex;flex-wrap:wrap;gap:2px 14px;padding:0 0 8px}
+  .port-head>span:first-child,.port-head>span:nth-child(2){display:none}
+  .port li .port-dot{grid-column:1;grid-row:1;align-self:start;margin-top:5px}
+  .port-nm{grid-column:2;grid-row:1}
+  .port li .pill{grid-column:3;grid-row:1;align-self:start;justify-self:end}
+  .port-score{grid-column:2;grid-row:2}
+  .port-cnt{grid-column:3;grid-row:2;font-size:12.5px}
+  .port-perf{grid-column:2 / 4;grid-row:3}
+  .port-perf small{display:block;font-size:11.5px;font-weight:600;color:var(--muted);min-width:56px}
+}
 .lv-counts{display:flex;gap:4px}
 .issue-row{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;text-align:left;border:1px solid var(--line);
   background:#fff;border-radius:var(--r);padding:9px 12px;margin-bottom:8px;cursor:pointer;transition:border-color .15s,background .15s}
@@ -780,18 +793,7 @@ dialog.confirm[open]{animation:pop .2s var(--ease)}
   .cal-dots{display:flex}
   .cal-grid{gap:4px}
   .name-list{columns:1}
-  /* baris 1: titik · nama/PIC · status — baris 2: progres · jumlah kegiatan — baris 3: performa */
-  .port li{grid-template-columns:10px minmax(0,1fr) 132px;column-gap:10px;row-gap:8px;padding:12px 0}
-  .port .port-head{display:flex;flex-wrap:wrap;gap:2px 14px;padding:0 0 8px}
-  .port-head>span:first-child,.port-head>span:nth-child(2){display:none}
   .info-pop{left:12px !important;right:12px;width:auto !important}
-  .port li .port-dot{grid-column:1;grid-row:1;align-self:start;margin-top:5px}
-  .port-nm{grid-column:2;grid-row:1}
-  .port li .pill{grid-column:3;grid-row:1;align-self:start;justify-self:end}
-  .port-score{grid-column:2;grid-row:2}
-  .port-cnt{grid-column:3;grid-row:2;font-size:12.5px}
-  .port-perf{grid-column:2 / 4;grid-row:3}
-  .port-perf small{display:block;font-size:11.5px;font-weight:600;color:var(--muted);min-width:56px}
 
   .toasts{left:12px;right:12px;bottom:12px;align-items:stretch}
   .toast{max-width:none}
