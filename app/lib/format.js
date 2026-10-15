@@ -3,7 +3,9 @@ import { FIN_PROGRAMS, ISSUE_LEVELS, PHASES, PROGRAMS, PROGRESS, ROLES } from ".
 
 // ---------------------------------------------------------------- angka ---
 export const fmtNum = (n) => (n === null || n === undefined || n === "" ? "–" : Number(n).toLocaleString("id-ID"));
-export const fmtRupiah = (n) => "Rp " + Math.round(Number(n) || 0).toLocaleString("id-ID");
+// nilai ujian: maksimal 2 angka di belakang koma (80.2962… -> 80,3; 49 -> 49)
+export const fmtScore = (n) => (n === null || n === undefined || n === "" ? "–" : Number(n).toLocaleString("id-ID", { maximumFractionDigits: 2 }));
+export const fmtRupiah =(n) => "Rp " + Math.round(Number(n) || 0).toLocaleString("id-ID");
 // ringkas untuk KPI & grafik: Rp 1,07 M · Rp 365,2 jt
 export function fmtRupiahShort(n) {
   const v = Number(n) || 0, a = Math.abs(v);
