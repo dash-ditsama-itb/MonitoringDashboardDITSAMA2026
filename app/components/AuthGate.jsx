@@ -38,11 +38,11 @@ function Shell({ children }) {
   );
 }
 
-function PasswordInput({ value, onChange, autoComplete, placeholder }) {
+function PasswordInput({ id, value, onChange, autoComplete, placeholder }) {
   const [show, setShow] = useState(false);
   return (
     <div className="pw">
-      <input type={show ? "text" : "password"} value={value} onChange={onChange} autoComplete={autoComplete} placeholder={placeholder} required />
+      <input id={id} type={show ? "text" : "password"} value={value} onChange={onChange} autoComplete={autoComplete} placeholder={placeholder} required />
       <button type="button" className="pw-eye" onClick={() => setShow(!show)} aria-label={show ? "Sembunyikan password" : "Tampilkan password"}>
         <Icon name={show ? "eyeOff" : "eye"} size={17} />
       </button>
@@ -221,11 +221,15 @@ export function AuthGate() {
         )}
 
         {(mode === "login" || mode === "signup" || mode === "reset") && (
-          <label className="field">
-            <span className="field-lab">{mode === "reset" ? "Password baru" : "Password"}</span>
-            <PasswordInput value={f.password} onChange={field("password").onChange}
+          <div className="field">
+            {/* Lupa password menempel di kolom password (masuk dengan email), terpisah dari tombol Akun ITB */}
+            <div className="field-head">
+              <label className="field-lab" htmlFor="gate-password">{mode === "reset" ? "Password baru" : "Password"}</label>
+              {mode === "login" && <button type="button" className="link-btn" onClick={() => go("forgot")}>Lupa password?</button>}
+            </div>
+            <PasswordInput id="gate-password" value={f.password} onChange={field("password").onChange}
               autoComplete={mode === "login" ? "current-password" : "new-password"} placeholder={mode === "reset" ? "password baru" : "password"} />
-          </label>
+          </div>
         )}
 
         <Msg msg={msg} />
@@ -243,11 +247,12 @@ export function AuthGate() {
           </>
         )}
 
-        <div className="gate-links">
-          {mode === "login" && <button type="button" className="link-btn" onClick={() => go("forgot")}>Lupa password?</button>}
-          {(mode === "verify" || mode === "reset") && <button type="button" className="link-btn" disabled={busy} onClick={resend}>Kirim ulang kode</button>}
-          {!isEntry && <button type="button" className="link-btn" onClick={() => go("login")}><Icon name="left" size={15} />Kembali ke Masuk</button>}
-        </div>
+        {!isEntry && (
+          <div className="gate-links">
+            {(mode === "verify" || mode === "reset") && <button type="button" className="link-btn" disabled={busy} onClick={resend}>Kirim ulang kode</button>}
+            <button type="button" className="link-btn" onClick={() => go("login")}><Icon name="left" size={15} />Kembali ke Masuk</button>
+          </div>
+        )}
       </form>
     </Shell>
   );
