@@ -1,9 +1,9 @@
 // Tabel transaksi Keuangan (PKS & pengajuan) + form tambah/ubah.
 import { useEffect, useState } from "react";
-import { FIN_PROGRAMS, PKS_TYPES } from "../config.js";
+import { PKS_TYPES } from "../config.js";
 import { api, errorText } from "../lib/api.js";
 import {
-  canEditFinance, finProgramLabel, finTypeLabel, fmtDate, fmtDateTime, fmtRelative, fmtRupiah, fromDateInput, isPks, toDateInput,
+  canEditFinance, FIN_PROGRAMS_AZ, finProgramLabel, finTypeLabel, fmtDate, fmtDateTime, fmtRelative, fmtRupiah, fromDateInput, isPks, toDateInput,
 } from "../lib/format.js";
 import { useAuthStore } from "../stores/auth.js";
 import { invalidate, useApi } from "../stores/data.js";
@@ -225,7 +225,7 @@ function formFrom(kind, r, program, session) {
 function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) {
   const session = useAuthStore((s) => s.session);
   const types = useApi("/dashboard/financial", {}, { enabled: open && kind === "submission" }).data?.data?.filterOptions?.submissionTypes || [];
-  const program0 = defaultProgram || FIN_PROGRAMS[0].api;
+  const program0 = defaultProgram || FIN_PROGRAMS_AZ[0].api;
   const [f, setF] = useState(() => formFrom(kind, record, program0, session));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -304,7 +304,7 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
           )}
           <div className="form-grid">
             <label className="field"><span className="field-lab">Program</span>
-              <select {...field("program")}>{FIN_PROGRAMS.map((p) => <option key={p.api} value={p.api}>{p.label}</option>)}</select>
+              <select {...field("program")}>{FIN_PROGRAMS_AZ.map((p) => <option key={p.api} value={p.api}>{p.label}</option>)}</select>
             </label>
             <label className="field"><span className="field-lab">{isPksForm ? "Tanggal PKS" : "Tanggal pengajuan"}</span>
               <input type="date" required {...field("date")} />

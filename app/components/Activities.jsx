@@ -1,10 +1,9 @@
 // Tabel Data Kegiatan (server: pencarian, urutan, halaman, hapus massal, impor/ekspor) + panel rincian.
 import { useEffect, useMemo, useState } from "react";
-import { PROGRAMS } from "../config.js";
 import { api, errorText } from "../lib/api.js";
 import {
   activityStatus, attendance, canEditActivity, editablePrograms, fmtDate, fmtDateLong, fmtDateTime, fmtRelative,
-  levelLabel, phaseLabel, programLabel, progressLabel, skName, topIssueLevel,
+  levelLabel, phaseLabel, programLabel, PROGRAMS_AZ, progressLabel, skName, topIssueLevel,
 } from "../lib/format.js";
 import { useAuthStore } from "../stores/auth.js";
 import { invalidate, useApi } from "../stores/data.js";
@@ -137,7 +136,7 @@ export function ActivitiesTable({ fixedProgram, title = "Data Kegiatan", sub }) 
 
   const canAdd = editablePrograms(session).length > 0 && (!fixedProgram || canEditActivity(session, fixedProgram));
   const programOptions = [["", "Semua program"], ...(session?.role === "pic" ? [["mine", "Program saya"]] : []),
-    ...PROGRAMS.map((p) => [p.api, p.label])];
+    ...PROGRAMS_AZ.map((p) => [p.api, p.label])];
   const showProgram = !fixedProgram && programs.length !== 1;
   const searching = !!st.search;
 

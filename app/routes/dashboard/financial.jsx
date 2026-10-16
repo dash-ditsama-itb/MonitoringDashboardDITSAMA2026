@@ -4,8 +4,7 @@ import { FinanceTable } from "../../components/Finance.jsx";
 import { RequireAccess } from "../../components/Access.jsx";
 import { Icon } from "../../components/Icon.jsx";
 import { Bar, ErrorNote, Kpi, PageHead, SelectField, SkeletonCard, Spinner } from "../../components/ui.jsx";
-import { FIN_PROGRAMS } from "../../config.js";
-import { finProgramLabel, fmtRupiah, fmtRupiahShort, MONTHS, progColor } from "../../lib/format.js";
+import { byLabel, FIN_PROGRAMS_AZ, finProgramLabel, fmtRupiah, fmtRupiahShort, MONTHS, progColor } from "../../lib/format.js";
 import { useApi } from "../../stores/data.js";
 import { useUiStore } from "../../stores/ui.js";
 
@@ -42,7 +41,7 @@ function FinancialPage() {
 
       <section className="card filter-bar">
         <SelectField label="Program" value={ui.program} onChange={(v) => setFilter({ program: v })}
-          options={[["all", "Semua program"], ...FIN_PROGRAMS.map((p) => [p.api, p.label])]} />
+          options={[["all", "Semua program"], ...FIN_PROGRAMS_AZ.map((p) => [p.api, p.label])]} />
         <SelectField label="Tahun" value={ui.year} onChange={(v) => setFilter({ year: v, month: "" })}
           options={[["", "Semua tahun"], ...(fo?.years || []).map((y) => [String(y), String(y)])]} />
         <SelectField label="Bulan" value={ui.month} onChange={(v) => setFilter({ month: v })}
@@ -80,7 +79,8 @@ function FinancialPage() {
 function FinCharts({ d }) {
   const charts = useMemo(() => {
     const months = d.monthlyRealization.map((m) => m.month);
-    const progs = [...new Set(d.monthlyRealization.flatMap((m) => m.programs.filter((p) => p.realization).map((p) => p.program)))];
+    const azFin = byLabel(finProgramLabel);
+    const progs = [...new Set(d.monthlyRealization.flatMap((m) => m.programs.filter((p) => p.realization).map((p) => p.program)))].sort(azFin);
     const yJt = { beginAtZero: true, ticks: { callback: (v) => v + " jt" } };
     const tipRp = { callbacks: { label: (c) => `${c.dataset.label}: ${fmtRupiah((c.parsed.y ?? c.parsed.x) * 1e6)}` } };
     const realisasi = {
@@ -95,7 +95,7 @@ function FinCharts({ d }) {
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "top", align: "end" }, tooltip: tipRp },
         scales: { x: { stacked: true, grid: { display: false } }, y: { ...yJt, stacked: true } } },
     };
-    const bProgs = [...new Set(d.monthlyBalance.flatMap((m) => m.programs.filter((p) => p.balance).map((p) => p.program)))];
+    const bProgs = [...new Set(d.monthlyBalance.flatMap((m) => m.programs.filter((p) => p.balance).map((p) => p.program)))].sort(azFin);
     const saldo = {
       type: "line",
       data: {
@@ -108,7 +108,7 @@ function FinCharts({ d }) {
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "top", align: "end" }, tooltip: tipRp },
         scales: { x: { grid: { display: false } }, y: { ticks: { callback: (v) => v + " jt" } } } },
     };
-    const cmp = d.programComparison.filter((p) => p.pksValue || p.realization);
+    const cmp = d.programComparison.filter((p) => p.pksValue || p.realization).sort(byLabel((p) => finProgramLabel(p.program)));
     const banding = {
       type: "bar",
       data: {
@@ -142,7 +142,7 @@ function FinCharts({ d }) {
 const Money = ({ v }) => <><span className="sm-hide">{fmtRupiah(v)}</span><span className="sm-only">{fmtRupiahShort(v)}</span></>;
 
 function Summary({ rows }) {
-  const used = rows.filter((r) => r.totalPks || r.totalSubmission);
+  const used = rows.filter((r) => r.totalPks || r.totalSubmission).sort(byLabel((r) => finProgramLabel(r.program)));
   const idle = rows.length - used.length;
   return (
     <section className="card">

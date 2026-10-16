@@ -67,6 +67,12 @@ export const statusLabel = lookup([["upcoming", "Akan Datang"], ["ongoing", "Ber
 export const finTypeLabel = lookup([["initial_pks", "PKS Awal"], ["addition_pks", "Penambahan PKS"], ["submission", "Pengajuan"]]);
 export const isPks = (r) => r.type === "initial_pks" || r.type === "addition_pks";
 
+// Urutan tampil program di mana pun: abjad A–Z. Urutan PROGRAMS / FIN_PROGRAMS di config tetap karena menentukan warna program.
+export const byLabel = (get = (x) => x) => (a, b) => String(get(a)).localeCompare(String(get(b)), "id", { sensitivity: "base" });
+export const sortLabels = (list) => [...(list || [])].sort(byLabel());
+export const PROGRAMS_AZ = [...PROGRAMS].sort(byLabel((p) => p.label));
+export const FIN_PROGRAMS_AZ = [...FIN_PROGRAMS].sort(byLabel((p) => p.label));
+
 export const programByApi = (api) => PROGRAMS.find((p) => p.api === api);
 export const programByKey = (key) => PROGRAMS.find((p) => p.key === key);
 export const programLabel = (api) => programByApi(api)?.label ?? api;
@@ -117,8 +123,8 @@ export const canEditFinance = (s) => !!s && ["admin", "kasubdit", "finance"].inc
 // program kegiatan yang boleh diisi/diubah
 export function editablePrograms(s) {
   if (!canSeeActivities(s) || isReadOnly(s)) return [];
-  if (s.role === "pic") return PROGRAMS.filter((p) => (s.programs || []).includes(p.api));
-  return PROGRAMS;
+  if (s.role === "pic") return PROGRAMS_AZ.filter((p) => (s.programs || []).includes(p.api));
+  return PROGRAMS_AZ;
 }
 export const canEditActivity = (s, programApi) => editablePrograms(s).some((p) => p.api === programApi);
 

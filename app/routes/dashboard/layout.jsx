@@ -8,7 +8,7 @@ import { PROGRAMS } from "../../config.js";
 import { ACCESS } from "../../components/Access.jsx";
 import { SUGT_PROGRAM } from "../../components/Sugt.jsx";
 import { AccessOverlay, AuthGate } from "../../components/AuthGate.jsx";
-import { isAllAccess, levelLabel, programByApi, progColor, roleLabel, withoutAll } from "../../lib/format.js";
+import { byLabel, isAllAccess, levelLabel, programByApi, progColor, roleLabel, sortLabels, withoutAll } from "../../lib/format.js";
 import { useAuthStore } from "../../stores/auth.js";
 import { useApi } from "../../stores/data.js";
 import { useUiStore } from "../../stores/ui.js";
@@ -28,7 +28,7 @@ const navClass = ({ isActive }) => "nav-item" + (isActive ? " active" : "");
 const NAV_PROGRAMS = [
   ...PROGRAMS.map((p) => ({ api: p.api, label: p.label, to: `/dashboard/program/${p.key}` })),
   { api: "sugt", label: "SUGT", to: "/dashboard/sugt" },
-].sort((a, b) => a.label.localeCompare(b.label, "id", { sensitivity: "base" }));
+].sort(byLabel((p) => p.label));
 
 // tautan menu; untuk jabatan tanpa akses tetap tampil tapi nonaktif
 function NavItem({ session, area, to, end, children }) {
@@ -143,7 +143,7 @@ function ProfileSheet({ open, onClose }) {
   const session = useAuthStore((s) => s.session);
   const logout = useAuthStore((s) => s.logout);
   const progs = isAllAccess(session) ? "Semua program" : session.role === "finance" ? "Hanya Keuangan"
-    : (session.programs || []).map((p) => programByApi(p)?.label || p).join(", ") || "–";
+    : sortLabels((session.programs || []).map((p) => programByApi(p)?.label || p)).join(", ") || "–";
   return (
     <Sheet open={open} onClose={onClose} title="Profil" footer={(
       <><span className="grow" /><button className="btn btn-danger-ghost" type="button" onClick={() => { onClose(); logout(); }}><Icon name="logout" size={16} />Keluar</button></>
@@ -177,7 +177,7 @@ function ControlPanel({ open, hidden }) {
   const sugt = useApi("/dashboard/sugt", {}, { enabled: isSugt });
   const { loading, reload } = isSugt ? sugt : main;
   const fo = main.data?.data?.filterOptions;
-  const programs = [...(fo?.programs || []).filter((p) => p !== SUGT_PROGRAM), SUGT_PROGRAM];
+  const programs = sortLabels([...(fo?.programs || []).filter((p) => p !== SUGT_PROGRAM), SUGT_PROGRAM]);
   const opts = (list) => [ALL, ...(list || [])];
   const keep = (list, v) => (v === ALL || (list || []).includes(v) ? v : ALL);
   const active = Object.values(dash).filter((v) => v !== ALL).length;

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { API_URL, PROGRAMS, ROLES } from "../config.js";
+import { API_URL, ROLES } from "../config.js";
 import { api, ApiError, errorText } from "../lib/api.js";
+import { PROGRAMS_AZ } from "../lib/format.js";
 import { useAuthStore } from "../stores/auth.js";
 import { GateInfo } from "./GateInfo.jsx";
 import { Icon } from "./Icon.jsx";
@@ -202,7 +203,7 @@ export function AuthGate() {
               <fieldset className="checks">
                 <legend className="field-lab">Program yang Anda pegang</legend>
                 <div className="check-grid">
-                  {PROGRAMS.map((p) => (
+                  {PROGRAMS_AZ.map((p) => (
                     <label key={p.api} className={"check" + (f.programs.includes(p.api) ? " on" : "")}>
                       <input type="checkbox" checked={f.programs.includes(p.api)} onChange={() => toggleProgram(p.api)} />
                       <span>{p.label}</span>

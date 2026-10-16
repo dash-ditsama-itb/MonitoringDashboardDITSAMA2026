@@ -13,7 +13,7 @@ import {
   Bar, EmptyState, ErrorNote, LevelBadge, PageHead, ProgramAbout, SeeMore, Sheet, SkeletonCard,
 } from "../../components/ui.jsx";
 import { PROGRAMS, SUGT_PIC, TOTAL_PROGRAMS } from "../../config.js";
-import { canSeeActivities, fmtDate, fmtNum, pct, phaseLabel, progColor, withoutAll } from "../../lib/format.js";
+import { byLabel, canSeeActivities, fmtDate, fmtNum, pct, phaseLabel, progColor, PROGRAMS_AZ, withoutAll } from "../../lib/format.js";
 import { useAuthStore } from "../../stores/auth.js";
 import { useApi } from "../../stores/data.js";
 import { useUiStore } from "../../stores/ui.js";
@@ -46,6 +46,7 @@ function PortfolioPage() {
   if (fresh) dataProgram.current = program;
   const shown = dataProgram.current;
   const filters = Object.entries(dash).filter(([, v]) => v !== "Semua").map(([, v]) => v);
+  const timeline = useMemo(() => [...(d?.timeline || [])].sort(byLabel((t) => t.programLabel)), [d]);
 
   return (
     <div className="page">
@@ -82,11 +83,11 @@ function PortfolioPage() {
             <div className="card-head"><div><h2 className="card-title with-info">Linimasa fase kegiatan<InfoTip k="timeline" /></h2>
               <div className="card-sub">Rentang tanggal tiap fase per program (ikut filter program &amp; bulan)</div></div></div>
             <Gantt
-              rows={d.timeline.flatMap((t) => t.phases.map((ph) => ({
+              rows={timeline.flatMap((t) => t.phases.map((ph) => ({
                 key: t.program + ph.phase, label: `${t.programLabel} · ${phaseLabel(ph.phase)}`, color: progColor(t.program),
                 start: ph.startDate, end: ph.endDate, count: ph.count,
               })))}
-              legend={d.timeline.map((t) => ({ label: t.programLabel, color: progColor(t.program) }))} />
+              legend={timeline.map((t) => ({ label: t.programLabel, color: progColor(t.program) }))} />
           </section>
 
           <Calendar events={d.calendar} />
@@ -126,7 +127,8 @@ function withProgramFeedback(strip, portfolio, sugt) {
 
 function PortfolioList({ items, sugt, program }) {
   // tampilkan semua program monitoring (yang belum punya aktivitas tetap muncul), atau hanya program terpilih
-  const rows = (program ? [program] : PROGRAMS).map((pr) => ({
+  // urut abjad bersama SUGT (seperti menu Dashboard program)
+  const rows = (program ? [program] : [...PROGRAMS_AZ, { api: "sugt", label: "SUGT" }].sort(byLabel((p) => p.label))).map((pr) => ({
     pics: [], completedActivities: 0, ongoingActivities: 0, totalActivities: 0,
     ...items.find((x) => x.program === pr.api), program: pr.api, label: pr.label,
   }));
@@ -144,6 +146,7 @@ function PortfolioList({ items, sugt, program }) {
           <span>Performa<InfoTip k="programPerformance" /></span>
         </li>
         {rows.map((p) => {
+          if (p.program === "sugt") return <SugtRow key="sugt" s={sugt} />;
           const [label, tone] = programStatus(p);
           const prog = pct(p.completedActivities, p.totalActivities);
           const perf = p.totalActivities ? p.performance ?? null : null;
@@ -160,7 +163,6 @@ function PortfolioList({ items, sugt, program }) {
             </li>
           );
         })}
-        {!program && <SugtRow s={sugt} />}
       </ul>
     </section>
   );
