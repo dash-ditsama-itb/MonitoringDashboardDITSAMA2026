@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api, errorText } from "../lib/api.js";
 import {
   activityStatus, attendance, canEditActivity, editablePrograms, fmtDate, fmtDateLong, fmtDateTime, fmtRelative,
-  levelLabel, phaseLabel, programLabel, PROGRAMS_AZ, progressLabel, skName, topIssueLevel,
+  levelLabel, phaseLabel, progColor, programLabel, PROGRAMS_AZ, progressLabel, skName, topIssueLevel,
 } from "../lib/format.js";
 import { useAuthStore } from "../stores/auth.js";
 import { invalidate, useApi } from "../stores/data.js";
@@ -80,6 +80,11 @@ function ProgramTag({ api }) {
   return <span className="ptag">{programLabel(api)}</span>;
 }
 
+// nama program + titik warna (sama dengan warna program di menu & portofolio)
+function ProgramName({ api }) {
+  return <span className="prog-name"><span className="port-dot" style={{ background: progColor(api) }} aria-hidden="true" />{programLabel(api)}</span>;
+}
+
 /**
  * fixedProgram: kode backend program (mis. "siap_itb") -> tabel hanya untuk program itu (dashboard program).
  */
@@ -137,7 +142,8 @@ export function ActivitiesTable({ fixedProgram, title = "Data Kegiatan", sub }) 
   const canAdd = editablePrograms(session).length > 0 && (!fixedProgram || canEditActivity(session, fixedProgram));
   const programOptions = [["", "Semua program"], ...(session?.role === "pic" ? [["mine", "Program saya"]] : []),
     ...PROGRAMS_AZ.map((p) => [p.api, p.label])];
-  const showProgram = !fixedProgram && programs.length !== 1;
+  // kolom Program tampil bila tabel berisi lebih dari satu program ("Semua program" = ["all"])
+  const showProgram = !fixedProgram && (programs.includes("all") || programs.length > 1);
   const searching = !!st.search;
 
   const openDetail = (a) => setDetail(a);
@@ -200,10 +206,11 @@ export function ActivitiesTable({ fixedProgram, title = "Data Kegiatan", sub }) 
       ) : (
         <div className={"tbl-body" + (loading ? " is-loading" : "")} aria-busy={loading}>
           <div className="tbl-scroll">
-            <table className="tbl act-tbl">
+            <table className={"tbl act-tbl" + (showProgram ? " with-prog" : "")}>
               <thead>
                 <tr>
                   <th className="c-check"><input type="checkbox" checked={allOn} disabled={!selectable.length} onChange={toggleAll} aria-label="Pilih semua di halaman ini" /></th>
+                  {showProgram && <th className="c-prog">Program</th>}
                   <th className="c-name">Kegiatan</th>
                   <SortTh col="date" sort={st.sort} onSort={(v) => update({ sort: v, page: 1 })} className="c-date">Tanggal</SortTh>
                   <th className="c-status">Status</th>
@@ -225,10 +232,10 @@ export function ActivitiesTable({ fixedProgram, title = "Data Kegiatan", sub }) 
                         <input type="checkbox" checked={selected.has(a.id)} disabled={!can} onChange={() => toggle(a.id)}
                           aria-label={"Pilih " + a.name} title={can ? undefined : "Di luar program Anda"} />
                       </td>
+                      {showProgram && <td className="c-prog"><ProgramName api={a.program} /></td>}
                       <td className="c-name">
                         <button type="button" className="row-link" onClick={(e) => { stop(e); openDetail(a); }}>{a.name}</button>
                         <div className="row-meta">
-                          {showProgram && <ProgramTag api={a.program} />}
                           {a.phase && <span>{phaseLabel(a.phase)}</span>}
                           {a.location && <span className="trunc">{a.location}</span>}
                           {a.mode === "upcoming" && <span className="tag-soft">Agenda</span>}
@@ -267,8 +274,8 @@ export function ActivitiesTable({ fixedProgram, title = "Data Kegiatan", sub }) 
                   {can && <input type="checkbox" className="rec-check" checked={selected.has(a.id)} onChange={() => toggle(a.id)} aria-label={"Pilih " + a.name} />}
                   <button type="button" className="rec-main" onClick={() => openDetail(a)}>
                     <span className="rec-top"><span className="rec-name">{a.name}</span><StatusBadge status={activityStatus(a)} /></span>
+                    {showProgram && <ProgramName api={a.program} />}
                     <span className="rec-meta">
-                      {showProgram && <ProgramTag api={a.program} />}
                       <span>{a.date ? fmtDate(a.date) : "Belum dijadwalkan"}</span>
                       {a.phase && <span>{phaseLabel(a.phase)}</span>}
                     </span>
