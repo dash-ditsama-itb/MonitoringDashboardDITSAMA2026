@@ -752,6 +752,24 @@ dialog.confirm[open]{animation:pop .2s var(--ease)}
 .gate-or{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:12.5px}
 .gate-or::before,.gate-or::after{content:"";flex:1;border-top:1px solid var(--line)}
 .gate-form a.btn{text-decoration:none}
+/* tab Profil & Layanan di panel biru halaman masuk; di ponsel pindah ke bawah formulir */
+.gate-info{display:flex;flex-direction:column;gap:14px;min-height:0}
+.gate-tabs{display:flex;gap:4px;border-bottom:1px solid rgba(255,255,255,.18)}
+.gate-tabs button{background:none;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;padding:8px 2px;margin-right:16px;
+  color:#BCD2EC;font:inherit;font-size:14px;font-weight:700;cursor:pointer}
+.gate-tabs button:hover{color:#fff}
+.gate-tabs button.on{color:#fff;border-bottom-color:#fff}
+.gate-tabs button:focus-visible{outline:2px solid #fff;outline-offset:2px;border-radius:4px}
+.gate-info-body{overflow-y:auto;padding-right:10px;color:#DCE7F5;font-size:14px;line-height:1.7;max-width:62ch;
+  scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.35) transparent}
+.gate-info-body:focus-visible{outline:2px solid #fff;outline-offset:4px;border-radius:4px}
+.gate-info-body p{margin:0 0 12px}
+.gate-info-group+.gate-info-group{margin-top:18px}
+.gate-info-group h2{margin:0 0 8px;font-size:15px;font-weight:800;color:#fff}
+.gate-side{position:sticky;top:0;height:100dvh}
+.gate-side .gate-info{flex:1}
+.gate-main{flex-direction:column;gap:40px}
+.below-form{display:none}
 .gate-busy{display:flex;align-items:center;gap:8px;margin:0;color:var(--muted);font-size:14px}
 
 /* ------------------------------------------------------ responsive --- */
@@ -799,7 +817,16 @@ dialog.confirm[open]{animation:pop .2s var(--ease)}
   .gate-side{border-radius:0 0 22px 22px;padding:20px;flex-direction:row;align-items:center;gap:14px}
   .gate-side h1{font-size:17px;max-width:none}
   .gate-side p{display:none}
-  .gate-main{align-items:flex-start;padding:24px 20px 40px}
+  .gate-side{position:static;height:auto}
+  .on-side{display:none}
+  .below-form{display:flex;width:100%;max-width:400px;padding-top:24px;border-top:1px solid var(--line)}
+  .below-form .gate-tabs{border-bottom-color:var(--line)}
+  .below-form .gate-tabs button{color:var(--muted)}
+  .below-form .gate-tabs button.on{color:var(--navy);border-bottom-color:var(--navy)}
+  .below-form .gate-tabs button:focus-visible{outline-color:var(--blue)}
+  .below-form .gate-info-body{overflow:visible;padding-right:0;color:var(--ink-2)}
+  .below-form .gate-info-group h2{color:var(--navy)}
+  .gate-main{align-items:center;justify-content:flex-start;padding:24px 20px 40px}
   .gate-logo{max-width:240px}
   dialog.sheet,dialog.sheet.wide{width:100vw;height:100dvh}
   .sheet-box{border-radius:0}

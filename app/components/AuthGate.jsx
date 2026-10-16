@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { API_URL, PROGRAMS, ROLES } from "../config.js";
 import { api, ApiError, errorText } from "../lib/api.js";
 import { useAuthStore } from "../stores/auth.js";
+import { GateInfo } from "./GateInfo.jsx";
 import { Icon } from "./Icon.jsx";
 import { Spinner } from "./ui.jsx";
 
@@ -24,16 +25,21 @@ function Brand() {
 }
 
 function Shell({ children }) {
+  const [tab, setTab] = useState("profil");
   return (
     <div className="gate">
       <aside className="gate-side">
         <img className="gate-badge" src={import.meta.env.BASE_URL + "assets/itb-logo.png"} alt="Logo ITB" width="52" height="52" />
+        <GateInfo id="gate-info-side" tab={tab} setTab={setTab} className="on-side" />
         <div>
           <h1>Dashboard Monitoring Program DITSAMA 2026</h1>
           <p>Direktorat Persiapan Bersama · Institut Teknologi Bandung</p>
         </div>
       </aside>
-      <main className="gate-main">{children}</main>
+      <main className="gate-main">
+        {children}
+        <GateInfo id="gate-info-below" tab={tab} setTab={setTab} className="below-form" />
+      </main>
     </div>
   );
 }

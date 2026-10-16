@@ -12,7 +12,8 @@ app/
 ├── routes.js                # daftar route
 ├── config.js                # daftar program, jabatan, fase (alamat backend dari .env)
 ├── routes/
-│   ├── home.jsx             # beranda (/)
+│   ├── index-redirect.jsx   # / -> /dashboard (halaman masuk bila belum login)
+│   ├── home.jsx             # beranda lama (tidak dipakai, disimpan bila dibutuhkan lagi)
 │   └── dashboard/
 │       ├── layout.jsx       # menu, gerbang login, Password Akses, panel Filter
 │       ├── portfolio.jsx    # /dashboard           — Portofolio Program

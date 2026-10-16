@@ -1,7 +1,8 @@
 import { index, layout, prefix, route } from "@react-router/dev/routes";
 
 export default [
-  index("./routes/home.jsx"),
+  // tanpa beranda: "/" -> /dashboard (masuk atau dashboard). Beranda lama disimpan di routes/home.jsx.
+  index("./routes/index-redirect.jsx"),
 
   ...prefix("dashboard", [
     layout("./routes/dashboard/layout.jsx", [

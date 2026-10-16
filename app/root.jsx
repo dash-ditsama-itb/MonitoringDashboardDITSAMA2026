@@ -47,7 +47,7 @@ export function ErrorBoundary({ error }) {
       <title>{title}</title>
       <h1>{title}</h1>
       <p>{detail}</p>
-      <a href={import.meta.env.BASE_URL}>← Kembali ke beranda</a>
+      <a href={import.meta.env.BASE_URL}>← Kembali ke dashboard</a>
     </main>
   );
 }

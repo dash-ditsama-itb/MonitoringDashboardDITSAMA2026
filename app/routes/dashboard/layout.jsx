@@ -81,7 +81,7 @@ function Shell({ session }) {
       <a className="skip" href="#main">Langsung ke konten</a>
       <aside className={"rail" + (ui.railOpen ? " open" : "")} aria-label="Menu utama">
         <div className="rail-top">
-          <Link to="/" className="rail-brand">
+          <Link to="/dashboard" className="rail-brand">
             <img className="badge-itb" src={import.meta.env.BASE_URL + "assets/itb-logo.png"} alt="Logo ITB" width="36" height="36" />
             <span><b>Pra Universitas</b><small>Dashboard DITSAMA 2026</small></span>
           </Link>
