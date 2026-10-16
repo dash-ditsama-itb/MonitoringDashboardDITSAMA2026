@@ -24,6 +24,12 @@ export function meta() {
 
 const navClass = ({ isActive }) => "nav-item" + (isActive ? " active" : "");
 
+// menu "Dashboard program" urut abjad (termasuk SUGT); urutan PROGRAMS tetap karena dipakai untuk warna program
+const NAV_PROGRAMS = [
+  ...PROGRAMS.map((p) => ({ api: p.api, label: p.label, to: `/dashboard/program/${p.key}` })),
+  { api: "sugt", label: "SUGT", to: "/dashboard/sugt" },
+].sort((a, b) => a.label.localeCompare(b.label, "id", { sensitivity: "base" }));
+
 // tautan menu; untuk jabatan tanpa akses tetap tampil tapi nonaktif
 function NavItem({ session, area, to, end, children }) {
   const rule = area && ACCESS[area];
@@ -88,10 +94,10 @@ function Shell({ session }) {
           <NavItem session={session} area="activities" to="/dashboard/dosen"><Icon name="grad" />Portofolio Dosen</NavItem>
           <NavItem session={session} area="activities" to="/dashboard/input"><Icon name="clipboard" />Data Kegiatan</NavItem>
           <div className="nav-label">Dashboard program</div>
-          {PROGRAMS.map((p) => {
+          {NAV_PROGRAMS.map((p) => {
             const b = badges[p.api];
             return (
-              <NavItem key={p.key} session={session} area="activities" to={`/dashboard/program/${p.key}`}>
+              <NavItem key={p.api} session={session} area="activities" to={p.to}>
                 <span className="nav-dot" style={{ background: progColor(p.api) }} aria-hidden="true" />
                 <span className="nav-txt">{p.label}</span>
                 {b?.on > 0 && <span className="nav-badge red" title={`${b.on} kegiatan berlangsung`}>{b.on}</span>}
@@ -99,10 +105,6 @@ function Shell({ session }) {
               </NavItem>
             );
           })}
-          <NavItem session={session} area="activities" to="/dashboard/sugt">
-            <span className="nav-dot" style={{ background: progColor("sugt") }} aria-hidden="true" />
-            <span className="nav-txt">SUGT</span>
-          </NavItem>
         </nav>
         <button className="rail-foot" type="button" onClick={() => setProfileOpen(true)}>
           <span className="ava">{(session.name || "?").slice(0, 1).toUpperCase()}</span>
