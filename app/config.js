@@ -87,3 +87,5 @@ export const PKS_TYPES = [["Pm", "Pm", 10], ["Pd", "Pd", 20], ["DP", "DP · dana
 
 // Aplikasi SUGT; cadangan bila ringkasan SUGT dari backend tidak bisa dimuat
 export const SUGT_URL = "https://internal.sugtitb.com";
+// PIC program SUGT (tampil di Kinerja Portofolio Program; data SUGT tidak membawa nama PIC)
+export const SUGT_PIC = "Aziz Satrio";
