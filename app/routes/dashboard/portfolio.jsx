@@ -12,7 +12,7 @@ import { isSugtDone, SUGT_PROGRAM, sugtFeedback, SugtPanel, sugtStatus, sugtUnit
 import {
   Bar, EmptyState, ErrorNote, LevelBadge, PageHead, ProgramAbout, SeeMore, Sheet, SkeletonCard,
 } from "../../components/ui.jsx";
-import { PROGRAMS, TOTAL_PROGRAMS } from "../../config.js";
+import { PROGRAMS, SUGT_PIC, TOTAL_PROGRAMS } from "../../config.js";
 import { canSeeActivities, fmtDate, fmtNum, pct, phaseLabel, progColor, withoutAll } from "../../lib/format.js";
 import { useAuthStore } from "../../stores/auth.js";
 import { useApi } from "../../stores/data.js";
@@ -150,14 +150,13 @@ function PortfolioList({ items, sugt, program }) {
           return (
             <li key={p.program}>
               <span className="port-dot" style={{ background: progColor(p.program) }} />
-              <div className="port-nm"><b>{p.label}</b><small>{p.pics.length ? "PIC: " + p.pics.join(", ") : "Belum ada PIC"}</small></div>
+              <div className="port-nm"><b>{p.label}</b><small>{p.pics.length ? "PIC: " + p.pics.join(", ") : "Belum ada PIC"}</small>
+                <SlimBar value={prog} tone={tone} /></div>
               <div className="port-cnt" title={`${p.completedActivities} selesai dari ${p.totalActivities} aktivitas`}>{p.completedActivities}<span className="muted">/{p.totalActivities}</span></div>
-              <div className="port-score"><Bar value={prog} tone={tone === "ok" ? "ok" : ""} />
+              <div className="port-score"><small>Progres</small><Bar value={prog} tone={tone === "ok" ? "ok" : ""} />
                 <b>{p.totalActivities ? prog + "%" : <span className="muted" title="Belum ada aktivitas">–</span>}</b></div>
               <span className={"pill " + tone}>{label}</span>
-              <div className="port-perf"><small>Performa</small>
-                <Bar value={perf} tone={perf == null ? "" : perf < 60 ? "crit" : perf < 80 ? "warn" : "ok"} />
-                <b>{perf == null ? <span className="muted" title="Belum ada indikator terisi">–</span> : perf + "%"}</b></div>
+              <PerfValue value={perf} empty="Belum ada indikator terisi" />
             </li>
           );
         })}
@@ -176,16 +175,29 @@ function SugtRow({ s }) {
     <li>
       <span className="port-dot" style={{ background: progColor("sugt") }} />
       <div className="port-nm"><Link className="row-link" to="/dashboard/sugt"><b>SUGT</b></Link>
-        <small>{s ? "Sesi, pretest & posttest per sekolah" : "Data SUGT tidak dapat dimuat"}</small></div>
+        <small title={s ? undefined : "Data SUGT tidak dapat dimuat"}>PIC: {SUGT_PIC}</small>
+        <SlimBar value={u?.percent} tone={tone} /></div>
       <div className="port-cnt" title={u ? `${u.completed} dari ${u.total} kegiatan terlaksana` : undefined}>
         {u ? <>{fmtNum(u.completed)}<span className="muted">/{fmtNum(u.total)}</span></> : <span className="muted">–</span>}</div>
-      <div className="port-score"><Bar value={u?.percent} tone={tone === "ok" ? "ok" : ""} />
+      <div className="port-score"><small>Progres</small><Bar value={u?.percent} tone={tone === "ok" ? "ok" : ""} />
         <b>{u ? u.percent + "%" : <span className="muted">–</span>}</b></div>
       <span className={"pill " + tone}>{label}</span>
-      <div className="port-perf"><small>Performa</small>
-        <Bar value={perf} tone={perf == null ? "" : perf < 60 ? "crit" : perf < 80 ? "warn" : "ok"} />
-        <b>{perf == null ? <span className="muted" title="Belum ada umpan balik SUGT">–</span> : perf + "%"}</b></div>
+      <PerfValue value={perf} empty="Belum ada umpan balik SUGT" />
     </li>
+  );
+}
+
+// bar progres tipis di bawah nama program, hanya tampil saat kartu sempit
+function SlimBar({ value, tone }) {
+  return <span className="port-slim"><Bar value={value} tone={tone === "ok" ? "ok" : ""} /></span>;
+}
+
+// Performa: angka saja, berwarna (hijau ≥ 80%, kuning 60–79%, merah < 60%)
+function PerfValue({ value, empty }) {
+  const tone = value == null ? "" : value < 60 ? "crit" : value < 80 ? "warn" : "ok";
+  return (
+    <div className="port-perf"><small>Performa</small>
+      <b className={"pv " + tone}>{value == null ? <span className="muted" title={empty}>–</span> : value + "%"}</b></div>
   );
 }
 
