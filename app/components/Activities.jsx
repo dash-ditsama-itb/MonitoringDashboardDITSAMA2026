@@ -142,8 +142,8 @@ export function ActivitiesTable({ fixedProgram, title = "Data Kegiatan", sub }) 
   const canAdd = editablePrograms(session).length > 0 && (!fixedProgram || canEditActivity(session, fixedProgram));
   const programOptions = [["", "Semua program"], ...(session?.role === "pic" ? [["mine", "Program saya"]] : []),
     ...PROGRAMS_AZ.map((p) => [p.api, p.label])];
-  // kolom Program tampil bila tabel berisi lebih dari satu program ("Semua program" = ["all"])
-  const showProgram = !fixedProgram && (programs.includes("all") || programs.length > 1);
+  // kolom Program selalu tampil di Data Kegiatan (juga saat difilter satu program); disembunyikan hanya di dashboard program
+  const showProgram = !fixedProgram;
   const searching = !!st.search;
 
   const openDetail = (a) => setDetail(a);
