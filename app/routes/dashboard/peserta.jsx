@@ -5,6 +5,8 @@ import { Icon } from "../../components/Icon.jsx";
 import {
   Bar, EmptyState, ErrorNote, Kpi, PageHead, Pagination, SearchInput, Segmented, SelectField, Sheet, SkeletonCard, Spinner,
 } from "../../components/ui.jsx";
+import { RekapPeserta } from "../../components/RekapPeserta.jsx";
+import { PROGRAMS, REKAP_PESERTA } from "../../config.js";
 import { fmtNum, fmtScore, withoutAll } from "../../lib/format.js";
 import { useApi } from "../../stores/data.js";
 import { useUiStore } from "../../stores/ui.js";
@@ -18,6 +20,7 @@ const FILTERS = [
 ];
 const SORTS = [["ujian", "Nilai ujian terpilih"], ["rata", "Rata-rata semua ujian"], ["naik", "Kenaikan tertinggi"]];
 const LOW = { C: 1, D: 1, E: 1 };
+const REKAP_TOTAL = REKAP_PESERTA.reduce((s, r) => s + r.value, 0);
 
 function IdxChip({ ix }) {
   return ix ? <span className={"idx-chip" + (LOW[ix] ? " low" : "")}>{ix}</span> : null;
@@ -37,6 +40,9 @@ function PesertaPage() {
   const fo = d?.filterOptions;
   const setFilter = (k, v) => patch("pst", { [k]: v, page: 1 });
   const active = FILTERS.some(([k]) => ui[k] !== ALL) || ui.ujian !== "__LAST__";
+  const noFilter = FILTERS.every(([k]) => ui[k] === ALL);
+  // filter Program di sini memakai label program (mis. "SIAP ITB")
+  const rekapProgram = PROGRAMS.find((p) => p.label.toLowerCase() === String(ui.program).toLowerCase());
   const [busy, setBusy] = useState(false);
   const refresh = async () => { setBusy(true); await dash.reload({ refresh: true }); setBusy(false); };
 
@@ -69,13 +75,16 @@ function PesertaPage() {
       ) : (
         <>
           <div className="kpi-row six">
-            <Kpi label="Total peserta" value={fmtNum(d.kpi.totalParticipants)} icon="users" />
+            {/* sementara: tanpa filter, Total peserta = total rekap kepesertaan (seperti Portofolio Program) */}
+            <Kpi label="Total peserta" icon="users" value={fmtNum(noFilter ? REKAP_TOTAL : d.kpi.totalParticipants)}
+              hint={noFilter ? "sesuai rekap kepesertaan" : undefined} />
             <Kpi label="Provinsi" value={fmtNum(d.kpi.totalProvinces)} icon="pin" />
             <Kpi label="Sekolah / instansi" value={fmtNum(d.kpi.totalSchools)} icon="building" />
             <Kpi label="Ujian bernilai" value={d.kpi.totalExamsWithData + (d.kpi.totalExams > d.kpi.totalExamsWithData ? " / " + d.kpi.totalExams : "")} icon="clipboard" />
             <Kpi label={"Rata-rata · " + (d.kpi.selectedExamLabel || "–")} value={d.kpi.averageScore == null ? "–" : Number(d.kpi.averageScore).toLocaleString("id-ID", { maximumFractionDigits: 1 })} icon="target" />
             <Kpi label="Sudah dinilai" value={fmtNum(d.kpi.gradedCount)} hint={`dari ${fmtNum(d.kpi.totalParticipants)} peserta`} icon="checkCircle" />
           </div>
+          <RekapPeserta program={ui.program === ALL ? undefined : rekapProgram?.api ?? "-"} programLabel={ui.program === ALL ? undefined : ui.program} />
           <Charts d={d} />
           <Ranking d={d} sort={ui.rankingSortBy} onSort={(v) => patch("pst", { rankingSortBy: v })} showAll={ui.rankAll} onToggle={() => patch("pst", { rankAll: !ui.rankAll })} />
           <Schools d={d} />
