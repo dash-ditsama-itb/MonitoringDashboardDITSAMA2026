@@ -79,9 +79,10 @@ export const programLabel = (api) => programByApi(api)?.label ?? api;
 export const finProgramLabel = (api) => FIN_PROGRAMS.find((p) => p.api === api)?.label ?? api;
 
 // palet warna per program (indeks stabil sesuai urutan PROGRAMS / FIN_PROGRAMS)
-export const PROG_COLORS = ["#3a6db0", "#16A34A", "#E08A2E", "#8B5CF6", "#DC2626", "#0EA5E9", "#DB2777", "#65A30D", "#9333EA", "#0D9488"];
+export const PROG_COLORS = ["#3a6db0", "#16A34A", "#E08A2E", "#8B5CF6", "#DC2626", "#0EA5E9", "#DB2777", "#65A30D", "#9333EA", "#0D9488", "#B45309"];
 export function progColor(api) {
   if (api === "sugt") return PROG_COLORS[9];
+  if (api === "freeport") return PROG_COLORS[10];
   let i = PROGRAMS.findIndex((p) => p.api === api);
   if (i < 0) i = FIN_PROGRAMS.findIndex((p) => p.api === api);
   return PROG_COLORS[(i < 0 ? 0 : i) % PROG_COLORS.length];
