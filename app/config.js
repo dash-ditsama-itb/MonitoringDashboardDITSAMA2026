@@ -103,3 +103,13 @@ export const REKAP_PESERTA = [
   { label: "SUGT",               programs: ["sugt"],                 value: 5880, status: "Proses PKS" },
   { label: "WIT",                programs: ["wit"],                  value: 500,  status: "Proses PKS" },
 ];
+
+// Dua dashboard DITSAMA (kartu di beranda "/" dan pengalih di menu). Satu login untuk keduanya.
+export const DASHBOARDS = [
+  { key: "pra", to: "/dashboard", label: "Pra-Universitas", icon: "grad",
+    title: "Dashboard Pra-Universitas DITSAMA 2026",
+    desc: "Pemantauan program, kegiatan, peserta, pengajar, dan keuangan Pra-Universitas." },
+  { key: "persiapan", to: "/pendidikan-persiapan", label: "Pendidikan Persiapan", icon: "book",
+    title: "Dashboard Pendidikan Persiapan DITSAMA 2026",
+    desc: "Data Tahap Persiapan Bersama (TPB) dan pendidikan persiapan mahasiswa ITB." },
+];

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { API_URL, ROLES } from "../config.js";
+import { useLocation, useNavigate } from "react-router";
+import { API_URL, DASHBOARDS, ROLES } from "../config.js";
 import { api, ApiError, errorText } from "../lib/api.js";
 import { PROGRAMS_AZ } from "../lib/format.js";
 import { useAuthStore } from "../stores/auth.js";
@@ -18,6 +19,13 @@ const COPY = {
 
 const hasMicrosoftToken = () => typeof window !== "undefined" && /[#&]microsoft_token=/.test(window.location.hash);
 
+// Akun ITB selalu kembali ke /dashboard; halaman asal disimpan agar pengguna dibawa kembali ke sana setelah masuk
+const SSO_RETURN = "ditsama-sso-return";
+const rememberSsoReturn = (path) => { try { sessionStorage.setItem(SSO_RETURN, path); } catch { /* penyimpanan diblokir */ } };
+function takeSsoReturn() {
+  try { const v = sessionStorage.getItem(SSO_RETURN); sessionStorage.removeItem(SSO_RETURN); return v; } catch { return null; }
+}
+
 function Brand() {
   const [failed, setFailed] = useState(false);
   return failed
@@ -25,7 +33,7 @@ function Brand() {
     : <img className="gate-logo" src={import.meta.env.BASE_URL + "assets/dpb-logo.png"} alt="Direktorat Persiapan Bersama ITB" onError={() => setFailed(true)} />;
 }
 
-function Shell({ children }) {
+function Shell({ title = DASHBOARDS[0].title, children }) {
   const [tab, setTab] = useState("profil");
   return (
     <div className="gate">
@@ -33,7 +41,7 @@ function Shell({ children }) {
         <img className="gate-badge" src={import.meta.env.BASE_URL + "assets/itb-logo.png"} alt="Logo ITB" width="52" height="52" />
         <GateInfo id="gate-info-side" tab={tab} setTab={setTab} className="on-side" />
         <div>
-          <h1>Dashboard Monitoring Program DITSAMA 2026</h1>
+          <h1>{title}</h1>
           <p>Direktorat Persiapan Bersama · Institut Teknologi Bandung</p>
         </div>
       </aside>
@@ -76,9 +84,17 @@ function Msg({ msg }) {
   return <div className={"note " + (msg.ok ? "ok" : "err")} role={msg.ok ? "status" : "alert"}><Icon name={msg.ok ? "checkCircle" : "alert"} size={16} /><span>{msg.text}</span></div>;
 }
 
-/** Gerbang Masuk / Daftar / Verifikasi / Lupa password (tampil sampai user login). */
-export function AuthGate() {
+/** Gerbang Masuk / Daftar / Verifikasi / Lupa password (tampil sampai user login). title = nama dashboard yang dibuka. */
+export function AuthGate({ title: dashTitle }) {
   const login = useAuthStore((s) => s.login);
+  const location = useLocation();
+  const navigate = useNavigate();
+  // masuk lewat Akun ITB: setelah login, kembali ke halaman tempat tombol Akun ITB ditekan
+  const ssoLogin = (user, token) => {
+    login(user, token);
+    const back = takeSsoReturn();
+    if (back && back !== location.pathname) navigate(back, { replace: true });
+  };
   const notice = useAuthStore((s) => s.notice);
   const [mode, setMode] = useState(() => (hasMicrosoftToken() ? "sso" : "login"));
   const [f, setF] = useState({ name: "", role: "pic", email: "", password: "", code: "", programs: [] });
@@ -110,7 +126,7 @@ export function AuthGate() {
     if (!token) return go("login", { ok: false, text: "Masuk dengan Akun ITB gagal atau dibatalkan. Silakan coba lagi." });
     run(async () => {
       const out = await post("/auth/microsoft/login", { token });
-      if (out.data.accessToken) return login(out.data.user, out.data.accessToken);
+      if (out.data.accessToken) return ssoLogin(out.data.user, out.data.accessToken);
       setSso({ token, name: out.data.name, email: out.data.email });
       go("microsoft");
     }).then((err) => err && go("login", { ok: false, text: errorText(err) }));
@@ -138,7 +154,7 @@ export function AuthGate() {
       } else if (mode === "microsoft") {
         requirePrograms();
         const out = await post("/auth/microsoft/register", { token: sso.token, ...rolePayload() });
-        login(out.data.user, out.data.accessToken);
+        ssoLogin(out.data.user, out.data.accessToken);
       }
     });
     if (!err) return;
@@ -159,7 +175,7 @@ export function AuthGate() {
 
   if (mode === "sso") {
     return (
-      <Shell>
+      <Shell title={dashTitle}>
         <div className="gate-form" role="status">
           <Brand />
           <p className="gate-busy"><Spinner />Memproses masuk dengan Akun ITB…</p>
@@ -173,7 +189,7 @@ export function AuthGate() {
   const button = { login: "Masuk", signup: "Daftar", verify: "Verifikasi", forgot: "Kirim kode", reset: "Simpan password baru", microsoft: "Selesaikan pendaftaran" }[mode];
 
   return (
-    <Shell>
+    <Shell title={dashTitle}>
       <form className="gate-form" onSubmit={submit}>
         <Brand />
         {isEntry && (
@@ -248,7 +264,7 @@ export function AuthGate() {
         {isEntry && (
           <>
             <div className="gate-or"><span>atau</span></div>
-            <a className="btn btn-block" href={`${API_URL}/auth/microsoft`}>
+            <a className="btn btn-block" href={`${API_URL}/auth/microsoft`} onClick={() => rememberSsoReturn(location.pathname)}>
               <ItbLogo />{mode === "signup" ? "Daftar" : "Masuk"} dengan Akun ITB
             </a>
           </>
@@ -266,7 +282,7 @@ export function AuthGate() {
 }
 
 /** Password Akses (muncul setelah login, sebelum data dashboard dibuka). */
-export function AccessOverlay() {
+export function AccessOverlay({ title }) {
   const session = useAuthStore((s) => s.session);
   const unlock = useAuthStore((s) => s.unlock);
   const logout = useAuthStore((s) => s.logout);
@@ -286,7 +302,7 @@ export function AccessOverlay() {
   }
 
   return (
-    <Shell>
+    <Shell title={title}>
       <form className="gate-form" onSubmit={check}>
         <Brand />
         <Who name={session.name} email={session.email} />

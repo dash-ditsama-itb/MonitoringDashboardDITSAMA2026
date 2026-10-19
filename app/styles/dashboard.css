@@ -63,6 +63,14 @@ a{color:var(--blue-ink);text-underline-offset:3px}
 .nav-lock{margin-left:auto;opacity:.9}
 .nav-item.disabled .nav-txt+.nav-lock{margin-left:0}
 .nav-item:focus-visible{outline-color:#fff}
+/* pengalih Pra-Universitas ⇄ Pendidikan Persiapan */
+.dash-switch{display:flex;flex-direction:column;gap:2px;margin:18px 2px 0;padding:4px;background:rgba(255,255,255,.08);border-radius:12px}
+.dash-switch a{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:9px;color:#C9DAF0;text-decoration:none;font-size:13px;font-weight:700}
+.dash-switch a:hover{color:#fff;background:rgba(255,255,255,.08)}
+.dash-switch a.on{background:#fff;color:var(--navy)}
+.dash-switch a:focus-visible{outline:2px solid #fff;outline-offset:1px}
+.dash-switch+.rail-nav{margin-top:8px}
+.nav-note{font-size:12.5px;color:#B9CBE6;margin:14px 12px 0}
 .nav-label{font-size:11px;font-weight:700;color:#B9CBE6;margin:18px 12px 6px;text-transform:uppercase;letter-spacing:.06em}
 .nav-dot{width:8px;height:8px;border-radius:50%;flex:0 0 8px;margin:0 5px;box-shadow:0 0 0 2px rgba(255,255,255,.18)}
 .nav-txt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -630,6 +638,24 @@ dialog.confirm[open]{animation:pop .2s var(--ease)}
 .ms-list li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
 .ms-list li:last-child{border-bottom:0}
 .ms-list li.busy{opacity:.5}
+/* Pendidikan Persiapan: laporan Power BI */
+.report-frame{position:relative;background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;
+  height:calc(100dvh - 170px);min-height:440px}
+.report-frame iframe{display:block;width:100%;height:100%;border:0}
+.report-frame:fullscreen{border-radius:0;border:0}
+.report-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:8px;color:var(--muted);background:var(--subtle)}
+.report-hint{display:none}
+.rep-list{list-style:none;margin:0 0 12px;padding:0}
+.rep-list li{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.rep-list li:last-child{border-bottom:0}
+.rep-list li.busy{opacity:.55}
+.rep-order{display:flex;flex-direction:column;gap:2px}
+.rep-order .icon-btn{width:30px;height:26px}
+.rep-txt{flex:1;min-width:0}
+.rep-txt .trunc{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hint.err{color:var(--crit-ink)}
+.hint .trunc{min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
 /* SUGT */
 .control-note{margin:-4px 0 0;font-size:12.5px;line-height:1.5;color:rgba(228,237,249,.8)}
 .sugt-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 20px;margin:0;padding:18px 20px;align-content:center}
@@ -843,6 +869,8 @@ dialog.confirm[open]{animation:pop .2s var(--ease)}
   .filter-bar .field{max-width:none}
 }
 @media (max-width:640px){
+  .report-hint{display:flex}
+  .report-frame{height:auto;min-height:0;aspect-ratio:4/3}
   body{font-size:14px}
   .gate{grid-template-columns:1fr;grid-template-rows:auto 1fr}
   .gate-side{border-radius:0 0 22px 22px;padding:20px;flex-direction:row;align-items:center;gap:14px}

@@ -38,6 +38,8 @@ const MESSAGES = {
   "Excel workbook contains no sheets.": "File tidak berisi sheet apa pun.",
   "Uploaded sheet contains no data.": "Tidak ada data yang bisa diimpor dari file ini. Pastikan kolomnya sama dengan file hasil Ekspor.",
   "A file field containing the spreadsheet is required.": "Pilih file spreadsheet dulu.",
+  "Report not found.": "Laporan tidak ditemukan (mungkin sudah dihapus). Muat ulang halaman.",
+  "Report order must include every report exactly once.": "Daftar laporan berubah di tempat lain. Muat ulang halaman lalu coba lagi.",
   "Lecturer not found.": "Dosen tidak ditemukan untuk filter ini.",
   "Something went wrong": "Terjadi kesalahan di server. Coba lagi sebentar lagi.",
   "SUGT dashboard is not configured.": SUGT_DOWN,
@@ -70,6 +72,7 @@ const FIELD_LABELS = {
   newPassword: "Password baru", program: "Program", date: "Tanggal", pksValue: "Nilai PKS",
   submissionValue: "Nilai pengajuan", achievementValue: "Nilai capaian", feedback: "Umpan balik",
   participants: "Peserta", humanResources: "SDM", issues: "Isu", sk: "File SK", pic: "PIC", location: "Lokasi",
+  section: "Bagian", title: "Judul laporan", url: "Link Power BI",
 };
 
 function readableMessage(body, status, retryAfter) {
@@ -81,7 +84,10 @@ function readableMessage(body, status, retryAfter) {
   if (msg && typeof msg === "object" && Array.isArray(msg.errors)) {
     const first = msg.errors[0] || {};
     const field = FIELD_LABELS[first.path?.[0]];
-    const custom = { "Programs are required for PIC role.": "Pilih minimal satu program untuk PIC." }[first.message];
+    const custom = {
+      "Programs are required for PIC role.": "Pilih minimal satu program untuk PIC.",
+      "Only Power BI links (https://app.powerbi.com) are allowed.": "Link harus berupa link Power BI (https://app.powerbi.com/...).",
+    }[first.message];
     if (custom) return custom;
     if (first.path?.[0] === "email") return "Format email tidak valid.";
     return field ? `${field} tidak valid. Periksa kembali isiannya.` : "Isian tidak valid. Periksa kembali formulir.";

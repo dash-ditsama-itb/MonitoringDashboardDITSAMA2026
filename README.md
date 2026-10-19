@@ -1,21 +1,26 @@
 # Dashboard DITSAMA 2026 — React Router (framework mode)
 
-Website monitoring program DITSAMA, dibangun dengan **React Router v8 (framework mode, SPA)**
+Website dashboard DITSAMA dengan dua dashboard: **Pra-Universitas** (monitoring program) dan
+**Pendidikan Persiapan** (laporan Power BI). Dibangun dengan **React Router v8 (framework mode, SPA)**
 dan **Zustand** untuk state bersama. Data diambil dari backend
 **monitoring-dashboard-ditsama-be** (Hono + PostgreSQL), dengan login email & password
-lalu Password Akses tim.
+lalu Password Akses tim. Satu login berlaku untuk kedua dashboard.
 
 ## Struktur file
 ```
 app/
 ├── root.jsx                 # dokumen HTML + ErrorBoundary global
 ├── routes.js                # daftar route
-├── config.js                # daftar program, jabatan, fase (alamat backend dari .env)
+├── config.js                # daftar dashboard, program, jabatan, fase (alamat backend dari .env)
 ├── routes/
-│   ├── index-redirect.jsx   # / -> /dashboard (halaman masuk bila belum login)
-│   ├── home.jsx             # beranda lama (tidak dipakai, disimpan bila dibutuhkan lagi)
-│   └── dashboard/
-│       ├── layout.jsx       # menu, gerbang login, Password Akses, panel Filter
+│   ├── home.jsx             # /  — beranda: pilih Pra-Universitas atau Pendidikan Persiapan
+│   ├── persiapan/           # /pendidikan-persiapan — laporan Power BI
+│   │   ├── layout.jsx       # menu laporan per bagian
+│   │   ├── index.jsx        # buka laporan pertama (atau keadaan kosong)
+│   │   ├── report.jsx       # /pendidikan-persiapan/laporan/:reportId
+│   │   └── manage.jsx       # /pendidikan-persiapan/kelola — Kelola laporan (Admin & Kasubdit)
+│   └── dashboard/           # /dashboard — Pra-Universitas
+│       ├── layout.jsx       # menu & panel Filter Pra-Universitas
 │       ├── portfolio.jsx    # /dashboard           — Portofolio Program
 │       ├── financial.jsx    # /dashboard/financial — Keuangan
 │       ├── peserta.jsx      # /dashboard/peserta
@@ -25,7 +30,7 @@ app/
 │       └── sugt.jsx         # /dashboard/sugt      — ringkasan SUGT (dari aplikasi SUGT lewat backend)
 ├── stores/                  # zustand: auth (sesi), data (cache data backend), ui (filter/tabel)
 ├── lib/                     # api.js (fetch + pesan error), format.js (label, tanggal, akses)
-├── components/              # tabel kegiatan & keuangan, form, Chart.js, Gantt, Kalender, dll.
+├── components/              # AppShell (gerbang login, menu, pengalih dashboard, profil), tabel, form, Chart.js, dll.
 └── styles/                  # dashboard.css, home.css
 public/assets/dpb-logo.png
 ```
@@ -63,6 +68,15 @@ Buka `http://localhost:5173/MonitoringDashboardDITSAMA2026/`.
   Menu yang tidak bisa dibuka tetap tampil tetapi nonaktif.
 - Impor Keuangan membaca semua tab sheet yang punya kolom `Nilai PKS` atau `Nilai Pengajuan`;
   program diambil dari kolom Program atau nama tab (mis. `SIAP_2026`).
+
+## Pendidikan Persiapan
+- Isi dashboard = laporan Power BI ("Publish to web") yang ditempel Admin/Kasubdit di **Kelola laporan**:
+  bagian (mis. `Proses TPB`), judul, dan link atau seluruh kode `<iframe>` dari Power BI.
+  Hanya link `https://app.powerbi.com` yang diterima. Urutan diatur dengan tombol panah.
+- Link laporan disimpan di database backend (bukan di kode), jadi tidak ikut terbaca di file publik GitHub Pages.
+- Batasan: link "Publish to web" bersifat publik. Siapa pun yang melihat laporan bisa menyalin
+  link-nya (Power BI juga menyediakan tombol bagikan). Untuk data sensitif, gunakan Power BI Embedded.
+- Semua jabatan bisa melihat laporan; menu Kelola laporan nonaktif untuk selain Admin & Kasubdit.
 
 ## Publikasi di GitHub Pages
 Workflow `.github/workflows/deploy.yml` otomatis build & deploy setiap push ke `main`.

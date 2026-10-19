@@ -1,15 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link, NavLink, Outlet, useLocation, useMatches } from "react-router";
+import { useMemo } from "react";
+import { useMatches } from "react-router";
 import { useShallow } from "zustand/react/shallow";
-import { FeedbackHost } from "../../components/feedback.jsx";
-import { Icon } from "../../components/Icon.jsx";
-import { SelectField, Sheet, Spinner } from "../../components/ui.jsx";
-import { PROGRAMS } from "../../config.js";
 import { ACCESS } from "../../components/Access.jsx";
+import { AppShell, Gate, NavItem } from "../../components/AppShell.jsx";
+import { Icon } from "../../components/Icon.jsx";
 import { SUGT_PROGRAM } from "../../components/Sugt.jsx";
-import { AccessOverlay, AuthGate } from "../../components/AuthGate.jsx";
-import { byLabel, isAllAccess, levelLabel, programByApi, progColor, roleLabel, sortLabels, withoutAll } from "../../lib/format.js";
-import { useAuthStore } from "../../stores/auth.js";
+import { SelectField, Spinner } from "../../components/ui.jsx";
+import { DASHBOARDS, PROGRAMS } from "../../config.js";
+import { byLabel, isAllAccess, levelLabel, programByApi, progColor, sortLabels, withoutAll } from "../../lib/format.js";
 import { useApi } from "../../stores/data.js";
 import { useUiStore } from "../../stores/ui.js";
 import dashboardCss from "../../styles/dashboard.css?url";
@@ -18,11 +16,11 @@ export function links() {
   return [{ rel: "stylesheet", href: dashboardCss }];
 }
 
-export function meta() {
-  return [{ title: "Dashboard Monitoring Program DITSAMA 2026" }];
-}
+const DASHBOARD = DASHBOARDS.find((d) => d.key === "pra");
 
-const navClass = ({ isActive }) => "nav-item" + (isActive ? " active" : "");
+export function meta() {
+  return [{ title: DASHBOARD.title }];
+}
 
 // menu "Dashboard program" urut abjad (termasuk SUGT); urutan PROGRAMS tetap karena dipakai untuk warna program
 const NAV_PROGRAMS = [
@@ -30,38 +28,14 @@ const NAV_PROGRAMS = [
   { api: "sugt", label: "SUGT", to: "/dashboard/sugt" },
 ].sort(byLabel((p) => p.label));
 
-// tautan menu; untuk jabatan tanpa akses tetap tampil tapi nonaktif
-function NavItem({ session, area, to, end, children }) {
-  const rule = area && ACCESS[area];
-  if (rule && !rule.can(session)) {
-    const why = `Hanya untuk ${rule.who}`;
-    return (
-      <span className="nav-item disabled" role="link" aria-disabled="true" title={why}>
-        {children}<Icon name="lock" size={14} className="nav-lock" /><span className="sr-only">({why})</span>
-      </span>
-    );
-  }
-  return <NavLink className={navClass} to={to} end={end}>{children}</NavLink>;
-}
-
 export default function DashboardLayout() {
-  const session = useAuthStore((s) => s.session);
-  if (!session) return <><AuthGate /><FeedbackHost /></>;
-  if (!session.token) return <><AccessOverlay /><FeedbackHost /></>;
-  return <Shell session={session} />;
+  return <Gate dashboard={DASHBOARD}>{(session) => <Shell session={session} />}</Gate>;
 }
 
 function Shell({ session }) {
-  const ui = useUiStore(useShallow((s) => ({
-    railOpen: s.railOpen, railHidden: s.railHidden, controlOpen: s.controlOpen, controlHidden: s.controlHidden, set: s.set,
-  })));
-  const [profileOpen, setProfileOpen] = useState(false);
-  const location = useLocation();
+  const ui = useUiStore(useShallow((s) => ({ controlOpen: s.controlOpen, controlHidden: s.controlHidden, set: s.set })));
   const matches = useMatches();
   const withControl = matches.some((m) => m.handle?.control);
-
-  // tutup laci menu (ponsel) setiap pindah halaman
-  useEffect(() => { ui.set({ railOpen: false, controlOpen: false }); }, [location.pathname]);
 
   // badge jumlah Berlangsung (merah) & Akan Datang (kuning) per program dari kalender dashboard utama
   const canActivities = ACCESS.activities.can(session);
@@ -76,18 +50,13 @@ function Shell({ session }) {
     return out;
   }, [data]);
 
+  const progs = isAllAccess(session) ? "Semua program" : session.role === "finance" ? "Hanya Keuangan"
+    : sortLabels((session.programs || []).map((p) => programByApi(p)?.label || p)).join(", ") || "–";
+
   return (
-    <div className={"app" + (ui.railHidden ? " rail-hidden" : "")}>
-      <a className="skip" href="#main">Langsung ke konten</a>
-      <aside className={"rail" + (ui.railOpen ? " open" : "")} aria-label="Menu utama">
-        <div className="rail-top">
-          <Link to="/dashboard" className="rail-brand">
-            <img className="badge-itb" src={import.meta.env.BASE_URL + "assets/itb-logo.png"} alt="Logo ITB" width="36" height="36" />
-            <span><b>Pra Universitas</b><small>Dashboard DITSAMA 2026</small></span>
-          </Link>
-          <button className="icon-btn on-dark rail-close" type="button" onClick={() => ui.set({ railOpen: false })} aria-label="Tutup menu"><Icon name="x" size={18} /></button>
-        </div>
-        <nav className="rail-nav">
+    <AppShell session={session} dashboard={DASHBOARD}
+      nav={(
+        <>
           <NavItem session={session} area="activities" to="/dashboard" end><Icon name="grid" />Portofolio Program</NavItem>
           <NavItem session={session} area="finance" to="/dashboard/financial"><Icon name="wallet" />Keuangan</NavItem>
           <NavItem session={session} area="activities" to="/dashboard/peserta"><Icon name="users" />Peserta</NavItem>
@@ -105,63 +74,25 @@ function Shell({ session }) {
               </NavItem>
             );
           })}
-        </nav>
-        <button className="rail-foot" type="button" onClick={() => setProfileOpen(true)}>
-          <span className="ava">{(session.name || "?").slice(0, 1).toUpperCase()}</span>
-          <span className="rail-who"><b>{session.name}</b><small>{roleLabel(session.role)}</small></span>
-          <Icon name="right" size={16} />
+        </>
+      )}
+      control={withControl && canActivities && <ControlPanel open={ui.controlOpen} hidden={ui.controlHidden} />}
+      topbarEnd={withControl && canActivities && (
+        <button className="btn btn-sm topbar-filter" type="button"
+          onClick={() => (window.matchMedia("(max-width: 1100px)").matches ? ui.set({ controlOpen: true }) : ui.set({ controlHidden: !ui.controlHidden }))}>
+          <Icon name="filter" size={16} />Filter
         </button>
-      </aside>
-      <div className="scrim" hidden={!ui.railOpen && !ui.controlOpen} onClick={() => ui.set({ railOpen: false, controlOpen: false })} />
-
-      {withControl && canActivities && <ControlPanel open={ui.controlOpen} hidden={ui.controlHidden} />}
-
-      <main className="stage" id="main">
-        <div className="topbar">
-          <button className="icon-btn" type="button" onClick={() => ui.set({ railOpen: true })} aria-label="Buka menu"><Icon name="menu" size={20} /></button>
-          <button className="icon-btn desk" type="button" onClick={() => ui.set({ railHidden: !ui.railHidden })}
-            aria-label={ui.railHidden ? "Tampilkan menu" : "Sembunyikan menu"} title={ui.railHidden ? "Tampilkan menu" : "Sembunyikan menu"}>
-            <Icon name="menu" size={20} />
-          </button>
-          {withControl && canActivities && (
-            <button className="btn btn-sm topbar-filter" type="button"
-              onClick={() => (window.matchMedia("(max-width: 1100px)").matches ? ui.set({ controlOpen: true }) : ui.set({ controlHidden: !ui.controlHidden }))}>
-              <Icon name="filter" size={16} />Filter
-            </button>
-          )}
-        </div>
-        <Outlet />
-      </main>
-
-      <ProfileSheet open={profileOpen} onClose={() => setProfileOpen(false)} />
-      <FeedbackHost />
-    </div>
-  );
-}
-
-function ProfileSheet({ open, onClose }) {
-  const session = useAuthStore((s) => s.session);
-  const logout = useAuthStore((s) => s.logout);
-  const progs = isAllAccess(session) ? "Semua program" : session.role === "finance" ? "Hanya Keuangan"
-    : sortLabels((session.programs || []).map((p) => programByApi(p)?.label || p)).join(", ") || "–";
-  return (
-    <Sheet open={open} onClose={onClose} title="Profil" footer={(
-      <><span className="grow" /><button className="btn btn-danger-ghost" type="button" onClick={() => { onClose(); logout(); }}><Icon name="logout" size={16} />Keluar</button></>
-    )}>
-      <div className="profile">
-        <span className="ava lg">{(session.name || "?").slice(0, 1).toUpperCase()}</span>
-        <div><b>{session.name}</b><div className="muted">{session.email}</div></div>
-      </div>
-      <dl className="facts">
-        <div><dt>Jabatan</dt><dd>{roleLabel(session.role)}</dd></div>
-        <div><dt>Akses program</dt><dd>{progs}</dd></div>
-        <div><dt>Hak ubah</dt><dd>{{
-          finance: "Data keuangan",
-          pic: "Data kegiatan program Anda (Keuangan tidak tersedia)",
-          leader: "Hanya melihat: tidak dapat menambah, mengubah, atau menghapus data",
-        }[session.role] || "Semua data kegiatan & keuangan"}</dd></div>
-      </dl>
-    </Sheet>
+      )}
+      profile={(
+        <>
+          <div><dt>Akses program</dt><dd>{progs}</dd></div>
+          <div><dt>Hak ubah</dt><dd>{{
+            finance: "Data keuangan",
+            pic: "Data kegiatan program Anda (Keuangan tidak tersedia)",
+            leader: "Hanya melihat: tidak dapat menambah, mengubah, atau menghapus data",
+          }[session.role] || "Semua data kegiatan & keuangan"}</dd></div>
+        </>
+      )} />
   );
 }
 

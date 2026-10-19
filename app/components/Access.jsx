@@ -1,6 +1,6 @@
 // Pembatasan halaman per jabatan (mengikuti hak akses backend).
 import { Link } from "react-router";
-import { canSeeActivities, canSeeFinance, roleLabel } from "../lib/format.js";
+import { canManageReports, canSeeActivities, canSeeFinance, roleLabel } from "../lib/format.js";
 import { useAuthStore } from "../stores/auth.js";
 import { Icon } from "./Icon.jsx";
 import { EmptyState } from "./ui.jsx";
@@ -8,17 +8,21 @@ import { EmptyState } from "./ui.jsx";
 export const ACCESS = {
   activities: { can: canSeeActivities, who: "Admin, Kasubdit, PIC, dan Pimpinan" },
   finance: { can: canSeeFinance, who: "Admin, Kasubdit, Finance, dan Pimpinan" },
+  reports: { can: canManageReports, who: "Admin dan Kasubdit" },
 };
 
 // halaman awal yang pasti bisa dibuka jabatan ini
 export const homeOf = (s) => (canSeeActivities(s) ? ["/dashboard", "Portofolio Program"] : ["/dashboard/financial", "Keuangan"]);
 
-/** Tampilkan `children` bila jabatan boleh membuka halaman `area`; kalau tidak, tampilkan penjelasan. */
-export function RequireAccess({ area, page, children }) {
+/**
+ * Tampilkan `children` bila jabatan boleh membuka halaman `area`; kalau tidak, tampilkan penjelasan.
+ * `back` = [tujuan, label] tombol kembali; default halaman awal Pra-Universitas.
+ */
+export function RequireAccess({ area, page, back, children }) {
   const session = useAuthStore((s) => s.session);
   const rule = ACCESS[area];
   if (rule.can(session)) return children;
-  const [to, label] = homeOf(session);
+  const [to, label] = back || homeOf(session);
   return (
     <div className="page">
       <section className="card">

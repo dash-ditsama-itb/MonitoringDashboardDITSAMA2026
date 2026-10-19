@@ -121,6 +121,8 @@ export const isAllAccess = (s) => !!s && ["admin", "kasubdit", "leader"].include
 export const canSeeActivities = (s) => !!s && ["admin", "kasubdit", "pic", "leader"].includes(s.role);
 export const canSeeFinance = (s) => !!s && ["admin", "kasubdit", "finance", "leader"].includes(s.role);
 export const canEditFinance = (s) => !!s && ["admin", "kasubdit", "finance"].includes(s.role);
+// Pendidikan Persiapan: semua jabatan melihat laporan; hanya Admin & Kasubdit yang mengelolanya
+export const canManageReports = (s) => !!s && ["admin", "kasubdit"].includes(s.role);
 // program kegiatan yang boleh diisi/diubah
 export function editablePrograms(s) {
   if (!canSeeActivities(s) || isReadOnly(s)) return [];

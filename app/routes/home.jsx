@@ -1,100 +1,57 @@
 import { useState } from "react";
 import { Link } from "react-router";
+import { Icon } from "../components/Icon.jsx";
+import { DASHBOARDS } from "../config.js";
+import { roleLabel } from "../lib/format.js";
+import { useAuthStore } from "../stores/auth.js";
+import dashboardCss from "../styles/dashboard.css?url";
 import homeCss from "../styles/home.css?url";
 
 export function links() {
-  return [{ rel: "stylesheet", href: homeCss }];
+  return [{ rel: "stylesheet", href: dashboardCss }, { rel: "stylesheet", href: homeCss }];
 }
 
 export function meta() {
-  return [{ title: "DITSAMA — Direktorat Persiapan Bersama ITB" }];
+  return [{ title: "Dashboard DITSAMA 2026 — Direktorat Persiapan Bersama ITB" }];
 }
 
-const scrollTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
-
+// Beranda: pilih dashboard Pra-Universitas atau Pendidikan Persiapan (satu login untuk keduanya)
 export default function Home() {
+  const session = useAuthStore((s) => s.session);
   const [logoFailed, setLogoFailed] = useState(false);
 
   return (
-    <>
-      {/* ================= HERO / HOME ================= */}
-      <section className="hero" id="top">
-        <header className="hero-title">DITSAMA</header>
+    <div className="landing">
+      <header className="landing-top">
+        <span className="landing-org">
+          <img className="badge-itb" src={import.meta.env.BASE_URL + "assets/itb-logo.png"} alt="Logo ITB" width="40" height="40" />
+          <span><b>Direktorat Persiapan Bersama</b><small>Institut Teknologi Bandung</small></span>
+        </span>
+        {session && <span className="landing-who"><Icon name="user" size={15} />{session.name}<small>{roleLabel(session.role)}</small></span>}
+      </header>
 
-        <div className="logo-area">
-          {/* Logo resmi di public/assets/dpb-logo.png. Kalau gagal dimuat, tampil teks. */}
-          {logoFailed ? (
-            <div className="logo-text">
-              <span className="lt-1">Direktorat Persiapan Bersama</span>
-              <span className="lt-2">Institut Teknologi Bandung</span>
-            </div>
-          ) : (
-            <img src={import.meta.env.BASE_URL + "assets/dpb-logo.png"} alt="DPB ITB" className="logo-img"
-              onError={() => setLogoFailed(true)} />
-          )}
-        </div>
+      <main className="landing-main">
+        {logoFailed
+          ? <div className="landing-logo-text"><b>Direktorat Persiapan Bersama</b><span>Institut Teknologi Bandung</span></div>
+          : <img className="landing-logo" src={import.meta.env.BASE_URL + "assets/dpb-logo.png"} alt="Direktorat Persiapan Bersama ITB" onError={() => setLogoFailed(true)} />}
+        <h1>Dashboard DITSAMA 2026</h1>
+        <p className="landing-sub">Pilih dashboard yang ingin dibuka. Satu akun untuk keduanya.</p>
 
-        <nav className="menu-bar">
-          <button className="menu-item" type="button" onClick={() => scrollTo("layanan")}>
-            <span className="bubble">
-              <svg viewBox="0 0 24 24" width="46" height="46" fill="none" stroke="#fff" strokeWidth="1.7"
-                strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="9" cy="7" r="3" /><path d="M3 20c0-3 3-5 6-5s6 2 6 5" />
-                <rect x="14" y="4" width="7" height="5" rx="1" /><path d="M17.5 9v3" />
-              </svg>
-            </span>
-            <span className="lbl">Layanan</span>
-          </button>
-
-          <button className="menu-item" type="button" onClick={() => scrollTo("about")}>
-            <span className="bubble">
-              <svg viewBox="0 0 24 24" width="46" height="46" fill="none" stroke="#fff" strokeWidth="1.7"
-                strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="8" cy="8" r="3" /><circle cx="16" cy="8" r="3" />
-                <path d="M2 20c0-3 2.5-5 6-5s6 2 6 5" /><path d="M14 15c3 0 6 2 6 5" />
-              </svg>
-            </span>
-            <span className="lbl">Tentang</span>
-          </button>
-
-          <Link className="menu-item" to="/dashboard">
-            <span className="bubble">
-              <svg viewBox="0 0 24 24" width="46" height="46" fill="none" stroke="#fff" strokeWidth="1.7"
-                strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 5h7v14H4z" /><path d="M13 5h7v14h-7z" /><path d="M15 9h3M15 12h3" />
-                <circle cx="9" cy="9" r="1.4" />
-              </svg>
-            </span>
-            <span className="lbl">Program</span>
-          </Link>
+        <nav className="landing-cards" aria-label="Pilih dashboard">
+          {DASHBOARDS.map((d) => (
+            <Link key={d.key} to={d.to} className="dash-card">
+              <span className="dash-card-ic"><Icon name={d.icon} size={26} /></span>
+              <span className="dash-card-txt">
+                <b>{d.label}</b>
+                <span>{d.desc}</span>
+              </span>
+              <span className="dash-card-go">{session?.token ? "Buka dashboard" : "Masuk"}<Icon name="right" size={16} /></span>
+            </Link>
+          ))}
         </nav>
+      </main>
 
-        <div className="batik" />
-      </section>
-
-      {/* ================= ABOUT ================= */}
-      <section className="section" id="about">
-        <h2>Tentang DITSAMA</h2>
-        <p>
-          Direktorat Persiapan Bersama (DPB) Institut Teknologi Bandung menaungi program
-          persiapan pra-universitas DITSAMA. Dashboard ini digunakan untuk memantau
-          performa portofolio setiap program: SIAP, INSPIRASI EduQuest, dan INSPIRASI
-          Sang Cendekia.
-        </p>
-        <p className="muted">
-          (Silakan ganti teks ini dengan deskripsi resmi DITSAMA — visi, misi, dan
-          cakupan program.)
-        </p>
-        <a className="btn-back" href="#top" onClick={(e) => { e.preventDefault(); scrollTo("top"); }}>↑ Kembali ke atas</a>
-      </section>
-
-      {/* ================= LAYANAN (placeholder) ================= */}
-      <section className="section alt" id="layanan">
-        <h2>Layanan</h2>
-        <p className="muted">Bagian ini akan diisi kemudian.</p>
-      </section>
-
-      <footer className="foot">© DITSAMA · Institut Teknologi Bandung</footer>
-    </>
+      <footer className="landing-foot">© 2026 Direktorat Persiapan Bersama · Institut Teknologi Bandung</footer>
+    </div>
   );
 }
