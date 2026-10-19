@@ -68,14 +68,14 @@ function PortfolioPage() {
           </div>
 
           <RekapPeserta program={shown?.api} programLabel={shown?.label} />
+          <ParticipantAnalysis a={d.participantAnalysis}
+            rekapTotal={dash.program === "Semua" && dash.month === "Semua" ? REKAP_PESERTA.reduce((s, r) => s + r.value, 0) : null} />
 
           <div className="grid g-2">
             <Issues items={d.issues} />
             <Milestones items={d.milestones} calendar={d.calendar} />
           </div>
 
-          <ParticipantAnalysis a={d.participantAnalysis}
-            rekapTotal={dash.program === "Semua" && dash.month === "Semua" ? REKAP_PESERTA.reduce((s, r) => s + r.value, 0) : null} />
           <Capaian cap={d.capaian} />
 
           <div className="grid g-2">
