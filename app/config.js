@@ -51,6 +51,7 @@ export const FIN_PROGRAMS = [
   { api: "wit",                label: "WIT" },
   { api: "maung",              label: "MAUNG" },
   { api: "sugt",               label: "SUGT" },
+  { api: "freeport",           label: "Freeport" },
 ];
 
 // Jabatan (role) -> label tampilan. Program yang dipegang dipilih terpisah saat daftar (khusus PIC).
