@@ -158,7 +158,7 @@ export const KPI = {
     title: "Total Pendaftaran",
     arti: "Total peserta terdaftar.",
     rumus: "Jumlah peserta terdaftar dari semua kategori di semua kegiatan.",
-    catatan: "Ikut filter Program & Bulan saja.",
+    catatan: "Ikut filter Program & Bulan saja. Sementara, bila Program dan Bulan = Semua, angka ini memakai total rekap kepesertaan (2.102 terlayani + 6.380 rencana = 8.482); % Kehadiran tetap dihitung dari data kegiatan.",
   },
   totalPresent: {
     title: "Total Kehadiran",
