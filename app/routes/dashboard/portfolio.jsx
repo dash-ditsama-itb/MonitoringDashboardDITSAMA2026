@@ -8,6 +8,7 @@ import { InfoTip } from "../../components/InfoTip.jsx";
 import {
   isProgramDone, lastPerformed, Performance, ProgramProgress, programStatus, ProgressSummary,
 } from "../../components/ProgressSummary.jsx";
+import { RekapPeserta } from "../../components/RekapPeserta.jsx";
 import { isSugtDone, SUGT_PROGRAM, sugtFeedback, SugtPanel, sugtStatus, sugtUnits } from "../../components/Sugt.jsx";
 import {
   Bar, EmptyState, ErrorNote, LevelBadge, PageHead, ProgramAbout, SeeMore, Sheet, SkeletonCard,
@@ -65,6 +66,8 @@ function PortfolioPage() {
               title={"Performa kegiatan " + (shown ? shown.label : "semua program")} />
             <PortfolioList items={d.portfolio} sugt={d.sugt} program={shown} />
           </div>
+
+          <RekapPeserta program={shown?.api} programLabel={shown?.label} />
 
           <div className="grid g-2">
             <Issues items={d.issues} />

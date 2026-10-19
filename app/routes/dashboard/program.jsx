@@ -9,6 +9,7 @@ import { InfoTip } from "../../components/InfoTip.jsx";
 import { lastPerformed, ProgramProgress } from "../../components/ProgressSummary.jsx";
 import { ErrorNote, PageHead, ProgramAbout, SkeletonCard, Spinner } from "../../components/ui.jsx";
 import { canEditActivity, fmtDate, phaseLabel, programByKey, PROG_COLORS } from "../../lib/format.js";
+import { RekapPeserta } from "../../components/RekapPeserta.jsx";
 import { PHASES } from "../../config.js";
 import { useAuthStore } from "../../stores/auth.js";
 import { useApi } from "../../stores/data.js";
@@ -54,6 +55,7 @@ function ProgramPage({ loaderData }) {
           </section>
         </>
       )}
+      <RekapPeserta program={program.api} programLabel={program.label} />
       <ActivitiesTable fixedProgram={program.api} title={"Kegiatan " + program.label} />
     </div>
   );

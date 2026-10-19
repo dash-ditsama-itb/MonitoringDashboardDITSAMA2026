@@ -5,6 +5,7 @@ import { useApi } from "../stores/data.js";
 import { Icon } from "./Icon.jsx";
 import { InfoTip } from "./InfoTip.jsx";
 import { Performance } from "./ProgressSummary.jsx";
+import { RekapPeserta } from "./RekapPeserta.jsx";
 import { Bar, EmptyState, ErrorNote, PageHead, SkeletonCard, Spinner } from "./ui.jsx";
 
 // nilai filter Program di Portofolio Program untuk menampilkan SUGT
@@ -145,6 +146,7 @@ export function SugtPanel() {
           </div>
         </>
       )}
+      <RekapPeserta program="sugt" programLabel="SUGT" />
     </>
   );
 }
