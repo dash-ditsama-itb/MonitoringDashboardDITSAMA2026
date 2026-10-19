@@ -588,6 +588,27 @@ dialog.confirm[open]{animation:pop .2s var(--ease)}
   .port-score small,.port-perf small{display:block;font-size:11.5px;font-weight:600;color:var(--muted);min-width:56px}
   .port-slim{display:none}
 }
+/* rekap kepesertaan: batang horizontal per program */
+.rp-legend{display:flex;flex-wrap:wrap;gap:6px 18px;margin:0 0 6px;font-size:12.5px;color:var(--ink-2)}
+.rp-legend span{display:inline-flex;align-items:center;gap:6px}
+.rp-legend i{width:14px;height:10px;border-radius:3px;background:var(--blue)}
+.rp-legend i.pks,.rp-bar.pks span{background:repeating-linear-gradient(135deg,var(--blue) 0 3px,#fff 3px 6px);box-shadow:inset 0 0 0 1.5px var(--blue)}
+.rp-sec h3{display:flex;justify-content:space-between;gap:10px;margin:12px 0 6px;font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.rp-sec h3 small{text-transform:none;letter-spacing:0;font-weight:600}
+.rp-row{display:grid;grid-template-columns:150px minmax(0,1fr);align-items:center;gap:12px;padding:5px 0}
+.rp-name{font-size:13px;font-weight:700;color:var(--ink);text-align:right;line-height:1.25}
+.rp-name small{display:block;font-size:11.5px;font-weight:600;color:var(--muted)}
+.rp-bars{position:relative}
+.rp-grid i{position:absolute;top:-5px;bottom:-5px;border-left:1px dashed var(--line)}
+.rp-bar{position:relative;display:flex;align-items:center;gap:8px;height:20px}
+.rp-bar span{display:block;height:100%;min-width:2px;border-radius:0 4px 4px 0;background:var(--blue)}
+.rp-bar b{font-size:12.5px;color:var(--navy);font-variant-numeric:tabular-nums;white-space:nowrap}
+.rp-axis{display:grid;grid-template-columns:150px minmax(0,1fr);gap:12px;margin-top:2px}
+.rp-ticks{position:relative;height:20px;border-top:1px solid var(--line-2)}
+.rp-ticks span{position:absolute;top:0;height:5px;border-left:1px solid var(--line-2)}
+.rp-ticks em{position:absolute;top:5px;transform:translateX(-50%);font-size:11px;font-style:normal;color:var(--muted);white-space:nowrap}
+.rp-note{margin:10px 0 0;font-size:12px;color:var(--muted);line-height:1.5}
+@container (max-width:460px){ .rp-row,.rp-axis{grid-template-columns:96px minmax(0,1fr);gap:8px} .rp-name{font-size:12.5px} }
 .lv-counts{display:flex;gap:4px}
 .issue-row{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;text-align:left;border:1px solid var(--line);
   background:#fff;border-radius:var(--r);padding:9px 12px;margin-bottom:8px;cursor:pointer;transition:border-color .15s,background .15s}

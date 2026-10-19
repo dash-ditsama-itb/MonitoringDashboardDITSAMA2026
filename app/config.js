@@ -90,3 +90,15 @@ export const PKS_TYPES = [["Pm", "Pm", 10], ["Pd", "Pd", 20], ["DP", "DP · dana
 export const SUGT_URL = "https://internal.sugtitb.com";
 // PIC program SUGT (tampil di Kinerja Portofolio Program; data SUGT tidak membawa nama PIC)
 export const SUGT_PIC = "Aziz Satrio";
+
+// Rekap kepesertaan per program (sementara ditulis tetap di sini). `programs` = kode program yang
+// tercakup baris itu; Riset, OPSI, dan OSN direkap bersama. Status: "Terlayani" atau "Proses PKS".
+export const REKAP_PESERTA = [
+  { label: "Riset + OPSI + OSN", programs: ["riset", "opsi", "osn"], value: 1295, status: "Terlayani" },
+  { label: "SIAP",               programs: ["siap_itb"],             value: 697,  status: "Terlayani" },
+  { label: "BTI",                programs: ["bti"],                  value: 60,   status: "Terlayani" },
+  { label: "EduQuest",           programs: ["inspirasi_eduquest"],   value: 42,   status: "Terlayani" },
+  { label: "Inspirasi",          programs: ["inspirasi_scd"],        value: 8,    status: "Terlayani" },
+  { label: "SUGT",               programs: ["sugt"],                 value: 5880, status: "Proses PKS" },
+  { label: "WIT",                programs: ["wit"],                  value: 500,  status: "Proses PKS" },
+];
