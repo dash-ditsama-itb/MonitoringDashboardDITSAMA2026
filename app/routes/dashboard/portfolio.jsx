@@ -13,7 +13,7 @@ import { isSugtDone, SUGT_PROGRAM, sugtFeedback, SugtPanel, sugtStatus, sugtUnit
 import {
   Bar, EmptyState, ErrorNote, LevelBadge, PageHead, ProgramAbout, SeeMore, Sheet, SkeletonCard,
 } from "../../components/ui.jsx";
-import { PROGRAMS, SUGT_PIC, TOTAL_PROGRAMS } from "../../config.js";
+import { PROGRAMS, REKAP_PESERTA, SUGT_PIC, TOTAL_PROGRAMS } from "../../config.js";
 import { byLabel, canSeeActivities, fmtDate, fmtNum, pct, phaseLabel, progColor, PROGRAMS_AZ, withoutAll } from "../../lib/format.js";
 import { useAuthStore } from "../../stores/auth.js";
 import { useApi } from "../../stores/data.js";
@@ -74,7 +74,8 @@ function PortfolioPage() {
             <Milestones items={d.milestones} calendar={d.calendar} />
           </div>
 
-          <ParticipantAnalysis a={d.participantAnalysis} />
+          <ParticipantAnalysis a={d.participantAnalysis}
+            rekapTotal={dash.program === "Semua" && dash.month === "Semua" ? REKAP_PESERTA.reduce((s, r) => s + r.value, 0) : null} />
           <Capaian cap={d.capaian} />
 
           <div className="grid g-2">
@@ -261,7 +262,8 @@ function Milestones({ items, calendar }) {
   );
 }
 
-function ParticipantAnalysis({ a }) {
+// rekapTotal: sementara, tanpa filter Program & Bulan, Total Pendaftaran memakai total rekap kepesertaan
+function ParticipantAnalysis({ a, rekapTotal }) {
   const per = a.attendancePerActivity.filter((x) => x.registered > 0);
   const chart = useMemo(() => ({
     type: "bar",
@@ -288,7 +290,8 @@ function ParticipantAnalysis({ a }) {
       <div className="card-head"><div><h2 className="card-title">Analisis Peserta</h2><div className="card-sub">Pendaftaran &amp; kehadiran (ikut filter program &amp; bulan)</div></div></div>
       <div className="stat-row">
         <div><span>Jumlah Aktivitas<InfoTip k="totalActivities" /></span><b>{fmtNum(a.totalActivities)}</b></div>
-        <div><span>Total Pendaftaran<InfoTip k="totalRegistered" /></span><b>{fmtNum(a.totalRegistered)}</b></div>
+        <div><span>Total Pendaftaran<InfoTip k="totalRegistered" /></span><b>{fmtNum(rekapTotal ?? a.totalRegistered)}</b>
+          {rekapTotal != null && <small className="stat-hint">sesuai rekap kepesertaan</small>}</div>
         <div><span>Total Kehadiran<InfoTip k="totalPresent" /></span><b>{fmtNum(a.totalPresent)}</b></div>
         <div><span>% Kehadiran (tertimbang)<InfoTip k="weightedAttendance" /></span><b>{a.attendancePercentage}%</b></div>
       </div>
