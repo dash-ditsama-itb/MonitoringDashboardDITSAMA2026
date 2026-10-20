@@ -26,6 +26,37 @@ function IdxChip({ ix }) {
   return ix ? <span className={"idx-chip" + (LOW[ix] ? " low" : "")}>{ix}</span> : null;
 }
 
+// judul + nama program yang sedang dilihat (mis. "Sebaran provinsi Eduquest")
+const Scoped = ({ title, scope }) => <>{title} <span className="title-prog">{scope}</span></>;
+
+// filter Program di sini memakai nama dari spreadsheet (mis. "SIAP ITB", "Eduquest");
+// dicocokkan ke label/kode program dashboard atau ke nama baris rekap
+const norm = (s) => String(s || "").toLowerCase().replace(/[\s_-]+/g, " ").trim();
+function rekapProgramApi(name) {
+  const n = norm(name);
+  const p = PROGRAMS.find((x) => [x.label, x.key, x.api, x.label.replace(/^inspirasi\s+/i, "")].some((v) => norm(v) === n));
+  return p?.api ?? REKAP_PESERTA.find((r) => norm(r.label) === n)?.programs[0];
+}
+
+function KpiRow({ d, scope, rekapTotal }) {
+  const graded = d.kpi.gradedCount > 0;
+  const lab = (t) => <>{t}<span className="kpi-prog">{scope}</span></>;
+  const items = [
+    // sementara: tanpa filter, Total peserta = total rekap kepesertaan (seperti Portofolio Program)
+    <Kpi key="tot" label={lab("Total peserta")} icon="users" value={fmtNum(rekapTotal ?? d.kpi.totalParticipants)}
+      hint={rekapTotal != null ? "sesuai rekap kepesertaan" : undefined} />,
+    <Kpi key="prov" label={lab("Provinsi")} value={fmtNum(d.kpi.totalProvinces)} icon="pin" />,
+    <Kpi key="sek" label={lab("Sekolah / instansi")} value={fmtNum(d.kpi.totalSchools)} icon="building" />,
+    <Kpi key="ujian" label={lab("Ujian bernilai")} icon="clipboard" hint={graded ? undefined : "belum ada ujian yang dinilai"}
+      value={d.kpi.totalExamsWithData + (d.kpi.totalExams > d.kpi.totalExamsWithData ? " / " + d.kpi.totalExams : "")} />,
+    // belum ada nilai: rata-rata & sudah dinilai disembunyikan
+    graded && <Kpi key="avg" label={lab("Rata-rata · " + (d.kpi.selectedExamLabel || "–"))} icon="target"
+      value={d.kpi.averageScore == null ? "–" : Number(d.kpi.averageScore).toLocaleString("id-ID", { maximumFractionDigits: 1 })} />,
+    graded && <Kpi key="done" label={lab("Sudah dinilai")} value={fmtNum(d.kpi.gradedCount)} hint={`dari ${fmtNum(d.kpi.totalParticipants)} peserta`} icon="checkCircle" />,
+  ].filter(Boolean);
+  return <div className={"kpi-row" + (items.length === 6 ? " six" : items.length === 5 ? " five" : "")}>{items}</div>;
+}
+
 export default function Peserta() {
   return <RequireAccess area="activities" page="Peserta"><PesertaPage /></RequireAccess>;
 }
@@ -41,8 +72,8 @@ function PesertaPage() {
   const setFilter = (k, v) => patch("pst", { [k]: v, page: 1 });
   const active = FILTERS.some(([k]) => ui[k] !== ALL) || ui.ujian !== "__LAST__";
   const noFilter = FILTERS.every(([k]) => ui[k] === ALL);
-  // filter Program di sini memakai label program (mis. "SIAP ITB")
-  const rekapProgram = PROGRAMS.find((p) => p.label.toLowerCase() === String(ui.program).toLowerCase());
+  // nama program yang sedang dilihat, ditulis di setiap judul kartu & grafik
+  const scope = ui.program === ALL ? "semua program" : ui.program;
   const [busy, setBusy] = useState(false);
   const refresh = async () => { setBusy(true); await dash.reload({ refresh: true }); setBusy(false); };
 
@@ -74,28 +105,20 @@ function PesertaPage() {
         </>
       ) : (
         <>
-          <div className="kpi-row six">
-            {/* sementara: tanpa filter, Total peserta = total rekap kepesertaan (seperti Portofolio Program) */}
-            <Kpi label="Total peserta" icon="users" value={fmtNum(noFilter ? REKAP_TOTAL : d.kpi.totalParticipants)}
-              hint={noFilter ? "sesuai rekap kepesertaan" : undefined} />
-            <Kpi label="Provinsi" value={fmtNum(d.kpi.totalProvinces)} icon="pin" />
-            <Kpi label="Sekolah / instansi" value={fmtNum(d.kpi.totalSchools)} icon="building" />
-            <Kpi label="Ujian bernilai" value={d.kpi.totalExamsWithData + (d.kpi.totalExams > d.kpi.totalExamsWithData ? " / " + d.kpi.totalExams : "")} icon="clipboard" />
-            <Kpi label={"Rata-rata · " + (d.kpi.selectedExamLabel || "–")} value={d.kpi.averageScore == null ? "–" : Number(d.kpi.averageScore).toLocaleString("id-ID", { maximumFractionDigits: 1 })} icon="target" />
-            <Kpi label="Sudah dinilai" value={fmtNum(d.kpi.gradedCount)} hint={`dari ${fmtNum(d.kpi.totalParticipants)} peserta`} icon="checkCircle" />
-          </div>
-          <RekapPeserta program={ui.program === ALL ? undefined : rekapProgram?.api ?? "-"} programLabel={ui.program === ALL ? undefined : ui.program} />
-          <Charts d={d} />
-          <Ranking d={d} sort={ui.rankingSortBy} onSort={(v) => patch("pst", { rankingSortBy: v })} showAll={ui.rankAll} onToggle={() => patch("pst", { rankAll: !ui.rankAll })} />
-          <Schools d={d} />
+          <KpiRow d={d} scope={scope} rekapTotal={noFilter ? REKAP_TOTAL : null} />
+          <RekapPeserta program={ui.program === ALL ? undefined : rekapProgramApi(ui.program) ?? "-"} scope={scope} hideEmpty />
+          <Charts d={d} scope={scope} />
+          {/* belum ada nilai sama sekali untuk filter ini: peringkat disembunyikan */}
+          {d.kpi.gradedCount > 0 && <Ranking d={d} scope={scope} sort={ui.rankingSortBy} onSort={(v) => patch("pst", { rankingSortBy: v })} showAll={ui.rankAll} onToggle={() => patch("pst", { rankAll: !ui.rankAll })} />}
+          {d.schools.length > 0 && <Schools d={d} scope={scope} />}
         </>
       )}
-      <Participants query={query} exams={fo?.ujians || []} />
+      <Participants query={query} exams={fo?.ujians || []} scope={scope} />
     </div>
   );
 }
 
-function Charts({ d }) {
+function Charts({ d, scope }) {
   const c = useMemo(() => {
     const sel = d.kpi.selectedExamKey;
     const trend = {
@@ -126,30 +149,30 @@ function Charts({ d }) {
     return { trend, idx, prov: top(d.charts.topProvinces), fak: top(d.charts.topFaculties) };
   }, [d]);
   const card = (title, sub, cfg, h) => (
-    <section className="card"><div className="card-head"><div><h2 className="card-title">{title}</h2><div className="card-sub">{sub}</div></div></div><ChartCanvas config={cfg} height={h} /></section>
+    <section className="card" key={title}><div className="card-head"><div><h2 className="card-title"><Scoped title={title} scope={scope} /></h2><div className="card-sub">{sub}</div></div></div><ChartCanvas config={cfg} height={h} /></section>
   );
-  return (
-    <>
-      <div className="grid g-2">
-        {card("Perkembangan nilai akhir", "Rata-rata nilai per tanggal ujian; batang gelap = ujian terpilih", c.trend, 240)}
-        {card("Distribusi indeks", "Jumlah peserta per indeks · ujian " + (d.kpi.selectedExamLabel || "–") + " (oranye = C ke bawah)", c.idx, 240)}
-      </div>
-      <div className="grid g-2">
-        {card("Sebaran provinsi", "10 provinsi terbanyak", c.prov, 300)}
-        {card("Fakultas / jurusan", "10 terbanyak", c.fak, 300)}
-      </div>
-    </>
-  );
+  // grafik tanpa data untuk filter ini tidak ditampilkan; sisanya tetap berpasangan dua kolom
+  const rows = [
+    [
+      d.charts.scoreTrend.some((x) => x.averageScore != null) && card("Perkembangan nilai akhir", "Rata-rata nilai per tanggal ujian; batang gelap = ujian terpilih", c.trend, 240),
+      d.charts.indexDistribution.some((x) => x.count > 0) && card("Distribusi indeks", "Jumlah peserta per indeks · ujian " + (d.kpi.selectedExamLabel || "–") + " (oranye = C ke bawah)", c.idx, 240),
+    ],
+    [
+      d.charts.topProvinces.length > 0 && card("Sebaran provinsi", "10 provinsi terbanyak", c.prov, 300),
+      d.charts.topFaculties.length > 0 && card("Fakultas / jurusan", "10 terbanyak", c.fak, 300),
+    ],
+  ].map((r) => r.filter(Boolean)).filter((r) => r.length);
+  return rows.map((r, i) => (r.length > 1 ? <div className="grid g-2" key={i}>{r}</div> : r[0]));
 }
 
-function Ranking({ d, sort, onSort, showAll, onToggle }) {
+function Ranking({ d, scope, sort, onSort, showAll, onToggle }) {
   const list = d.rankings;
   const shown = showAll ? list : list.slice(0, 10);
   const metric = { ujian: "Nilai " + (d.kpi.selectedExamLabel || ""), rata: "Rata-rata", naik: "Kenaikan" }[sort];
   return (
     <section className="card">
       <div className="card-head">
-        <div><h2 className="card-title">Peringkat peserta</h2><div className="card-sub">{list.length ? `${list.length} peserta punya nilai untuk urutan ini` + (sort === "naik" ? " (minimal 2 ujian)" : "") : "Belum ada peserta dengan nilai untuk urutan ini"}</div></div>
+        <div><h2 className="card-title"><Scoped title="Peringkat peserta" scope={scope} /></h2><div className="card-sub">{list.length ? `${list.length} peserta punya nilai untuk urutan ini` + (sort === "naik" ? " (minimal 2 ujian)" : "") : "Belum ada peserta dengan nilai untuk urutan ini"}</div></div>
         <Segmented label="Urutkan peringkat" value={sort} onChange={onSort} options={SORTS} />
       </div>
       {!list.length ? <div className="empty-inline">Pilih ujian lain atau urutan lain.</div> : (
@@ -170,7 +193,7 @@ function Ranking({ d, sort, onSort, showAll, onToggle }) {
   );
 }
 
-function Schools({ d }) {
+function Schools({ d, scope }) {
   const { schoolSearch: q, sekAll } = useUiStore((s) => s.pst);
   const patch = useUiStore((s) => s.patch);
   const ql = q.trim().toLowerCase();
@@ -179,7 +202,7 @@ function Schools({ d }) {
   return (
     <section className="card">
       <div className="card-head">
-        <div><h2 className="card-title">Sebaran sekolah</h2><div className="card-sub">{d.schools.length} sekolah/instansi{ql && ` · ${list.length} cocok`}</div></div>
+        <div><h2 className="card-title"><Scoped title="Sebaran sekolah" scope={scope} /></h2><div className="card-sub">{d.schools.length} sekolah/instansi{ql && ` · ${list.length} cocok`}</div></div>
         <div className="search compact"><Icon name="search" size={16} />
           <input type="search" placeholder="Cari sekolah atau provinsi" aria-label="Cari sekolah" value={q} onChange={(e) => patch("pst", { schoolSearch: e.target.value })} /></div>
       </div>
@@ -204,7 +227,7 @@ function Schools({ d }) {
   );
 }
 
-function Participants({ query, exams }) {
+function Participants({ query, exams, scope }) {
   const ui = useUiStore((s) => s.pst);
   const patch = useUiStore((s) => s.patch);
   const { data, error, loading, reload } = useApi("/peserta/participants", { ...query, search: ui.search, page: ui.page, perPage: ui.perPage });
@@ -215,7 +238,7 @@ function Participants({ query, exams }) {
   ));
   return (
     <section className="card tbl-card">
-      <div className="tbl-head"><div><h2 className="card-title">Daftar peserta</h2>
+      <div className="tbl-head"><div><h2 className="card-title"><Scoped title="Daftar peserta" scope={scope} /></h2>
         <div className="card-sub">{data?.pagination ? fmtNum(data.pagination.totalRecords) + " peserta sesuai filter" : "Memuat…"}</div></div></div>
       <div className="tbl-toolbar">
         <SearchInput value={ui.search} onChange={(v) => patch("pst", { search: v, page: 1 })} placeholder="Cari nama, sekolah, atau kelompok" />
