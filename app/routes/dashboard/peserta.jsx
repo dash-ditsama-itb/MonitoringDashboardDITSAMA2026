@@ -26,6 +26,12 @@ function IdxChip({ ix }) {
   return ix ? <span className={"idx-chip" + (LOW[ix] ? " low" : "")}>{ix}</span> : null;
 }
 
+// sheet BTI tidak punya Skema/Tipe: isinya bidang pelatihan & peran (Murid/Pemandu)
+const BTI_LABELS = { skema: "Bidang pelatihan", tipe: "Peran" };
+const MIXED_LABELS = { skema: "Skema / bidang", tipe: "Tipe / peran" };
+const filterLabel = (k, label, program) =>
+  (program === ALL ? MIXED_LABELS[k] : /^bti$/i.test(String(program).trim()) ? BTI_LABELS[k] : null) || label;
+
 // judul + nama program yang sedang dilihat (mis. "Sebaran provinsi Eduquest")
 const Scoped = ({ title, scope }) => <>{title} <span className="title-prog">{scope}</span></>;
 
@@ -38,23 +44,85 @@ function rekapProgramApi(name) {
   return p?.api ?? REKAP_PESERTA.find((r) => norm(r.label) === n)?.programs[0];
 }
 
+// data profil (mis. Peserta_BTI) dipakai bila diisi hampir semua peserta yang sedang dilihat,
+// supaya angka gabungan "semua program" tidak tampil seolah mewakili semua peserta
+const covers = (d, n) => n > 0 && n >= 0.9 * d.kpi.totalParticipants;
+
 function KpiRow({ d, scope, rekapTotal }) {
   const graded = d.kpi.gradedCount > 0;
+  const prof = d.profile;
+  const roles = prof && covers(d, prof.answered.role) ? prof.roles.slice(0, 3) : [];
   const lab = (t) => <>{t}<span className="kpi-prog">{scope}</span></>;
   const items = [
     // sementara: tanpa filter, Total peserta = total rekap kepesertaan (seperti Portofolio Program)
     <Kpi key="tot" label={lab("Total peserta")} icon="users" value={fmtNum(rekapTotal ?? d.kpi.totalParticipants)}
       hint={rekapTotal != null ? "sesuai rekap kepesertaan" : undefined} />,
+    ...roles.map((r) => <Kpi key={"role-" + r.name} label={lab(r.name)} icon="user" value={fmtNum(r.count)}
+      hint={prof.fields.find((f) => f.roles.length === 1 && f.roles[0].name === r.name)?.name} />),
     <Kpi key="prov" label={lab("Provinsi")} value={fmtNum(d.kpi.totalProvinces)} icon="pin" />,
+    prof && covers(d, prof.answered.regency) && <Kpi key="kab" label={lab("Kab./Kota")} value={fmtNum(prof.totalRegencies)} icon="pin" />,
     <Kpi key="sek" label={lab("Sekolah / instansi")} value={fmtNum(d.kpi.totalSchools)} icon="building" />,
-    <Kpi key="ujian" label={lab("Ujian bernilai")} icon="clipboard" hint={graded ? undefined : "belum ada ujian yang dinilai"}
+    // sheet profil tanpa kolom nilai (mis. BTI): kartu ujian tidak relevan
+    (graded || !roles.length) && <Kpi key="ujian" label={lab("Ujian bernilai")} icon="clipboard" hint={graded ? undefined : "belum ada ujian yang dinilai"}
       value={d.kpi.totalExamsWithData + (d.kpi.totalExams > d.kpi.totalExamsWithData ? " / " + d.kpi.totalExams : "")} />,
     // belum ada nilai: rata-rata & sudah dinilai disembunyikan
     graded && <Kpi key="avg" label={lab("Rata-rata · " + (d.kpi.selectedExamLabel || "–"))} icon="target"
       value={d.kpi.averageScore == null ? "–" : Number(d.kpi.averageScore).toLocaleString("id-ID", { maximumFractionDigits: 1 })} />,
     graded && <Kpi key="done" label={lab("Sudah dinilai")} value={fmtNum(d.kpi.gradedCount)} hint={`dari ${fmtNum(d.kpi.totalParticipants)} peserta`} icon="checkCircle" />,
   ].filter(Boolean);
-  return <div className={"kpi-row" + (items.length === 6 ? " six" : items.length === 5 ? " five" : "")}>{items}</div>;
+  return <div className={"kpi-row" + (items.length >= 6 ? " six" : items.length === 5 ? " five" : "")}>{items}</div>;
+}
+
+const ROLE_COLORS = { Murid: "#3a6db0", Pemandu: "#E08A2E" };
+const roleColor = (name, i) => ROLE_COLORS[name] || ["#3a6db0", "#E08A2E", "#16A34A", "#8B5CF6"][i % 4];
+// "Kecerdasan Artifisial & Penguatan Karakter" -> dua baris label
+const twoLines = (s) => String(s).split(/ (?=(?:dan|&) )/);
+
+/** Profil peserta dari kolom tambahan sheet (mis. Peserta_BTI): bidang × peran, jenis kelamin, ukuran kaos, kesehatan. */
+function Profile({ d, scope }) {
+  const p = d.profile;
+  const charts = useMemo(() => {
+    if (!p) return null;
+    const roleNames = [...new Set(p.fields.flatMap((f) => f.roles.map((r) => r.name)))];
+    const stackedY = { indexAxis: "y", responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: "top", align: "end" } },
+      scales: { x: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }, y: { stacked: true, grid: { display: false } } } };
+    const fields = { type: "bar", options: stackedY,
+      data: { labels: p.fields.map((f) => twoLines(f.name)),
+        datasets: roleNames.map((r, i) => ({ label: r, backgroundColor: roleColor(r, i), borderRadius: 4, maxBarThickness: 34,
+          data: p.fields.map((f) => f.roles.find((x) => x.name === r)?.count ?? 0) })) } };
+    const rows = p.genderByRole.length > 1
+      ? [...p.genderByRole, { role: "Total", female: p.genderByRole.reduce((s, g) => s + g.female, 0), male: p.genderByRole.reduce((s, g) => s + g.male, 0) }]
+      : p.genderByRole;
+    const gender = { type: "bar", options: stackedY,
+      data: { labels: rows.map((g) => g.role),
+        datasets: [{ label: "Perempuan", data: rows.map((g) => g.female), backgroundColor: "#1baf7a", borderRadius: 4, maxBarThickness: 30 },
+          { label: "Laki-laki", data: rows.map((g) => g.male), backgroundColor: "#6250d6", borderRadius: 4, maxBarThickness: 30 }] } };
+    const shirt = { type: "bar",
+      data: { labels: p.shirtSizes.map((s) => s.size), datasets: [{ label: "Peserta", data: p.shirtSizes.map((s) => s.count), backgroundColor: "#3a6db0", borderRadius: 4, maxBarThickness: 48 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+        scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { precision: 0 } } } } };
+    return { fields, gender, shirt };
+  }, [p]);
+  if (!p || !charts) return null;
+  const card = (title, sub, body) => (
+    <section className="card" key={title}><div className="card-head"><div><h2 className="card-title"><Scoped title={title} scope={scope} /></h2>
+      <div className="card-sub">{sub}</div></div></div>{body}</section>
+  );
+  const cards = [
+    covers(d, p.answered.field) && card("Peserta per bidang pelatihan", "Dipecah per peran", <ChartCanvas config={charts.fields} height={Math.max(150, p.fields.length * 70 + 50)} />),
+    covers(d, p.answered.gender) && card("Jenis kelamin per peran", "P = perempuan, L = laki-laki", <ChartCanvas config={charts.gender} height={Math.max(150, (p.genderByRole.length + 1) * 52 + 50)} />),
+    covers(d, p.answered.shirtSize) && card("Ukuran kaos", "Untuk kebutuhan logistik", <ChartCanvas config={charts.shirt} height={220} />),
+    // hanya jumlah, tanpa nama dan tanpa jenis penyakit
+    covers(d, p.answered.health) && card("Catatan kesehatan", "Hanya jumlah, tanpa nama, untuk persiapan pendampingan",
+      <div className="stat-row health-row">
+        <div><span>Riwayat penyakit</span><b>{fmtNum(p.health.withIllness)}</b><small className="stat-hint">peserta</small></div>
+        <div><span>Riwayat alergi</span><b>{fmtNum(p.health.withAllergy)}</b><small className="stat-hint">peserta</small></div>
+      </div>),
+  ].filter(Boolean);
+  const pairs = [];
+  for (let i = 0; i < cards.length; i += 2) pairs.push(cards.slice(i, i + 2));
+  return pairs.map((r, i) => (r.length > 1 ? <div className="grid g-2" key={i}>{r}</div> : r[0]));
 }
 
 export default function Peserta() {
@@ -88,7 +156,7 @@ function PesertaPage() {
       <section className="card filter-bar">
         {FILTERS.map(([k, optKey, label]) => {
           const list = fo?.[optKey] || [];
-          return <SelectField key={k} label={label} value={list.includes(ui[k]) ? ui[k] : ALL} options={[ALL, ...list]} onChange={(v) => setFilter(k, v)} />;
+          return <SelectField key={k} label={filterLabel(k, label, ui.program)} value={list.includes(ui[k]) ? ui[k] : ALL} options={[ALL, ...list]} onChange={(v) => setFilter(k, v)} />;
         })}
         <SelectField label="Ujian" value={ui.ujian} onChange={(v) => setFilter("ujian", v)}
           options={[["__LAST__", "Terbaru yang sudah dinilai"], ...[...(fo?.ujians || [])].reverse().map((u) => [u.key, u.label])]} />
@@ -107,6 +175,7 @@ function PesertaPage() {
         <>
           <KpiRow d={d} scope={scope} rekapTotal={noFilter ? REKAP_TOTAL : null} />
           <RekapPeserta program={ui.program === ALL ? undefined : rekapProgramApi(ui.program) ?? "-"} scope={scope} hideEmpty />
+          <Profile d={d} scope={scope} />
           <Charts d={d} scope={scope} />
           {/* belum ada nilai sama sekali untuk filter ini: peringkat disembunyikan */}
           {d.kpi.gradedCount > 0 && <Ranking d={d} scope={scope} sort={ui.rankingSortBy} onSort={(v) => patch("pst", { rankingSortBy: v })} showAll={ui.rankAll} onToggle={() => patch("pst", { rankAll: !ui.rankAll })} />}
@@ -253,8 +322,9 @@ function Participants({ query, exams, scope }) {
             <tbody>{rows.map((p, i) => (
               <tr key={i} onClick={() => setOpen(p)}>
                 <td><button type="button" className="row-link" onClick={(e) => { e.stopPropagation(); setOpen(p); }}>{p.nama}</button>
-                  <div className="row-meta"><span>{p.sekolah || "–"}</span>{p.provinsi && <span>{p.provinsi}</span>}</div></td>
-                <td><div>{p.program}{p.periode && <span className="muted"> · P{p.periode}</span>}</div><div className="row-meta"><span className="trunc">{p.aktivitas}</span></div></td>
+                  <div className="row-meta"><span>{p.sekolah || "–"}</span>{p.kabupaten && <span>{p.kabupaten}</span>}{p.provinsi && <span>{p.provinsi}</span>}</div></td>
+                <td><div>{p.program}{p.periode && <span className="muted"> · P{p.periode}</span>}</div>
+                  <div className="row-meta"><span className="trunc">{[p.peran, p.bidang].filter(Boolean).join(" · ") || p.aktivitas}</span></div></td>
                 <td className="c-fak">{p.fakultas || <span className="muted">–</span>}</td>
                 <td className="c-kel">{p.kelompok || <span className="muted">–</span>}</td>
                 <td><div className="scores">{scoreChips(p).length ? scoreChips(p) : <span className="muted">Belum ada nilai</span>}</div></td>
