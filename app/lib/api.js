@@ -25,6 +25,13 @@ const MESSAGES = {
   "Invalid code passed. Check your inbox.": "Kode salah. Periksa lagi email Anda.",
   "New password cannot be the same with the old password.": "Password baru tidak boleh sama dengan password lama.",
   "Please restart the process.": "Sesi masuk dengan Akun ITB berakhir. Silakan ulangi masuk dengan Akun ITB.",
+  "Human resource member already exists.": "Nama ini sudah ada di daftar SDM untuk peran tersebut.",
+  "Human resource member not found.": "Nama SDM tidak ditemukan (mungkin sudah dihapus). Muat ulang halaman.",
+  "Human resource member is still linked to activities.": "Nama ini masih dipakai di kegiatan. Gabungkan ke nama lain untuk menghapusnya.",
+  "Human resource member position does not match.": "Nama SDM tidak sesuai dengan perannya. Muat ulang halaman lalu pilih lagi.",
+  "Duplicate human resource position.": "Setiap peran SDM hanya boleh dipilih sekali per kegiatan.",
+  "Human resource members must have the same position.": "Nama hanya bisa digabung dengan nama dari peran yang sama.",
+  "Cannot merge a human resource member into itself.": "Pilih nama lain sebagai tujuan penggabungan.",
   "Invalid access password.": "Password Akses salah.",
   "Access password verification required.": "Masukkan Password Akses untuk melanjutkan.",
   "Forbidden.": "Anda tidak punya akses untuk tindakan ini.",
@@ -71,7 +78,7 @@ const FIELD_LABELS = {
   email: "Email", password: "Password", name: "Nama", role: "Jabatan", programs: "Program", code: "Kode",
   newPassword: "Password baru", program: "Program", date: "Tanggal", pksValue: "Nilai PKS",
   submissionValue: "Nilai pengajuan", achievementValue: "Nilai capaian", feedback: "Umpan balik",
-  participants: "Peserta", humanResources: "SDM", issues: "Isu", sk: "File SK", pic: "PIC", location: "Lokasi",
+  participants: "Peserta", humanResources: "SDM", memberIds: "Nama SDM", targetMemberId: "Nama tujuan", issues: "Isu", sk: "File SK", pic: "PIC", location: "Lokasi",
   section: "Bagian", title: "Judul laporan", url: "Link Power BI",
 };
 

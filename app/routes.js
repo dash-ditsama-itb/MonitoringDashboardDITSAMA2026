@@ -11,6 +11,7 @@ export default [
       route("peserta", "./routes/dashboard/peserta.jsx"),
       route("dosen", "./routes/dashboard/dosen.jsx"),
       route("input", "./routes/dashboard/input.jsx"),
+      route("sdm", "./routes/dashboard/sdm.jsx"),
       route("program/:programKey", "./routes/dashboard/program.jsx"),
       route("sugt", "./routes/dashboard/sugt.jsx"),
     ]),

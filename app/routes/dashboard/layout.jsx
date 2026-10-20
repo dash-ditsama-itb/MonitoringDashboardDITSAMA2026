@@ -62,6 +62,7 @@ function Shell({ session }) {
           <NavItem session={session} area="activities" to="/dashboard/peserta"><Icon name="users" />Peserta</NavItem>
           <NavItem session={session} area="activities" to="/dashboard/dosen"><Icon name="grad" />Portofolio Pengajar</NavItem>
           <NavItem session={session} area="activities" to="/dashboard/input"><Icon name="clipboard" />Data Kegiatan</NavItem>
+          <NavItem session={session} area="activities" to="/dashboard/sdm"><Icon name="userCheck" />SDM</NavItem>
           <div className="nav-label">Dashboard program</div>
           {NAV_PROGRAMS.map((p) => {
             const b = badges[p.api];

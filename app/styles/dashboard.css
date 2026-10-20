@@ -255,6 +255,7 @@ a{color:var(--blue-ink);text-underline-offset:3px}
   border:0;background:transparent;color:var(--ink-2);cursor:pointer;flex:0 0 auto;transition:background .15s,color .15s}
 .icon-btn:hover{background:#E7EDF6;color:var(--navy)}
 .icon-btn.danger:hover{background:#FDECEC;color:var(--crit-ink)}
+.icon-btn:disabled{opacity:.35;cursor:not-allowed;background:transparent;color:var(--ink-2)}
 .icon-btn.on-dark{color:#fff}
 .icon-btn.on-dark:hover{background:rgba(255,255,255,.14);color:#fff}
 .file-btn{position:relative}
@@ -319,6 +320,15 @@ input[type=number]{font-variant-numeric:tabular-nums}
 .sdm-grid{display:flex;gap:10px;align-items:flex-end}
 .sdm-grid .field{flex:1}
 .sdm-del{margin-left:auto;margin-bottom:3px}
+.member-pick{display:flex;flex-direction:column;gap:8px}
+.member-tools{display:flex;align-items:center;gap:12px}
+.member-tools .link-btn{white-space:nowrap;align-self:center}
+.member-list{max-height:232px;overflow:auto;padding:2px}
+.member-list .check{background:#fff}
+.member-add{display:flex;gap:8px;align-items:flex-start}
+.member-add textarea{flex:1;min-height:38px}
+.member-add .btn{flex:0 0 auto}
+.sdm-tbl td input{height:34px}
 .sk-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .sk-link{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;color:var(--blue-ink);text-decoration:none;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 a.sk-link:hover{text-decoration:underline}

@@ -1,11 +1,12 @@
 // Form tambah / ubah kegiatan (panel samping). Mengirim ke POST /activity atau PATCH /activity/:id.
 import { useEffect, useMemo, useState } from "react";
-import { ISSUE_LEVELS, PHASES, PROGRESS, SDM_POSITIONS } from "../config.js";
+import { ISSUE_LEVELS, PHASES, PROGRESS } from "../config.js";
 import { api, errorText, upload } from "../lib/api.js";
-import { attendance, editablePrograms, fromDateInput, skName, splitPeople, toDateInput } from "../lib/format.js";
+import { attendance, editablePrograms, fromDateInput, skName, toDateInput } from "../lib/format.js";
 import { useAuthStore } from "../stores/auth.js";
 import { invalidate } from "../stores/data.js";
 import { toast } from "./feedback.jsx";
+import { MemberPicker, positionsOf, sdmKey, useMembers } from "./HumanResources.jsx";
 import { Icon } from "./Icon.jsx";
 import { Segmented, Sheet, Spinner } from "./ui.jsx";
 
@@ -16,9 +17,8 @@ const uid = () => ++uidCounter;
 const newPeserta = (p = {}) => ({ uid: uid(), id: p.id, category: p.category || "", registered: p.registered ?? "", present: p.present ?? "" });
 const newSdm = (h = {}) => ({
   uid: uid(), id: h.id,
-  posSel: !h.position || SDM_POSITIONS.includes(h.position) ? (h.position || "Dosen") : LAINNYA,
-  posCustom: h.position && !SDM_POSITIONS.includes(h.position) ? h.position : "",
-  names: (h.names || []).join("\n"),
+  posSel: h.position || "Dosen", posCustom: "",
+  memberIds: (h.members || []).map((m) => m.id), known: h.members || [],
   skId: h.skId || null, skName: h.sk ? skName(h.sk.name) : "", skUrl: h.sk?.url || "", skBusy: false,
 });
 const newIssue = (i = {}) => ({ uid: uid(), id: i.id, level: i.level || "medium", name: i.name || "", to: i.to || "", problemSolving: i.problemSolving || "" });
@@ -48,9 +48,9 @@ function lists(f) {
     participants: f.participants.filter((p) => p.category.trim()).map((p) => ({
       ...(p.id ? { id: p.id } : {}), category: p.category.trim(), registered: Number(p.registered) || 0, present: Number(p.present) || 0,
     })),
-    humanResources: f.hr.map((s) => ({ s, position: posOf(s), names: splitPeople(s.names) }))
-      .filter((x) => x.position && x.names.length)
-      .map(({ s, position, names }) => ({ ...(s.id ? { id: s.id } : {}), position, names, ...(s.skId ? { skId: s.skId } : {}) })),
+    humanResources: f.hr.map((s) => ({ s, position: posOf(s) }))
+      .filter((x) => x.position && x.s.memberIds.length)
+      .map(({ s, position }) => ({ ...(s.id ? { id: s.id } : {}), position, memberIds: s.memberIds, ...(s.skId ? { skId: s.skId } : {}) })),
     issues: f.issues.filter((i) => i.name.trim()).map((i) => ({
       ...(i.id ? { id: i.id } : {}), level: i.level, name: i.name.trim(),
       ...(i.to.trim() ? { to: i.to.trim() } : {}), ...(i.problemSolving.trim() ? { problemSolving: i.problemSolving.trim() } : {}),
@@ -70,7 +70,10 @@ function validate(f) {
     if (!p.category.trim()) continue;
     if ([p.registered, p.present].some((v) => v !== "" && (!Number.isInteger(Number(v)) || Number(v) < 0))) return `Jumlah peserta "${p.category}" harus bilangan bulat ≥ 0.`;
   }
-  if (f.hr.some((s) => s.posSel === LAINNYA && !s.posCustom.trim() && splitPeople(s.names).length)) return "Ketik nama peran SDM lainnya.";
+  if (f.hr.some((s) => s.posSel === LAINNYA && !s.posCustom.trim() && s.memberIds.length)) return "Ketik nama peran SDM lainnya.";
+  const used = f.hr.filter((s) => s.memberIds.length).map((s) => sdmKey(posOf(s)));
+  const twice = f.hr.find((s) => s.memberIds.length && used.filter((k) => k === sdmKey(posOf(s))).length > 1);
+  if (twice) return `Peran ${posOf(twice)} dipilih lebih dari sekali. Pilih semua namanya dalam satu peran.`;
   return "";
 }
 
@@ -117,6 +120,8 @@ export function ActivityForm({ open, activity, defaultProgram, initialMode, onCl
   const [f, setF] = useState(() => formFrom(activity, session, initialProgram));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const members = useMembers().data?.data;
+  const positions = positionsOf([...(members || []), ...f.hr.filter((s) => s.posSel !== LAINNYA).map((s) => ({ position: s.posSel }))]);
 
   useEffect(() => {
     if (open) {
@@ -251,22 +256,22 @@ export function ActivityForm({ open, activity, defaultProgram, initialMode, onCl
                 <div className="sdm-block" key={s.uid}>
                   <div className="sdm-grid">
                     <label className="field"><span className="field-lab">Peran</span>
-                      <select value={s.posSel} onChange={(e) => updRow("hr", s.uid, { posSel: e.target.value })}>
-                        {SDM_POSITIONS.map((p) => <option key={p}>{p}</option>)}
+                      <select value={s.posSel} onChange={(e) => updRow("hr", s.uid, { posSel: e.target.value, memberIds: [] })}>
+                        {positions.map((p) => <option key={p}>{p}</option>)}
                         <option value={LAINNYA}>Lainnya…</option>
                       </select>
                     </label>
                     {s.posSel === LAINNYA && (
                       <label className="field"><span className="field-lab">Nama peran</span>
-                        <input placeholder="mis. Pamong" value={s.posCustom} onChange={(e) => updRow("hr", s.uid, { posCustom: e.target.value })} />
+                        <input placeholder="mis. Pamong" value={s.posCustom} onChange={(e) => updRow("hr", s.uid, { posCustom: e.target.value, memberIds: [] })} />
                       </label>
                     )}
                     <button type="button" className="icon-btn danger sdm-del" aria-label="Hapus peran" onClick={() => delRow("hr", s.uid)}><Icon name="trash" size={16} /></button>
                   </div>
-                  <label className="field">
-                    <span className="field-lab">Daftar nama <span className="muted">({splitPeople(s.names).length} orang · pisahkan dengan Enter atau koma)</span></span>
-                    <textarea rows={3} placeholder={"Budi Santoso\nSari Dewi"} value={s.names} onChange={(e) => updRow("hr", s.uid, { names: e.target.value })} />
-                  </label>
+                  <div className="field">
+                    <span className="field-lab">Nama terlibat <span className="muted">({s.memberIds.length} dipilih · dari daftar SDM)</span></span>
+                    <MemberPicker position={posOf(s)} value={s.memberIds} known={s.known} onChange={(memberIds) => updRow("hr", s.uid, { memberIds })} />
+                  </div>
                   <div className="sk-row">
                     <label className="btn btn-sm file-btn">
                       {s.skBusy ? <Spinner /> : <Icon name="upload" size={15} />}{s.skId ? "Ganti SK" : "Unggah SK"}

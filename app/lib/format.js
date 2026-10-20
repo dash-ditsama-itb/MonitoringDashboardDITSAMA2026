@@ -123,6 +123,8 @@ export const canSeeFinance = (s) => !!s && ["admin", "kasubdit", "finance", "lea
 export const canEditFinance = (s) => !!s && ["admin", "kasubdit", "finance"].includes(s.role);
 // Pendidikan Persiapan: semua jabatan melihat laporan; hanya Admin & Kasubdit yang mengelolanya
 export const canManageReports = (s) => !!s && ["admin", "kasubdit"].includes(s.role);
+// daftar nama SDM dipakai bersama semua program: PIC juga boleh menambah, mengubah, menggabungkan, dan menghapus
+export const canEditHumanResources = (s) => !!s && ["admin", "kasubdit", "pic"].includes(s.role);
 // program kegiatan yang boleh diisi/diubah
 export function editablePrograms(s) {
   if (!canSeeActivities(s) || isReadOnly(s)) return [];
