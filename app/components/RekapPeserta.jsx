@@ -11,18 +11,21 @@ const BAR_SPAN = 88; // % lebar area batang; sisanya untuk angka di ujung batang
 
 const sum = (rows) => rows.reduce((a, r) => a + r.value, 0);
 
-export function RekapPeserta({ program, programLabel }) {
+// scope: nama di judul (mis. "semua program" / "Eduquest"); hideEmpty: tanpa data rekap -> kartu tidak ditampilkan
+export function RekapPeserta({ program, programLabel, scope, hideEmpty }) {
   const rows = program ? REKAP_PESERTA.filter((r) => r.programs.includes(program)) : REKAP_PESERTA;
+  if (hideEmpty && !rows.length) return null;
+  const titleScope = scope ?? (program ? programLabel : null);
   const terlayani = sum(REKAP_PESERTA.filter((r) => r.status === "Terlayani"));
   const rencana = sum(REKAP_PESERTA.filter((r) => r.status !== "Terlayani"));
   const shared = rows.find((r) => r.programs.length > 1);
   const sub = !program
     ? `${fmtNum(terlayani)} terlayani + ${fmtNum(rencana)} rencana = ${fmtNum(terlayani + rencana)} · agregat antarprogram belum tentu individu unik`
-    : shared ? `${programLabel || "Program ini"} direkap bersama: ${shared.label}` : "Jumlah peserta saat rekap";
+    : shared ? `${programLabel || scope || "Program ini"} direkap bersama: ${shared.label}` : "Jumlah peserta saat rekap";
 
   return (
     <section className="card">
-      <div className="card-head"><div><h2 className="card-title">Rekap kepesertaan{program && programLabel ? " " + programLabel : ""}</h2>
+      <div className="card-head"><div><h2 className="card-title">Rekap kepesertaan{titleScope && <> <span className="title-prog">{titleScope}</span></>}</h2>
         <div className="card-sub">{sub}</div></div></div>
       {!rows.length ? <div className="empty-inline">Belum ada data rekap untuk program ini.</div> : (
         <>
