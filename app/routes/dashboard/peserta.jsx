@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChartCanvas } from "../../components/ChartCanvas.jsx";
 import { RequireAccess } from "../../components/Access.jsx";
 import { Icon } from "../../components/Icon.jsx";
@@ -20,7 +20,13 @@ const FILTERS = [
 ];
 const SORTS = [["ujian", "Nilai ujian terpilih"], ["rata", "Rata-rata semua ujian"], ["naik", "Kenaikan tertinggi"]];
 const LOW = { C: 1, D: 1, E: 1 };
-const REKAP_TOTAL = REKAP_PESERTA.reduce((s, r) => s + r.value, 0);
+// Program dipilih lewat tab di atas, bukan dropdown
+const FILTER_BAR = FILTERS.filter(([k]) => k !== "program");
+// urutan tab; sheet lain menyusul sesuai abjad
+const TAB_ORDER = [/siap/i, /opsi/i, /bti/i, /eduquest/i];
+const DEFAULT_TAB = "SIAP ITB";
+const tabRank = (p) => { const i = TAB_ORDER.findIndex((re) => re.test(p)); return i < 0 ? TAB_ORDER.length : i; };
+const sortTabs = (list) => [...list].sort((a, b) => tabRank(a) - tabRank(b) || a.localeCompare(b, "id"));
 
 function IdxChip({ ix }) {
   return ix ? <span className={"idx-chip" + (LOW[ix] ? " low" : "")}>{ix}</span> : null;
@@ -30,10 +36,8 @@ function IdxChip({ ix }) {
 const BTI_LABELS = { skema: "Bidang pelatihan", tipe: "Peran" };
 // sheet EduQuest: Skema diisi Kategori karya (Ide Riset STEM, Karya Seni/Desain, …)
 const EDQ_LABELS = { skema: "Kategori" };
-const MIXED_LABELS = { skema: "Skema / bidang", tipe: "Tipe / peran" };
 const filterLabel = (k, label, program) =>
-  (program === ALL ? MIXED_LABELS[k] : /^bti$/i.test(String(program).trim()) ? BTI_LABELS[k]
-    : /eduquest/i.test(String(program)) ? EDQ_LABELS[k] : null) || label;
+  (/^bti$/i.test(String(program).trim()) ? BTI_LABELS[k] : /eduquest/i.test(String(program)) ? EDQ_LABELS[k] : null) || label;
 
 // nilai presentasi selalu 2 angka di belakang koma, sama seperti tabel Excel (3 -> 3,00)
 const fmt2 = (n) => (n == null ? "–" : Number(n).toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
@@ -54,16 +58,14 @@ function rekapProgramApi(name) {
 // supaya angka gabungan "semua program" tidak tampil seolah mewakili semua peserta
 const covers = (d, n) => n > 0 && n >= 0.9 * d.kpi.totalParticipants;
 
-function KpiRow({ d, scope, rekapTotal }) {
+function KpiRow({ d, scope }) {
   const graded = d.kpi.gradedCount > 0;
   const prof = d.profile;
   const roles = prof && covers(d, prof.answered.role) ? prof.roles.slice(0, 3) : [];
   const asm = d.assessment && covers(d, d.assessment.answered) ? d.assessment : null;
   const lab = (t) => <>{t}<span className="kpi-prog">{scope}</span></>;
   const items = [
-    // sementara: tanpa filter, Total peserta = total rekap kepesertaan (seperti Portofolio Program)
-    <Kpi key="tot" label={lab("Total peserta")} icon="users" value={fmtNum(rekapTotal ?? d.kpi.totalParticipants)}
-      hint={rekapTotal != null ? "sesuai rekap kepesertaan" : undefined} />,
+    <Kpi key="tot" label={lab("Total peserta")} icon="users" value={fmtNum(d.kpi.totalParticipants)} />,
     ...roles.map((r) => <Kpi key={"role-" + r.name} label={lab(r.name)} icon="user" value={fmtNum(r.count)}
       hint={prof.fields.find((f) => f.roles.length === 1 && f.roles[0].name === r.name)?.name} />),
     <Kpi key="prov" label={lab("Provinsi")} value={fmtNum(d.kpi.totalProvinces)} icon="pin" />,
@@ -76,7 +78,7 @@ function KpiRow({ d, scope, rekapTotal }) {
     graded && <Kpi key="avg" label={lab("Rata-rata · " + (d.kpi.selectedExamLabel || "–"))} icon="target"
       value={d.kpi.averageScore == null ? "–" : Number(d.kpi.averageScore).toLocaleString("id-ID", { maximumFractionDigits: 1 })} />,
     graded && <Kpi key="done" label={lab("Sudah dinilai")} value={fmtNum(d.kpi.gradedCount)} hint={`dari ${fmtNum(d.kpi.totalParticipants)} peserta`} icon="checkCircle" />,
-    asm && <Kpi key="asm-avg" label={lab("Rata-rata nilai")} icon="target" value={fmt2(asm.averageScore)} hint={"skala 1–" + asm.maxScore} />,
+    asm && <Kpi key="asm-avg" label={lab("Rata-rata nilai")} icon="target" value={fmt2(asm.averageScore)} hint={scaleText(asm.maxScore)} />,
     asm && <Kpi key="asm-done" label={lab("Sudah dinilai")} icon="checkCircle" value={fmtNum(asm.answered)} hint={`dari ${fmtNum(d.kpi.totalParticipants)} peserta`} />,
     asm && asm.groups.length > 0 && <Kpi key="asm-kel" label={lab("Kelompok")} icon="users" value={fmtNum(asm.groups.length)}
       hint={asm.categories.length ? asm.categories.length + " kategori" : undefined} />,
@@ -136,6 +138,10 @@ function Profile({ d, scope }) {
   return pairs.map((r, i) => (r.length > 1 ? <div className="grid g-2" key={i}>{r}</div> : r[0]));
 }
 
+// kriteria dinilai 1–5, sedangkan NILAI rata-rata di sheet bisa sudah dijadikan skala 100
+const critMax = (a) => (a.criteria.every((k) => (k.averageScore ?? 0) <= 5) ? 5 : 100);
+const scaleText = (max) => (max === 5 ? "skala 1–5" : "skala 100");
+
 const CAT_COLORS = ["#3a6db0", "#E08A2E", "#16A34A", "#8B5CF6", "#0891B2", "#DB2777"];
 
 /** Penilaian presentasi (mis. Peserta_Eduquest): nilai per kelompok, rata-rata per kriteria, peringkat kelompok. */
@@ -146,20 +152,19 @@ function Assessment({ d, scope }) {
     if (!show) return null;
     const cats = a.categories.map((x) => x.name);
     const color = (name) => CAT_COLORS[Math.max(0, cats.indexOf(name)) % CAT_COLORS.length];
-    const x = { min: 0, max: a.maxScore, ticks: { stepSize: a.maxScore === 5 ? 1 : 20 } };
-    const hbar = (labels, data, colors, tip) => ({
+    const hbar = (max, labels, data, colors, tip) => ({
       type: "bar",
       data: { labels, datasets: [{ label: "Nilai", data, backgroundColor: colors, borderRadius: 4, maxBarThickness: 26 }] },
       options: { indexAxis: "y", responsive: true, maintainAspectRatio: false,
         plugins: { legend: { display: false }, tooltip: { callbacks: { label: tip } } },
-        scales: { x, y: { grid: { display: false } } } },
+        scales: { x: { min: 0, max, ticks: { stepSize: max === 5 ? 1 : 20 } }, y: { grid: { display: false } } } },
     });
     const low = Math.min(...a.criteria.map((k) => k.averageScore ?? Infinity));
     return {
       color,
-      groups: hbar(a.groups.map((g) => g.group), a.groups.map((g) => g.averageScore), a.groups.map((g) => color(g.category)),
+      groups: hbar(a.maxScore, a.groups.map((g) => g.group), a.groups.map((g) => g.averageScore), a.groups.map((g) => color(g.category)),
         (t) => { const g = a.groups[t.dataIndex]; return `${g.category || "–"} · nilai ${fmt2(g.averageScore)} · ${g.members} anggota`; }),
-      criteria: hbar(a.criteria.map((k) => k.name), a.criteria.map((k) => k.averageScore),
+      criteria: hbar(critMax(a), a.criteria.map((k) => k.name), a.criteria.map((k) => k.averageScore),
         a.criteria.map((k) => (k.averageScore === low ? ORANGE : NAVY)), (t) => "Rata-rata " + fmt2(t.parsed.x)),
     };
   }, [a, show]);
@@ -171,17 +176,17 @@ function Assessment({ d, scope }) {
     <>
       <div className="grid g-2">
         {a.groups.length > 0 && <section className="card">
-          {head("Nilai per kelompok", "Nilai rata-rata kelima kriteria, diurutkan dari tertinggi")}
+          {head("Nilai per kelompok", `NILAI rata-rata kelompok (${scaleText(a.maxScore)}), diurutkan dari tertinggi`)}
           {a.categories.length > 1 && <div className="asm-legend">{a.categories.map((k) => <span key={k.name}><i style={{ background: c.color(k.name) }} />{k.name}</span>)}</div>}
           <ChartCanvas config={c.groups} height={Math.max(160, a.groups.length * 34 + 40)} />
         </section>}
         {a.criteria.length > 0 && <section className="card">
-          {head("Rata-rata per kriteria", `Dari ${fmtNum(a.answered)} peserta yang dinilai · oranye = kriteria terendah`)}
+          {head("Rata-rata per kriteria", `${scaleText(critMax(a))} · dari ${fmtNum(a.answered)} peserta yang dinilai · oranye = kriteria terendah`)}
           <ChartCanvas config={c.criteria} height={Math.max(160, a.criteria.length * 40 + 40)} />
         </section>}
       </div>
       {a.groups.length > 0 && <section className="card">
-        {head("Peringkat kelompok", "Nilai tiap kriteria = rata-rata semua penilai; semua anggota kelompok mendapat nilai kelompoknya")}
+        {head("Peringkat kelompok", `Kriteria ${scaleText(critMax(a))} (rata-rata semua penilai), nilai rata-rata ${scaleText(a.maxScore)}; semua anggota kelompok mendapat nilai kelompoknya`)}
         <div className="tbl-scroll"><table className="tbl compact asm-tbl">
           <thead><tr><th className="c-rank">#</th><th>Kelompok</th><th className="num sm-hide">Anggota</th>
             {a.criteria.map((k) => <th key={k.name} className="num sm-hide">{k.name}</th>)}<th className="num">Nilai rata-rata</th></tr></thead>
@@ -210,36 +215,54 @@ export default function Peserta() {
 function PesertaPage() {
   const ui = useUiStore((s) => s.pst);
   const patch = useUiStore((s) => s.patch);
-  const base = withoutAll(Object.fromEntries(FILTERS.map(([k]) => [k, ui[k]])));
+  // tidak ada tampilan "semua program": tiap tab = satu sheet peserta, default tab pertama
+  const program = ui.program === ALL ? DEFAULT_TAB : ui.program;
+  const base = withoutAll({ ...Object.fromEntries(FILTERS.map(([k]) => [k, ui[k]])), program });
   const query = { ...base, ...(ui.ujian !== "__LAST__" ? { ujian: ui.ujian } : {}) };
   const dash = useApi("/dashboard/peserta", { ...query, ...(ui.rankingSortBy !== "ujian" ? { rankingSortBy: ui.rankingSortBy } : {}) });
   const d = dash.data?.data;
   const fo = d?.filterOptions;
+  // daftar tab disimpan agar tidak hilang saat data tab berikutnya dimuat
+  const [tabs, setTabs] = useState([]);
+  const tabKey = (fo?.programs || []).join("|");
+  useEffect(() => { if (tabKey) setTabs(sortTabs(tabKey.split("|"))); }, [tabKey]);
+  // program tersimpan yang sudah tidak ada sheetnya -> pindah ke tab pertama
+  useEffect(() => { if (tabs.length && !tabs.includes(program)) openTab(tabs[0]); }, [tabs, program]);
   const setFilter = (k, v) => patch("pst", { [k]: v, page: 1 });
-  const active = FILTERS.some(([k]) => ui[k] !== ALL) || ui.ujian !== "__LAST__";
-  const noFilter = FILTERS.every(([k]) => ui[k] === ALL);
+  const resetFilters = { ...Object.fromEntries(FILTER_BAR.map(([k]) => [k, ALL])), ujian: "__LAST__", page: 1 };
+  const openTab = (p) => patch("pst", { ...resetFilters, program: p, search: "", schoolSearch: "", rankAll: false, sekAll: false });
+  const active = FILTER_BAR.some(([k]) => ui[k] !== ALL) || ui.ujian !== "__LAST__";
+  // pilihan ujian hanya untuk sheet yang punya nilai ujian (bukan BTI / EduQuest)
+  const showUjian = (d?.kpi.totalExamsWithData ?? 0) > 0 || ui.ujian !== "__LAST__";
   // nama program yang sedang dilihat, ditulis di setiap judul kartu & grafik
-  const scope = ui.program === ALL ? "semua program" : ui.program;
+  const scope = program;
   const [busy, setBusy] = useState(false);
   const refresh = async () => { setBusy(true); await dash.reload({ refresh: true }); setBusy(false); };
 
   return (
     <div className="page">
-      <PageHead title="Peserta" sub="Data peserta, nilai ujian, dan sebaran sekolah">
+      <PageHead title="Peserta" sub="Data peserta, nilai, dan sebaran sekolah per program">
         <button type="button" className="btn" onClick={refresh} disabled={busy || dash.loading}>
           {busy ? <Spinner /> : <Icon name="refresh" size={16} />}<span className="btn-txt">Muat ulang</span>
         </button>
       </PageHead>
 
+      {tabs.length > 0 && <div className="pst-tabs" role="tablist" aria-label="Program">
+        {tabs.map((p) => <button key={p} type="button" role="tab" aria-selected={p === program} className={p === program ? "on" : ""} onClick={() => p !== program && openTab(p)}>{p}</button>)}
+      </div>}
+
+      <RekapPeserta highlight={rekapProgramApi(program)} highlightLabel={program} scope="semua program" />
+
       <section className="card filter-bar">
-        {FILTERS.map(([k, optKey, label]) => {
+        {/* hanya filter yang ada isinya di sheet program ini */}
+        {FILTER_BAR.map(([k, optKey, label]) => {
           const list = fo?.[optKey] || [];
-          return <SelectField key={k} label={filterLabel(k, label, ui.program)} value={list.includes(ui[k]) ? ui[k] : ALL} options={[ALL, ...list]} onChange={(v) => setFilter(k, v)} />;
+          if (!list.length && ui[k] === ALL) return null;
+          return <SelectField key={k} label={filterLabel(k, label, program)} value={list.includes(ui[k]) ? ui[k] : ALL} options={[ALL, ...list]} onChange={(v) => setFilter(k, v)} />;
         })}
-        <SelectField label="Ujian" value={ui.ujian} onChange={(v) => setFilter("ujian", v)}
-          options={[["__LAST__", "Terbaru yang sudah dinilai"], ...[...(fo?.ujians || [])].reverse().map((u) => [u.key, u.label])]} />
-        {active && <button type="button" className="btn btn-sm filter-reset"
-          onClick={() => patch("pst", { ...Object.fromEntries(FILTERS.map(([k]) => [k, ALL])), ujian: "__LAST__", page: 1 })}>Reset filter</button>}
+        {showUjian && <SelectField label="Ujian" value={ui.ujian} onChange={(v) => setFilter("ujian", v)}
+          options={[["__LAST__", "Terbaru yang sudah dinilai"], ...[...(fo?.ujians || [])].reverse().map((u) => [u.key, u.label])]} />}
+        {active && <button type="button" className="btn btn-sm filter-reset" onClick={() => patch("pst", resetFilters)}>Reset filter</button>}
       </section>
 
       <ErrorNote error={dash.error} onRetry={() => dash.reload()} />
@@ -251,8 +274,7 @@ function PesertaPage() {
         </>
       ) : (
         <>
-          <KpiRow d={d} scope={scope} rekapTotal={noFilter ? REKAP_TOTAL : null} />
-          <RekapPeserta program={ui.program === ALL ? undefined : rekapProgramApi(ui.program) ?? "-"} scope={scope} hideEmpty />
+          <KpiRow d={d} scope={scope} />
           <Profile d={d} scope={scope} />
           <Assessment d={d} scope={scope} />
           <Charts d={d} scope={scope} />
@@ -348,6 +370,11 @@ function Schools({ d, scope }) {
   const ql = q.trim().toLowerCase();
   const list = ql ? d.schools.filter((s) => s.school.toLowerCase().includes(ql) || (s.province || "").toLowerCase().includes(ql)) : d.schools;
   const shown = sekAll || ql ? list : list.slice(0, 10);
+  // program dengan nilai presentasi (EduQuest): rata-rata nilai peserta sekolah itu, bukan nilai ujian
+  const asm = d.assessment && covers(d, d.assessment.answered);
+  const avg = (s) => (asm ? s.assessmentAverage : s.averageScore);
+  const fmtAvg = (v) => (asm ? fmt2(v) : Number(v).toLocaleString("id-ID", { maximumFractionDigits: 1 }));
+  const graded = (s) => (asm ? s.assessmentGraded : s.gradedCount);
   return (
     <section className="card">
       <div className="card-head">
@@ -362,11 +389,11 @@ function Schools({ d, scope }) {
           <tbody>{shown.map((s) => (
             <tr key={s.school}>
               <td className="c-rank muted">{s.rank}</td>
-              <td><div className="cell-strong">{s.school}</div><div className="row-meta"><span className="sm-only">{s.frequency}× ikut</span>{s.averageScore != null && <span className="sm-only">rata-rata {Number(s.averageScore).toLocaleString("id-ID", { maximumFractionDigits: 1 })}</span>}<span>{s.province || "–"}</span></div></td>
+              <td><div className="cell-strong">{s.school}</div><div className="row-meta"><span className="sm-only">{s.frequency}× ikut</span>{avg(s) != null && <span className="sm-only">rata-rata {fmtAvg(avg(s))}</span>}<span>{s.province || "–"}</span></div></td>
               <td className="num cell-strong">{fmtNum(s.participantCount)}</td>
               <td className="c-share"><span className="att-cell"><Bar value={s.percentage} />{Number(s.percentage).toLocaleString("id-ID", { maximumFractionDigits: 1 })}%</span></td>
               <td className="sm-hide" title={s.periods.map((p) => `${p.key}: ${p.count} peserta`).join("\n")}>{s.frequency}× <span className="muted small">{s.periods.slice(0, 2).map((p) => p.key).join(", ")}{s.periods.length > 2 ? ", …" : ""}</span></td>
-              <td className="num sm-hide">{s.averageScore == null ? <span className="muted">–</span> : Number(s.averageScore).toLocaleString("id-ID", { maximumFractionDigits: 1 })}{s.gradedCount > 0 && <span className="muted small"> · {s.gradedCount} dinilai</span>}</td>
+              <td className="num sm-hide">{avg(s) == null ? <span className="muted">–</span> : fmtAvg(avg(s))}{graded(s) > 0 && <span className="muted small"> · {graded(s)} dinilai</span>}</td>
             </tr>
           ))}</tbody>
         </table></div>
