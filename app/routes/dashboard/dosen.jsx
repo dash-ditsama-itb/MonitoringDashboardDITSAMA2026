@@ -36,6 +36,8 @@ function DosenPage() {
   const refresh = async () => { setBusy(true); await reload({ refresh: true }); setBusy(false); };
   const select = (key) => patch("dsn", { sel: key });
   const active = FILTERS.some(([k]) => ui[k] !== ALL) || ui.minResp !== "1";
+  // Dosen_OSN: mata kuliah = Bidang (Geografi, Fisika, …)
+  const isOsn = /^osn$/i.test(ui.program);
   const q = ui.search.trim().toLowerCase();
   const lecturers = (d?.lecturers || []).filter((l) => !q || l.name.toLowerCase().includes(q));
 
@@ -50,7 +52,9 @@ function DosenPage() {
       <section className="card filter-bar">
         {FILTERS.map(([k, optKey, label]) => {
           const list = fo?.[optKey] || [];
-          return <SelectField key={k} label={label} value={list.includes(ui[k]) ? ui[k] : ALL} options={[ALL, ...list]} onChange={(v) => patch("dsn", { [k]: v })} />;
+          // filter tanpa pilihan untuk program ini (mis. OSN tanpa metode, kelas, bahasa) disembunyikan
+          if (k !== "program" && list.length <= 1 && ui[k] === ALL) return null;
+          return <SelectField key={k} label={k === "mapel" && isOsn ? "Bidang" : label} value={list.includes(ui[k]) ? ui[k] : ALL} options={[ALL, ...list]} onChange={(v) => patch("dsn", { [k]: v })} />;
         })}
         <SelectField label="Minimal penilaian" value={ui.minResp} options={[["1", "Semua"], ["5", "≥ 5"], ["10", "≥ 10"], ["30", "≥ 30"]]} onChange={(v) => patch("dsn", { minResp: v })} />
         {active && <button type="button" className="btn btn-sm filter-reset" onClick={() => patch("dsn", { ...Object.fromEntries(FILTERS.map(([k]) => [k, ALL])), minResp: "1" })}>Reset filter</button>}
@@ -67,7 +71,7 @@ function DosenPage() {
         <>
           <div className="kpi-row six">
             <Kpi label="Pengajar dinilai" value={fmtNum(d.kpi.totalLecturers)} icon="grad" />
-            <Kpi label="Mata kuliah / kelas" value={fmtNum(d.kpi.totalSubjects)} icon="book" />
+            <Kpi label={isOsn ? "Bidang" : "Mata kuliah / kelas"} value={fmtNum(d.kpi.totalSubjects)} icon="book" />
             <Kpi label="Peserta mengisi" value={fmtNum(d.kpi.totalRespondents)} icon="users" />
             <Kpi label="Total penilaian" value={fmtNum(d.kpi.totalRatings)} icon="clipboard" />
             <Kpi label="Rata-rata (1–5)" value={score(d.kpi.averageScore)} icon="star" />
@@ -75,7 +79,7 @@ function DosenPage() {
           </div>
           <Charts d={d} onSelect={select} />
           <section className="card">
-            <div className="card-head"><div><h2 className="card-title">Mata kuliah / kelas peserta</h2><div className="card-sub">Klik kartu untuk memfilter per mata kuliah atau kelas peserta</div></div></div>
+            <div className="card-head"><div><h2 className="card-title">{isOsn ? "Bidang" : "Mata kuliah / kelas peserta"}</h2><div className="card-sub">Klik kartu untuk memfilter per {isOsn ? "bidang" : "mata kuliah atau kelas peserta"}</div></div></div>
             {!d.subjects.length ? <div className="empty-inline">Belum ada data.</div> : (
               <div className="subj-cards">
                 {d.subjects.map((s) => (
@@ -199,14 +203,15 @@ function AspectCard({ aspects }) {
   return (
     <section className="card">
       <div className="card-head"><div><h2 className="card-title">Penilaian per aspek</h2>
-        <div className="card-sub">Riset &amp; BTI · rata-rata 1–5 sesuai filter · klik aspek untuk rincian pertanyaan</div></div></div>
+        <div className="card-sub">Formulir per sesi (mis. Riset, BTI, OSN) · rata-rata 1–5 sesuai filter · klik aspek untuk rincian pertanyaan</div></div></div>
       <AspectList aspects={aspects} />
     </section>
   );
 }
 
 function AspectList({ aspects }) {
-  const [open, setOpen] = useState(() => new Set());
+  // satu kategori saja (mis. OSN): langsung tampilkan rincian pertanyaannya
+  const [open, setOpen] = useState(() => new Set(aspects.length === 1 ? [aspects[0].category] : []));
   const toggle = (c) => setOpen((s) => { const n = new Set(s); if (n.has(c)) n.delete(c); else n.add(c); return n; });
   return (
     <ul className="asp">
