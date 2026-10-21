@@ -348,6 +348,11 @@ function Schools({ d, scope }) {
   const ql = q.trim().toLowerCase();
   const list = ql ? d.schools.filter((s) => s.school.toLowerCase().includes(ql) || (s.province || "").toLowerCase().includes(ql)) : d.schools;
   const shown = sekAll || ql ? list : list.slice(0, 10);
+  // program dengan nilai presentasi (EduQuest): rata-rata nilai peserta sekolah itu, bukan nilai ujian
+  const asm = d.assessment && covers(d, d.assessment.answered);
+  const avg = (s) => (asm ? s.assessmentAverage : s.averageScore);
+  const fmtAvg = (v) => (asm ? fmt2(v) : Number(v).toLocaleString("id-ID", { maximumFractionDigits: 1 }));
+  const graded = (s) => (asm ? s.assessmentGraded : s.gradedCount);
   return (
     <section className="card">
       <div className="card-head">
@@ -362,11 +367,11 @@ function Schools({ d, scope }) {
           <tbody>{shown.map((s) => (
             <tr key={s.school}>
               <td className="c-rank muted">{s.rank}</td>
-              <td><div className="cell-strong">{s.school}</div><div className="row-meta"><span className="sm-only">{s.frequency}× ikut</span>{s.averageScore != null && <span className="sm-only">rata-rata {Number(s.averageScore).toLocaleString("id-ID", { maximumFractionDigits: 1 })}</span>}<span>{s.province || "–"}</span></div></td>
+              <td><div className="cell-strong">{s.school}</div><div className="row-meta"><span className="sm-only">{s.frequency}× ikut</span>{avg(s) != null && <span className="sm-only">rata-rata {fmtAvg(avg(s))}</span>}<span>{s.province || "–"}</span></div></td>
               <td className="num cell-strong">{fmtNum(s.participantCount)}</td>
               <td className="c-share"><span className="att-cell"><Bar value={s.percentage} />{Number(s.percentage).toLocaleString("id-ID", { maximumFractionDigits: 1 })}%</span></td>
               <td className="sm-hide" title={s.periods.map((p) => `${p.key}: ${p.count} peserta`).join("\n")}>{s.frequency}× <span className="muted small">{s.periods.slice(0, 2).map((p) => p.key).join(", ")}{s.periods.length > 2 ? ", …" : ""}</span></td>
-              <td className="num sm-hide">{s.averageScore == null ? <span className="muted">–</span> : Number(s.averageScore).toLocaleString("id-ID", { maximumFractionDigits: 1 })}{s.gradedCount > 0 && <span className="muted small"> · {s.gradedCount} dinilai</span>}</td>
+              <td className="num sm-hide">{avg(s) == null ? <span className="muted">–</span> : fmtAvg(avg(s))}{graded(s) > 0 && <span className="muted small"> · {graded(s)} dinilai</span>}</td>
             </tr>
           ))}</tbody>
         </table></div>
