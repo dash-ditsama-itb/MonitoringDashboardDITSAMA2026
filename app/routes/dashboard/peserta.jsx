@@ -28,9 +28,15 @@ function IdxChip({ ix }) {
 
 // sheet BTI tidak punya Skema/Tipe: isinya bidang pelatihan & peran (Murid/Pemandu)
 const BTI_LABELS = { skema: "Bidang pelatihan", tipe: "Peran" };
+// sheet EduQuest: Skema diisi Kategori karya (Ide Riset STEM, Karya Seni/Desain, …)
+const EDQ_LABELS = { skema: "Kategori" };
 const MIXED_LABELS = { skema: "Skema / bidang", tipe: "Tipe / peran" };
 const filterLabel = (k, label, program) =>
-  (program === ALL ? MIXED_LABELS[k] : /^bti$/i.test(String(program).trim()) ? BTI_LABELS[k] : null) || label;
+  (program === ALL ? MIXED_LABELS[k] : /^bti$/i.test(String(program).trim()) ? BTI_LABELS[k]
+    : /eduquest/i.test(String(program)) ? EDQ_LABELS[k] : null) || label;
+
+// nilai presentasi selalu 2 angka di belakang koma, sama seperti tabel Excel (3 -> 3,00)
+const fmt2 = (n) => (n == null ? "–" : Number(n).toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
 // judul + nama program yang sedang dilihat (mis. "Sebaran provinsi Eduquest")
 const Scoped = ({ title, scope }) => <>{title} <span className="title-prog">{scope}</span></>;
@@ -52,6 +58,7 @@ function KpiRow({ d, scope, rekapTotal }) {
   const graded = d.kpi.gradedCount > 0;
   const prof = d.profile;
   const roles = prof && covers(d, prof.answered.role) ? prof.roles.slice(0, 3) : [];
+  const asm = d.assessment && covers(d, d.assessment.answered) ? d.assessment : null;
   const lab = (t) => <>{t}<span className="kpi-prog">{scope}</span></>;
   const items = [
     // sementara: tanpa filter, Total peserta = total rekap kepesertaan (seperti Portofolio Program)
@@ -62,13 +69,17 @@ function KpiRow({ d, scope, rekapTotal }) {
     <Kpi key="prov" label={lab("Provinsi")} value={fmtNum(d.kpi.totalProvinces)} icon="pin" />,
     prof && covers(d, prof.answered.regency) && <Kpi key="kab" label={lab("Kab./Kota")} value={fmtNum(prof.totalRegencies)} icon="pin" />,
     <Kpi key="sek" label={lab("Sekolah / instansi")} value={fmtNum(d.kpi.totalSchools)} icon="building" />,
-    // sheet profil tanpa kolom nilai (mis. BTI): kartu ujian tidak relevan
-    (graded || !roles.length) && <Kpi key="ujian" label={lab("Ujian bernilai")} icon="clipboard" hint={graded ? undefined : "belum ada ujian yang dinilai"}
+    // sheet profil tanpa kolom nilai (mis. BTI) atau dengan nilai presentasi (EduQuest): kartu ujian tidak relevan
+    (graded || (!roles.length && !asm)) && <Kpi key="ujian" label={lab("Ujian bernilai")} icon="clipboard" hint={graded ? undefined : "belum ada ujian yang dinilai"}
       value={d.kpi.totalExamsWithData + (d.kpi.totalExams > d.kpi.totalExamsWithData ? " / " + d.kpi.totalExams : "")} />,
     // belum ada nilai: rata-rata & sudah dinilai disembunyikan
     graded && <Kpi key="avg" label={lab("Rata-rata · " + (d.kpi.selectedExamLabel || "–"))} icon="target"
       value={d.kpi.averageScore == null ? "–" : Number(d.kpi.averageScore).toLocaleString("id-ID", { maximumFractionDigits: 1 })} />,
     graded && <Kpi key="done" label={lab("Sudah dinilai")} value={fmtNum(d.kpi.gradedCount)} hint={`dari ${fmtNum(d.kpi.totalParticipants)} peserta`} icon="checkCircle" />,
+    asm && <Kpi key="asm-avg" label={lab("Rata-rata nilai")} icon="target" value={fmt2(asm.averageScore)} hint={"skala 1–" + asm.maxScore} />,
+    asm && <Kpi key="asm-done" label={lab("Sudah dinilai")} icon="checkCircle" value={fmtNum(asm.answered)} hint={`dari ${fmtNum(d.kpi.totalParticipants)} peserta`} />,
+    asm && asm.groups.length > 0 && <Kpi key="asm-kel" label={lab("Kelompok")} icon="users" value={fmtNum(asm.groups.length)}
+      hint={asm.categories.length ? asm.categories.length + " kategori" : undefined} />,
   ].filter(Boolean);
   return <div className={"kpi-row" + (items.length >= 6 ? " six" : items.length === 5 ? " five" : "")}>{items}</div>;
 }
@@ -125,6 +136,73 @@ function Profile({ d, scope }) {
   return pairs.map((r, i) => (r.length > 1 ? <div className="grid g-2" key={i}>{r}</div> : r[0]));
 }
 
+const CAT_COLORS = ["#3a6db0", "#E08A2E", "#16A34A", "#8B5CF6", "#0891B2", "#DB2777"];
+
+/** Penilaian presentasi (mis. Peserta_Eduquest): nilai per kelompok, rata-rata per kriteria, peringkat kelompok. */
+function Assessment({ d, scope }) {
+  const a = d.assessment;
+  const show = !!a && covers(d, a.answered);
+  const c = useMemo(() => {
+    if (!show) return null;
+    const cats = a.categories.map((x) => x.name);
+    const color = (name) => CAT_COLORS[Math.max(0, cats.indexOf(name)) % CAT_COLORS.length];
+    const x = { min: 0, max: a.maxScore, ticks: { stepSize: a.maxScore === 5 ? 1 : 20 } };
+    const hbar = (labels, data, colors, tip) => ({
+      type: "bar",
+      data: { labels, datasets: [{ label: "Nilai", data, backgroundColor: colors, borderRadius: 4, maxBarThickness: 26 }] },
+      options: { indexAxis: "y", responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: tip } } },
+        scales: { x, y: { grid: { display: false } } } },
+    });
+    const low = Math.min(...a.criteria.map((k) => k.averageScore ?? Infinity));
+    return {
+      color,
+      groups: hbar(a.groups.map((g) => g.group), a.groups.map((g) => g.averageScore), a.groups.map((g) => color(g.category)),
+        (t) => { const g = a.groups[t.dataIndex]; return `${g.category || "–"} · nilai ${fmt2(g.averageScore)} · ${g.members} anggota`; }),
+      criteria: hbar(a.criteria.map((k) => k.name), a.criteria.map((k) => k.averageScore),
+        a.criteria.map((k) => (k.averageScore === low ? ORANGE : NAVY)), (t) => "Rata-rata " + fmt2(t.parsed.x)),
+    };
+  }, [a, show]);
+  if (!show) return null;
+  const head = (title, sub) => (
+    <div className="card-head"><div><h2 className="card-title"><Scoped title={title} scope={scope} /></h2><div className="card-sub">{sub}</div></div></div>
+  );
+  return (
+    <>
+      <div className="grid g-2">
+        {a.groups.length > 0 && <section className="card">
+          {head("Nilai per kelompok", "Nilai rata-rata kelima kriteria, diurutkan dari tertinggi")}
+          {a.categories.length > 1 && <div className="asm-legend">{a.categories.map((k) => <span key={k.name}><i style={{ background: c.color(k.name) }} />{k.name}</span>)}</div>}
+          <ChartCanvas config={c.groups} height={Math.max(160, a.groups.length * 34 + 40)} />
+        </section>}
+        {a.criteria.length > 0 && <section className="card">
+          {head("Rata-rata per kriteria", `Dari ${fmtNum(a.answered)} peserta yang dinilai · oranye = kriteria terendah`)}
+          <ChartCanvas config={c.criteria} height={Math.max(160, a.criteria.length * 40 + 40)} />
+        </section>}
+      </div>
+      {a.groups.length > 0 && <section className="card">
+        {head("Peringkat kelompok", "Nilai tiap kriteria = rata-rata semua penilai; semua anggota kelompok mendapat nilai kelompoknya")}
+        <div className="tbl-scroll"><table className="tbl compact asm-tbl">
+          <thead><tr><th className="c-rank">#</th><th>Kelompok</th><th className="num sm-hide">Anggota</th>
+            {a.criteria.map((k) => <th key={k.name} className="num sm-hide">{k.name}</th>)}<th className="num">Nilai rata-rata</th></tr></thead>
+          <tbody>{a.groups.map((g) => (
+            <tr key={g.group} className={g.rank <= 3 ? "top" : ""}>
+              <td className="c-rank"><span className={"rank-no" + (g.rank <= 3 ? " top" : "")}>{g.rank}</span></td>
+              <td><div className="cell-strong">{g.group}</div><div className="row-meta">
+                <span><i className="cat-dot" style={{ background: c.color(g.category) }} />{g.category || "–"}</span><span className="sm-only">{g.members} anggota</span></div></td>
+              <td className="num sm-hide">{g.members}</td>
+              {a.criteria.map((k) => <td key={k.name} className="num sm-hide">{fmt2(g.criteria.find((x) => x.name === k.name)?.averageScore)}</td>)}
+              <td className="num cell-strong">{fmt2(g.averageScore)}</td>
+            </tr>
+          ))}</tbody>
+          <tfoot><tr><td /><td className="cell-strong">Rata-rata semua</td><td className="num sm-hide">{fmtNum(a.answered)}</td>
+            {a.criteria.map((k) => <td key={k.name} className="num sm-hide">{fmt2(k.averageScore)}</td>)}<td className="num cell-strong">{fmt2(a.averageScore)}</td></tr></tfoot>
+        </table></div>
+      </section>}
+    </>
+  );
+}
+
 export default function Peserta() {
   return <RequireAccess area="activities" page="Peserta"><PesertaPage /></RequireAccess>;
 }
@@ -176,6 +254,7 @@ function PesertaPage() {
           <KpiRow d={d} scope={scope} rekapTotal={noFilter ? REKAP_TOTAL : null} />
           <RekapPeserta program={ui.program === ALL ? undefined : rekapProgramApi(ui.program) ?? "-"} scope={scope} hideEmpty />
           <Profile d={d} scope={scope} />
+          <Assessment d={d} scope={scope} />
           <Charts d={d} scope={scope} />
           {/* belum ada nilai sama sekali untuk filter ini: peringkat disembunyikan */}
           {d.kpi.gradedCount > 0 && <Ranking d={d} scope={scope} sort={ui.rankingSortBy} onSort={(v) => patch("pst", { rankingSortBy: v })} showAll={ui.rankAll} onToggle={() => patch("pst", { rankAll: !ui.rankAll })} />}
@@ -228,7 +307,8 @@ function Charts({ d, scope }) {
     ],
     [
       d.charts.topProvinces.length > 0 && card("Sebaran provinsi", "10 provinsi terbanyak", c.prov, 300),
-      d.charts.topFaculties.length > 0 && card("Fakultas / jurusan", "10 terbanyak", c.fak, 300),
+      // sheet tanpa kolom fakultas (mis. EduQuest, BTI) hanya berisi "(kosong)"
+      d.charts.topFaculties.some((x) => x.name !== "(kosong)") && card("Fakultas / jurusan", "10 terbanyak", c.fak, 300),
     ],
   ].map((r) => r.filter(Boolean)).filter((r) => r.length);
   return rows.map((r, i) => (r.length > 1 ? <div className="grid g-2" key={i}>{r}</div> : r[0]));
@@ -302,9 +382,14 @@ function Participants({ query, exams, scope }) {
   const { data, error, loading, reload } = useApi("/peserta/participants", { ...query, search: ui.search, page: ui.page, perPage: ui.perPage });
   const rows = data?.data || [];
   const [open, setOpen] = useState(null);
-  const scoreChips = (p) => exams.filter((u) => p.scores?.[u.key]?.value != null).map((u) => (
-    <span key={u.key} className="score" title={u.label}><small>{u.label.replace(/ \d{4}$/, "")}</small><b>{fmtScore(p.scores[u.key].value)}</b><IdxChip ix={p.scores[u.key].index} /></span>
-  ));
+  const scoreChips = (p) => [
+    ...exams.filter((u) => p.scores?.[u.key]?.value != null).map((u) => (
+      <span key={u.key} className="score" title={u.label}><small>{u.label.replace(/ \d{4}$/, "")}</small><b>{fmtScore(p.scores[u.key].value)}</b><IdxChip ix={p.scores[u.key].index} /></span>
+    )),
+    // nilai presentasi (EduQuest): NILAI rata-rata kelompok
+    p.nilai != null && <span key="asm" className="score" title="Nilai rata-rata presentasi kelompok"><small>Nilai rata-rata</small><b>{fmt2(p.nilai)}</b></span>,
+  ].filter(Boolean);
+  const hasExam = (p) => exams.some((u) => p.scores?.[u.key]?.value != null || p.scores?.[u.key]?.index);
   return (
     <section className="card tbl-card">
       <div className="tbl-head"><div><h2 className="card-title"><Scoped title="Daftar peserta" scope={scope} /></h2>
@@ -318,7 +403,7 @@ function Participants({ query, exams, scope }) {
       ) : (
         <div className={"tbl-body" + (loading ? " is-loading" : "")}>
           <div className="tbl-scroll"><table className="tbl pst-tbl">
-            <thead><tr><th>Peserta</th><th>Program</th><th className="c-fak">Fakultas / jurusan</th><th className="c-kel">Kelompok</th><th>Nilai ujian</th></tr></thead>
+            <thead><tr><th>Peserta</th><th>Program</th><th className="c-fak">Fakultas / jurusan</th><th className="c-kel">Kelompok</th><th>Nilai</th></tr></thead>
             <tbody>{rows.map((p, i) => (
               <tr key={i} onClick={() => setOpen(p)}>
                 <td><button type="button" className="row-link" onClick={(e) => { e.stopPropagation(); setOpen(p); }}>{p.nama}</button>
@@ -326,7 +411,7 @@ function Participants({ query, exams, scope }) {
                 <td><div>{p.program}{p.periode && <span className="muted"> · P{p.periode}</span>}</div>
                   <div className="row-meta"><span className="trunc">{[p.peran, p.bidang].filter(Boolean).join(" · ") || p.aktivitas}</span></div></td>
                 <td className="c-fak">{p.fakultas || <span className="muted">–</span>}</td>
-                <td className="c-kel">{p.kelompok || <span className="muted">–</span>}</td>
+                <td className="c-kel">{p.kelompok || <span className="muted">–</span>}{p.kategori && <div className="row-meta"><span>{p.kategori}</span></div>}</td>
                 <td><div className="scores">{scoreChips(p).length ? scoreChips(p) : <span className="muted">Belum ada nilai</span>}</div></td>
               </tr>
             ))}</tbody>
@@ -334,7 +419,7 @@ function Participants({ query, exams, scope }) {
           <ul className="rec-list">{rows.map((p, i) => (
             <li key={i} className="rec"><button type="button" className="rec-main" onClick={() => setOpen(p)}>
               <span className="rec-top"><span className="rec-name">{p.nama}</span></span>
-              <span className="rec-meta"><span>{p.sekolah || "–"}</span><span>{p.program}{p.periode && " · P" + p.periode}</span></span>
+              <span className="rec-meta"><span>{p.sekolah || "–"}</span><span>{p.program}{p.periode && " · P" + p.periode}</span>{p.kelompok && <span>{p.kelompok}</span>}</span>
               <span className="scores">{scoreChips(p)}</span>
             </button></li>
           ))}</ul>
@@ -347,11 +432,22 @@ function Participants({ query, exams, scope }) {
           <>
             <dl className="facts">
               {[["Sekolah", open.sekolah], ["Provinsi", open.provinsi], ["Aktivitas", open.aktivitas], ["Fakultas / jurusan", open.fakultas],
-                ["Skema", open.skema], ["Tipe", open.tipe], ["Kelompok", open.kelompok], ["PIC", open.pic]].map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v || "–"}</dd></div>)}
+                open.kategori ? ["Kategori", open.kategori] : ["Skema", open.skema], ["Tipe", open.tipe], ["Kelompok", open.kelompok], ["PIC", open.pic]].map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v || "–"}</dd></div>)}
             </dl>
-            <h3 className="detail-h">Nilai ujian</h3>
-            <table className="mini-tbl"><thead><tr><th>Ujian</th><th className="num">Nilai</th><th>Indeks</th></tr></thead>
-              <tbody>{exams.map((u) => { const s = open.scores?.[u.key]; return <tr key={u.key}><td>{u.label}</td><td className="num">{fmtScore(s?.value)}</td><td><IdxChip ix={s?.index} /></td></tr>; })}</tbody></table>
+            {open.criteria?.length > 0 && <>
+              <h3 className="detail-h">Nilai presentasi{open.kelompok && <span className="muted"> · {open.kelompok}</span>}</h3>
+              <table className="mini-tbl"><thead><tr><th>Kriteria</th><th className="num">Rata-rata</th></tr></thead>
+                <tbody>{open.criteria.map((k) => <tr key={k.name}><td>{k.name}</td><td className="num">{fmt2(k.value)}</td></tr>)}
+                  <tr className="mini-total"><td>NILAI rata-rata</td><td className="num">{fmt2(open.nilai)}</td></tr></tbody></table>
+            </>}
+            {/* tabel ujian hanya bila peserta punya nilai ujian, atau tidak punya nilai sama sekali */}
+            {(hasExam(open) || !open.criteria?.length) && <>
+              <h3 className="detail-h">Nilai ujian</h3>
+              {hasExam(open) ? (
+                <table className="mini-tbl"><thead><tr><th>Ujian</th><th className="num">Nilai</th><th>Indeks</th></tr></thead>
+                  <tbody>{exams.map((u) => { const s = open.scores?.[u.key]; return <tr key={u.key}><td>{u.label}</td><td className="num">{fmtScore(s?.value)}</td><td><IdxChip ix={s?.index} /></td></tr>; })}</tbody></table>
+              ) : <div className="empty-inline">Belum ada nilai.</div>}
+            </>}
           </>
         )}
       </Sheet>
