@@ -23,7 +23,7 @@ const LOW = { C: 1, D: 1, E: 1 };
 // Program dipilih lewat tab di atas, bukan dropdown
 const FILTER_BAR = FILTERS.filter(([k]) => k !== "program");
 // urutan tab; sheet lain menyusul sesuai abjad
-const TAB_ORDER = [/siap/i, /opsi/i, /bti/i, /eduquest/i];
+const TAB_ORDER = [/siap/i, /opsi/i, /bti/i, /eduquest/i, /sang cendekia|p?scd/i];
 const DEFAULT_TAB = "SIAP ITB";
 const tabRank = (p) => { const i = TAB_ORDER.findIndex((re) => re.test(p)); return i < 0 ? TAB_ORDER.length : i; };
 const sortTabs = (list) => [...list].sort((a, b) => tabRank(a) - tabRank(b) || a.localeCompare(b, "id"));
@@ -49,6 +49,8 @@ const Scoped = ({ title, scope }) => <>{title} <span className="title-prog">{sco
 // dicocokkan ke label/kode program dashboard atau ke nama baris rekap
 const norm = (s) => String(s || "").toLowerCase().replace(/[\s_-]+/g, " ").trim();
 function rekapProgramApi(name) {
+  // sheet Peserta_PSCD menulis programnya "Inspirasi - Sang Cendekia" (= INSPIRASI SCD)
+  if (/sang cendekia|p?scd/i.test(String(name))) return "inspirasi_scd";
   const n = norm(name);
   const p = PROGRAMS.find((x) => [x.label, x.key, x.api, x.label.replace(/^inspirasi\s+/i, "")].some((v) => norm(v) === n));
   return p?.api ?? REKAP_PESERTA.find((r) => norm(r.label) === n)?.programs[0];
@@ -72,7 +74,7 @@ function KpiRow({ d, scope }) {
     prof && covers(d, prof.answered.regency) && <Kpi key="kab" label={lab("Kab./Kota")} value={fmtNum(prof.totalRegencies)} icon="pin" />,
     <Kpi key="sek" label={lab("Sekolah / instansi")} value={fmtNum(d.kpi.totalSchools)} icon="building" />,
     // sheet profil tanpa kolom nilai (mis. BTI) atau dengan nilai presentasi (EduQuest): kartu ujian tidak relevan
-    (graded || (!roles.length && !asm)) && <Kpi key="ujian" label={lab("Ujian bernilai")} icon="clipboard" hint={graded ? undefined : "belum ada ujian yang dinilai"}
+    d.kpi.totalExams > 0 && (graded || (!roles.length && !asm)) && <Kpi key="ujian" label={lab("Ujian bernilai")} icon="clipboard" hint={graded ? undefined : "belum ada ujian yang dinilai"}
       value={d.kpi.totalExamsWithData + (d.kpi.totalExams > d.kpi.totalExamsWithData ? " / " + d.kpi.totalExams : "")} />,
     // belum ada nilai: rata-rata & sudah dinilai disembunyikan
     graded && <Kpi key="avg" label={lab("Rata-rata · " + (d.kpi.selectedExamLabel || "–"))} icon="target"
@@ -124,7 +126,7 @@ function Profile({ d, scope }) {
   );
   const cards = [
     covers(d, p.answered.field) && card("Peserta per bidang pelatihan", "Dipecah per peran", <ChartCanvas config={charts.fields} height={Math.max(150, p.fields.length * 70 + 50)} />),
-    covers(d, p.answered.gender) && card("Jenis kelamin per peran", "P = perempuan, L = laki-laki", <ChartCanvas config={charts.gender} height={Math.max(150, (p.genderByRole.length + 1) * 52 + 50)} />),
+    covers(d, p.answered.gender) && card(p.genderByRole.length > 1 ? "Jenis kelamin per peran" : "Jenis kelamin", "P = perempuan, L = laki-laki", <ChartCanvas config={charts.gender} height={Math.max(150, (p.genderByRole.length + 1) * 52 + 50)} />),
     covers(d, p.answered.shirtSize) && card("Ukuran kaos", "Untuk kebutuhan logistik", <ChartCanvas config={charts.shirt} height={220} />),
     // hanya jumlah, tanpa nama dan tanpa jenis penyakit
     covers(d, p.answered.health) && card("Catatan kesehatan", "Hanya jumlah, tanpa nama, untuk persiapan pendampingan",
