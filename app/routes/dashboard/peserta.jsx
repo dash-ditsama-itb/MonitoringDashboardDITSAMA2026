@@ -23,7 +23,7 @@ const LOW = { C: 1, D: 1, E: 1 };
 // Program dipilih lewat tab di atas, bukan dropdown
 const FILTER_BAR = FILTERS.filter(([k]) => k !== "program");
 // urutan tab; sheet lain menyusul sesuai abjad
-const TAB_ORDER = [/siap/i, /opsi/i, /bti/i, /eduquest/i, /sang cendekia|p?scd/i];
+const TAB_ORDER = [/siap/i, /riset/i, /opsi/i, /^osn$/i, /bti/i, /eduquest/i, /sang cendekia|\bp?scd\b/i];
 const DEFAULT_TAB = "SIAP ITB";
 const tabRank = (p) => { const i = TAB_ORDER.findIndex((re) => re.test(p)); return i < 0 ? TAB_ORDER.length : i; };
 const sortTabs = (list) => [...list].sort((a, b) => tabRank(a) - tabRank(b) || a.localeCompare(b, "id"));
@@ -50,7 +50,9 @@ const Scoped = ({ title, scope }) => <>{title} <span className="title-prog">{sco
 const norm = (s) => String(s || "").toLowerCase().replace(/[\s_-]+/g, " ").trim();
 function rekapProgramApi(name) {
   // sheet Peserta_PSCD menulis programnya "Inspirasi - Sang Cendekia" (= INSPIRASI SCD)
-  if (/sang cendekia|p?scd/i.test(String(name))) return "inspirasi_scd";
+  if (/sang cendekia|\bp?scd\b/i.test(String(name))) return "inspirasi_scd";
+  // sheet Peserta_Riset menulis programnya "Riset Kolaboratif" (= Riset)
+  if (/riset/i.test(String(name))) return "riset";
   const n = norm(name);
   const p = PROGRAMS.find((x) => [x.label, x.key, x.api, x.label.replace(/^inspirasi\s+/i, "")].some((v) => norm(v) === n));
   return p?.api ?? REKAP_PESERTA.find((r) => norm(r.label) === n)?.programs[0];
