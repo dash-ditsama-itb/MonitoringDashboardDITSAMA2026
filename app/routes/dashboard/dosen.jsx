@@ -17,7 +17,7 @@ const FILTERS = [["program", "programs", "Program"], ["mapel", "mapels", "Mata k
 const score = (v) => (v == null ? "–" : Number(v).toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 const tone = (v) => (v >= 4.5 ? "ok" : v >= 4 ? "" : v >= 3 ? "warn" : "crit");
 // "Dr. Budi Santoso, S.Si., M.Si." -> "Budi Santoso"
-const nice = (n) => String(n || "").split(",")[0].replace(/^((prof|dr|drs|dra|ir)\.?\s+)+/i, "").trim();
+const nice = (n) => String(n || "").split(",")[0].replace(/^((prof|dr|drs|dra|ir|eng|rer|nat)(\.\s*|\s+))+/i, "").trim();
 // formulir per sesi tidak punya metode ("–")
 const hasMethod = (methods) => methods.some((m) => m !== "–");
 
@@ -153,22 +153,44 @@ function Charts({ d, onSelect }) {
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "top", align: "end" } },
       scales: { x: { grid: { display: false } }, y: { min: 1, max: 5, ticks: { stepSize: 1 } } } },
   }), [d]);
-  // hanya formulir per sesi (mis. Riset): grafik metode kosong, diganti kartu per aspek
+  // tanpa metode (Riset, BTI, EduQuest): grafik metode kosong, diganti kartu per aspek / per hari
   const showMethod = hasMethod(methods);
-  const aspects = d.aspects || [];
   const methodCard = (
-    <section className="card"><div className="card-head"><div><h2 className="card-title">Rata-rata per metode</h2><div className="card-sub">Luring / Hibrida / Daring per mata kuliah</div></div></div>
+    <section className="card" key="metode"><div className="card-head"><div><h2 className="card-title">Rata-rata per metode</h2><div className="card-sub">Luring / Hibrida / Daring per mata kuliah</div></div></div>
       <ChartCanvas config={metode} height={300} /></section>
   );
+  const extras = [
+    d.aspects?.length > 0 && <AspectCard key="aspek" aspects={d.aspects} />,
+    d.daySessions?.length > 0 && <DayCard key="hari" days={d.daySessions} onSelect={onSelect} />,
+  ].filter(Boolean);
+  const side = showMethod || !extras.length ? methodCard : extras.shift();
   return (
     <>
       <div className="grid g-2">
         <section className="card"><div className="card-head"><div><h2 className="card-title">15 pengajar dengan nilai tertinggi</h2><div className="card-sub">Rata-rata 1–5 · klik batang untuk membuka portofolio</div></div></div>
           <ChartCanvas config={rank} height={Math.max(240, top.length * 24 + 40)} /></section>
-        {showMethod || !aspects.length ? methodCard : <AspectCard aspects={aspects} />}
+        {side}
       </div>
-      {showMethod && aspects.length > 0 && <AspectCard aspects={aspects} />}
+      {extras}
     </>
+  );
+}
+
+// formulir per hari (mis. Dosen_EduQuest): pengajar tiap hari + nilai materi hari itu
+function DayCard({ days, onSelect }) {
+  return (
+    <section className="card">
+      <div className="card-head"><div><h2 className="card-title">Penilaian per hari</h2>
+        <div className="card-sub">Pengajar tiap hari + nilai materi hari itu · klik nama untuk portofolio</div></div></div>
+      <div className="days">{days.map((d) => (
+        <div className="day" key={d.label}>
+          <h3>{d.label}{d.materiScore != null && <small>materi {score(d.materiScore)}</small>}</h3>
+          <ul>{d.lecturers.map((l) => (
+            <li key={l.key}><button type="button" className="row-link" onClick={() => onSelect(l.key)}>{nice(l.name)}</button><b>{score(l.averageScore)}</b></li>
+          ))}</ul>
+        </div>
+      ))}</div>
+    </section>
   );
 }
 
@@ -239,8 +261,10 @@ function LecturerDetail({ lecturerKey, filters, onClose }) {
               {d.sessions?.length > 0 && <>
                 <h3 className="detail-h">Sesi kegiatan</h3>
                 <ul className="sesi">{d.sessions.map((s) => (
-                  <li key={s.date + s.class}><span>{s.date}{s.class !== "–" && " · " + s.class}</span>
-                    <span><b>{score(s.averageScore)}</b> · {fmtNum(s.ratingsCount)} formulir</span></li>
+                  <li key={s.date + s.class}><span>{s.date}{s.class !== "–" && " · " + s.class}
+                    {s.coSpeakers?.length > 0 && <small className="muted"> · bersama {s.coSpeakers.map(nice).join(", ")}</small>}</span>
+                    <span><b>{score(s.averageScore)}</b> · {fmtNum(s.ratingsCount)} {s.materiScore !== undefined ? "peserta" : "formulir"}
+                      {s.materiScore != null && <small className="muted"> · materi hari itu {score(s.materiScore)}</small>}</span></li>
                 ))}</ul>
               </>}
               {/* BTI (tanpa metode & tanggal sesi): rata-rata per kelas, mis. STEM 1 / STEM 2 / AI */}
