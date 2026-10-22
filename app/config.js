@@ -113,3 +113,23 @@ export const DASHBOARDS = [
     title: "Dashboard Pendidikan Persiapan DITSAMA 2026",
     desc: "Data Tahap Persiapan Bersama (TPB) dan pendidikan persiapan mahasiswa ITB." },
 ];
+
+// Struktur Organisasi Ditsama (dari "2026_Summary Ditsama", slide Struktur Organisasi), tampil di beranda.
+// Urutan seperti di slide: Pendidikan Persiapan (kiri), Pra-Universitas (kanan). Nama kosong = belum tercantum di sumber.
+export const ORG = {
+  director: { role: "Direktur Persiapan Bersama", name: "Prof. Dr. Fatimah Arofiati Noor" },
+  secretariat: { role: "Kepala Sekretariat", name: "" },
+  subdirectorates: [
+    { key: "persiapan", role: "Kepala Subdirektorat Pendidikan Persiapan", name: "Dr. Anton Timur Jaelani",
+      sections: [
+        { role: "Kepala Seksi Pendidikan Sains Dasar", name: "Fandy Gustiara, M.Pmat." },
+        { role: "Kepala Seksi Pendidikan Mata Kuliah Wajib ITB dan Mata Kuliah Umum", name: "Asep Setiawan, S.Kom" },
+        { role: "Kepala Seksi Pembinaan Keterampilan Interpersonal", name: "Rahmat Slamet Suhendi, S.T." },
+      ] },
+    { key: "pra", role: "Kepala Subdirektorat Pra-Universitas", name: "Oktofa Yudha Sudrajad, PhD.",
+      sections: [
+        { role: "Kepala Seksi Administrasi Pra-Universitas", name: "Dr. Novya Ekawati" },
+        { role: "Kepala Seksi Operasional Pra-Universitas", name: "Peri, S.Kom" },
+      ] },
+  ],
+};
