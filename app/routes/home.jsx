@@ -72,7 +72,7 @@ export default function Home() {
             <div className="org-staff"><span aria-hidden="true" /><Post person={ORG.secretariat} /></div>
             <div className="org-branches">
               {ORG.subdirectorates.map((unit) => (
-                <div key={unit.key} className="org-branch">
+                <div key={unit.key} className={"org-branch unit-" + unit.key}>
                   <Post person={unit} />
                   <ul className="org-sections">
                     {unit.sections.map((s) => <li key={s.role}><Post person={s} /></li>)}

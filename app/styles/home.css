@@ -45,16 +45,24 @@
 .landing-h2{margin:0;display:flex;align-items:center;gap:18px;font-size:17px;line-height:1.3;font-weight:800;color:var(--navy);letter-spacing:-.005em;text-align:center}
 .landing-h2::before,.landing-h2::after{content:"";flex:1;min-width:24px;border-top:1px solid #C6D1E0}
 
-.org{--org-line:var(--muted);--org-w:1.5px;--gap:32px;--axis:32%;--drop:28px}
-/* abu-abu muda & datar, beda dari kartu pilihan dashboard yang putih mengambang */
-.org-box{position:relative;background:#F1F3F6;border:1px solid var(--line-2);border-radius:4px;padding:10px 14px;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-align:center;min-height:58px}
+/* warna unit dari logo DPB: Pendidikan Persiapan biru, Pra-Universitas oranye */
+.org{--org-line:#A9B7CB;--org-w:1.5px;--gap:32px;--axis:32%;--drop:28px;--unit:#8A96A8;--unit-bg:#F4F6F9}
+.org .unit-persiapan{--unit:#3a6db0;--unit-bg:#EEF4FC}
+.org .unit-pra{--unit:#E8862B;--unit-bg:#FDF3E8}
+/* kotak sedikit timbul (bayangan tipis), lebih kecil dari kartu pilihan dashboard yang mengambang */
+.org-box{position:relative;background:var(--unit-bg);border:1px solid rgba(32,64,116,.1);border-radius:8px;padding:10px 14px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-align:center;min-height:58px;
+  box-shadow:0 1px 2px rgba(32,64,116,.06),0 4px 10px -6px rgba(32,64,116,.18)}
 .org-role{font-size:13px;line-height:1.35;color:var(--ink)}
 .org-name{font-size:13.5px;line-height:1.35;font-weight:700;color:var(--navy)}
 .org-box:not(:has(.org-name)) .org-role{font-weight:600}
-.org-box.lead{padding:12px 18px}
-.org-box.lead .org-role{font-size:13.5px}
-.org-box.lead .org-name{font-size:15px;font-weight:800}
+/* Direktur: navy penuh */
+.org-box.lead{padding:12px 18px;background:var(--rail);border-color:transparent;box-shadow:0 2px 4px rgba(32,64,116,.12),0 10px 22px -10px rgba(32,64,116,.45)}
+.org-box.lead .org-role{font-size:13.5px;color:#BCD2EC}
+.org-box.lead .org-name{font-size:15px;font-weight:800;color:#fff}
+/* Kepala subdirektorat: putih dengan garis warna unit di atas; seksi: warna unit muda dengan garis di kiri */
+.org-branch>.org-box{background:#fff;border-top:3px solid var(--unit)}
+.org-sections .org-box{border-left:3px solid var(--unit)}
 
 /* Direktur di tengah; Sekretariat bercabang ke kanan dari garis utama */
 .org-head{display:flex;justify-content:center}
