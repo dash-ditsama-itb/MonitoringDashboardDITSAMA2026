@@ -46,7 +46,8 @@
 .landing-h2::before,.landing-h2::after{content:"";flex:1;min-width:24px;border-top:1px solid #C6D1E0}
 
 .org{--org-line:var(--muted);--org-w:1.5px;--gap:32px;--axis:32%;--drop:28px}
-.org-box{position:relative;background:var(--card);border:1px solid var(--line-2);border-radius:4px;padding:10px 14px;
+/* abu-abu muda & datar, beda dari kartu pilihan dashboard yang putih mengambang */
+.org-box{position:relative;background:#F1F3F6;border:1px solid var(--line-2);border-radius:4px;padding:10px 14px;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-align:center;min-height:58px}
 .org-role{font-size:13px;line-height:1.35;color:var(--ink)}
 .org-name{font-size:13.5px;line-height:1.35;font-weight:700;color:var(--navy)}
