@@ -808,6 +808,12 @@ dialog.confirm[open]{animation:pop .2s var(--ease)}
 .asp-sub{grid-column:1 / 3;margin:4px 0 0 4px;padding:6px 0 2px 12px;border-left:2px solid var(--line);display:flex;flex-direction:column;gap:8px}
 .asp-sub div{display:grid;grid-template-columns:minmax(0,1fr) minmax(60px,100px) 40px;gap:10px;align-items:center;font-size:12.5px;color:var(--ink-2)}
 .asp-sub b{text-align:right;color:var(--navy);font-variant-numeric:tabular-nums}
+/* feedback per program (Portofolio Pengajar) */
+.asp-tabs{margin:0 0 14px;overflow-x:auto}
+.asp-total{display:flex;justify-content:space-between;align-items:baseline;gap:12px;border-top:1px solid var(--line);padding-top:12px;font-size:13px;color:var(--muted);font-weight:600}
+.asp-total b{font-size:22px;font-weight:800;color:var(--navy);font-variant-numeric:tabular-nums}
+.asp li.on .asp-lab span{color:var(--navy);font-weight:800}
+span.asp-lab{cursor:default}
 /* penilaian per hari (formulir per hari, mis. Dosen_EduQuest) */
 .days{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .day{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--subtle)}
