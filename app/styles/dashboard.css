@@ -111,6 +111,7 @@ a{color:var(--blue-ink);text-underline-offset:3px}
 .topbar>.icon-btn:first-child{display:none}
 .topbar-filter{margin-left:auto}
 .page{display:flex;flex-direction:column;gap:18px}
+.page>.seg{align-self:flex-start}
 .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:2px}
 .page-title{margin:0;font-size:26px;line-height:1.2;font-weight:800;color:var(--navy);letter-spacing:-.015em}
 .page-sub{color:var(--muted);font-size:13.5px;margin-top:4px;max-width:72ch}
@@ -874,6 +875,7 @@ span.asp-lab{cursor:default}
 .gate-side .gate-info{flex:1}
 .gate-main{flex-direction:column;gap:40px}
 .below-form{display:none}
+.gate-loading{min-height:100dvh;margin:0;display:flex;align-items:center;justify-content:center;gap:8px;color:var(--muted);font-size:14px}
 .gate-busy{display:flex;align-items:center;gap:8px;margin:0;color:var(--muted);font-size:14px}
 
 /* ------------------------------------------------------ responsive --- */

@@ -15,23 +15,19 @@ function expiresAt(token) {
     return 0;
   }
 }
-const isExpired = (session) => !session || expiresAt(session.token || session.loginToken) <= Date.now();
+const isExpired = (session) => !session || expiresAt(session.token) <= Date.now();
 
 export const useAuthStore = create(persist((set) => ({
-  // { name, email, role, programs, loginToken, token }
-  // token = token setelah Password Akses (dipakai untuk semua data); null -> belum diverifikasi
+  // { id, name, email, role: { id, name, grants, programs, isSuperAdmin }, permissions, token }
+  // permissions dari backend; diperbarui lewat GET /auth/me agar perubahan peran langsung berlaku
   session: null,
-  notice: "",   // pesan untuk gerbang login (mis. sesi berakhir)
+  notice: "",   // pesan untuk gerbang login (mis. sesi berakhir, menunggu persetujuan)
 
-  login: (user, loginToken) => {
+  login: (user, token) => {
     useDataStore.getState().reset();
-    set({
-      session: { name: user.name, email: user.email, role: user.role, programs: user.programs || [], loginToken, token: null },
-      notice: "",
-    });
+    set({ session: { ...user, token }, notice: "" });
   },
-  unlock: (token) => set((s) => ({ session: s.session && { ...s.session, token } })),
-  lockAccess: () => set((s) => ({ session: s.session && { ...s.session, token: null } })),
+  setUser: (user) => set((s) => ({ session: s.session && { ...s.session, ...user } })),
   logout: (notice = "") => {
     set({ session: null, notice });
     useDataStore.getState().reset();
@@ -42,7 +38,8 @@ export const useAuthStore = create(persist((set) => ({
   partialize: (s) => ({ session: s.session }),
   // sesi tersimpan yang sudah kedaluwarsa dibuang saat dimuat
   merge: (saved, current) => {
-    const session = saved?.session;
+    // sesi versi lama (dengan Password Akses): pakai token login, peran dimuat ulang lewat /auth/me
+    const session = saved?.session && { ...saved.session, token: saved.session.token || saved.session.loginToken };
     if (!session) return { ...current, session: null };
     if (!isExpired(session)) return { ...current, session };
     try { localStorage.removeItem(STORAGE_KEY); } catch { /* penyimpanan diblokir */ }

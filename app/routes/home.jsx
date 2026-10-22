@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { Icon } from "../components/Icon.jsx";
 import { DASHBOARDS, ORG } from "../config.js";
-import { roleLabel } from "../lib/format.js";
+import { roleName } from "../lib/format.js";
 import { useAuthStore } from "../stores/auth.js";
 import dashboardCss from "../styles/dashboard.css?url";
 import homeCss from "../styles/home.css?url";
@@ -40,7 +40,7 @@ export default function Home() {
         {session && (
           <span className="landing-who">
             <span className="ava">{(session.name || "?").slice(0, 1).toUpperCase()}</span>
-            <span><b>{session.name}</b><small>{roleLabel(session.role)}</small></span>
+            <span><b>{session.name}</b><small>{roleName(session)}</small></span>
           </span>
         )}
       </header>

@@ -3,8 +3,8 @@
 Website dashboard DITSAMA dengan dua dashboard: **Pra-Universitas** (monitoring program) dan
 **Pendidikan Persiapan** (laporan Power BI). Dibangun dengan **React Router v8 (framework mode, SPA)**
 dan **Zustand** untuk state bersama. Data diambil dari backend
-**monitoring-dashboard-ditsama-be** (Hono + PostgreSQL), dengan login email & password
-lalu Password Akses tim. Satu login berlaku untuk kedua dashboard.
+**monitoring-dashboard-ditsama-be** (Hono + PostgreSQL), dengan login email & password atau Akun ITB.
+Akun baru bisa masuk setelah Administrator memberi peran di Pengaturan Akun. Satu login berlaku untuk kedua dashboard.
 
 ## Struktur file
 ```
@@ -93,7 +93,7 @@ di `vite.config.js`.
 `/dashboard/financial` tetap bisa dibuka langsung di GitHub Pages).
 
 ## Catatan keamanan
-- Password dan Password Akses diperiksa di backend.
+- Password dan hak akses peran diperiksa di backend pada setiap permintaan; frontend hanya menyembunyikan menu dan tombol.
 - Sesi login (token) disimpan di localStorage browser, jadi tetap masuk saat halaman dimuat ulang
   atau dibuka di tab baru, sampai token kedaluwarsa (`ACCESS_TOKEN_EXPIRE_IN_MINUTES` di backend,
   default 7 hari) atau pengguna menekan **Keluar**. Masuk/keluar di satu tab ikut berlaku di tab lain.

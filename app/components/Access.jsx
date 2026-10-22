@@ -1,14 +1,15 @@
 // Pembatasan halaman per jabatan (mengikuti hak akses backend).
 import { Link } from "react-router";
-import { canManageReports, canSeeActivities, canSeeFinance, roleLabel } from "../lib/format.js";
+import { canManageReports, canManageUsers, canSeeActivities, canSeeFinance, roleName } from "../lib/format.js";
 import { useAuthStore } from "../stores/auth.js";
 import { Icon } from "./Icon.jsx";
 import { EmptyState } from "./ui.jsx";
 
 export const ACCESS = {
-  activities: { can: canSeeActivities, who: "Admin, Kasubdit, PIC, dan Pimpinan" },
-  finance: { can: canSeeFinance, who: "Admin, Kasubdit, Finance, dan Pimpinan" },
-  reports: { can: canManageReports, who: "Admin dan Kasubdit" },
+  activities: { can: canSeeActivities, who: "pengguna yang sudah diberi akses" },
+  finance: { can: canSeeFinance, who: "peran dengan akses Administrator, Viewer, Editor Finance, atau Viewer Finance" },
+  reports: { can: canManageReports, who: "peran dengan akses Administrator" },
+  accounts: { can: canManageUsers, who: "peran dengan akses Administrator" },
 };
 
 // halaman awal yang pasti bisa dibuka jabatan ini
@@ -28,7 +29,7 @@ export function RequireAccess({ area, page, back, children }) {
       <section className="card">
         <EmptyState icon="lock" title={`${page} tidak tersedia untuk jabatan Anda`}
           action={<Link className="btn btn-primary btn-sm" to={to}><Icon name="left" size={15} />Buka {label}</Link>}>
-          Halaman ini hanya bisa dibuka oleh {rule.who}. Anda masuk sebagai {roleLabel(session?.role)}.
+          Halaman ini hanya bisa dibuka oleh {rule.who}. Peran Anda: {roleName(session)}.
         </EmptyState>
       </section>
     </div>

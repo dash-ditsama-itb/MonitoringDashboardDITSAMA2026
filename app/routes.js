@@ -12,6 +12,7 @@ export default [
       route("dosen", "./routes/dashboard/dosen.jsx"),
       route("input", "./routes/dashboard/input.jsx"),
       route("sdm", "./routes/dashboard/sdm.jsx"),
+      route("pengaturan-akun", "./routes/dashboard/accounts.jsx"),
       route("program/:programKey", "./routes/dashboard/program.jsx"),
       route("sugt", "./routes/dashboard/sugt.jsx"),
     ]),

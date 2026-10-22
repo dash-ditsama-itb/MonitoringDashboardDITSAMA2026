@@ -1,7 +1,7 @@
 import { RequireAccess } from "../../components/Access.jsx";
 import { ActivitiesTable } from "../../components/Activities.jsx";
 import { PageHead } from "../../components/ui.jsx";
-import { editablePrograms, isReadOnly } from "../../lib/format.js";
+import { editablePrograms, PROGRAMS_AZ } from "../../lib/format.js";
 import { useAuthStore } from "../../stores/auth.js";
 
 export default function InputData() {
@@ -11,9 +11,9 @@ export default function InputData() {
 function InputPage() {
   const session = useAuthStore((s) => s.session);
   const mine = editablePrograms(session);
-  const sub = isReadOnly(session)
-    ? "Lihat dan ekspor kegiatan semua program. Akun Pimpinan hanya dapat melihat data."
-    : session?.role === "pic"
+  const sub = !mine.length
+    ? "Lihat dan ekspor kegiatan semua program. Peran Anda hanya dapat melihat data kegiatan."
+    : mine.length < PROGRAMS_AZ.length
       ? `Catat dan kelola kegiatan. Anda dapat mengubah data ${mine.map((p) => p.label).join(", ") || "–"}; program lain hanya bisa dilihat.`
       : "Catat, impor, dan kelola kegiatan semua program.";
   return (

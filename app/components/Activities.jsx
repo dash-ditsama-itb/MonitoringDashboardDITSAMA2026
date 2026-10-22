@@ -90,6 +90,9 @@ function ProgramName({ api }) {
  */
 export function ActivitiesTable({ fixedProgram, title = "Data Kegiatan", sub }) {
   const session = useAuthStore((s) => s.session);
+  // "Program saya" hanya untuk peran yang boleh mengubah sebagian program (mis. PIC)
+  const mine = editablePrograms(session).map((p) => p.api);
+  const isLimited = mine.length > 0 && mine.length < PROGRAMS_AZ.length;
   const stored = useUiStore((s) => s.act);
   const patch = useUiStore((s) => s.patch);
   const [local, setLocal] = useState({ program: fixedProgram, search: "", sort: "date:desc", page: 1, perPage: 10 });
@@ -102,7 +105,7 @@ export function ActivitiesTable({ fixedProgram, title = "Data Kegiatan", sub }) 
   const actions = useActivityActions();
 
   const programs = fixedProgram ? [fixedProgram]
-    : st.program === "mine" ? (session?.programs?.length ? session.programs : ["all"])
+    : st.program === "mine" ? (mine.length ? mine : ["all"])
     : st.program ? [st.program] : ["all"];
   const [sortBy, sortOrder] = st.sort.split(":");
   const query = { programs, page: st.page, perPage: st.perPage, search: st.search, sortBy, sortOrder };
@@ -140,7 +143,7 @@ export function ActivitiesTable({ fixedProgram, title = "Data Kegiatan", sub }) 
   }
 
   const canAdd = editablePrograms(session).length > 0 && (!fixedProgram || canEditActivity(session, fixedProgram));
-  const programOptions = [["", "Semua program"], ...(session?.role === "pic" ? [["mine", "Program saya"]] : []),
+  const programOptions = [["", "Semua program"], ...(isLimited ? [["mine", "Program saya"]] : []),
     ...PROGRAMS_AZ.map((p) => [p.api, p.label])];
   // kolom Program selalu tampil di Data Kegiatan (juga saat difilter satu program); disembunyikan hanya di dashboard program
   const showProgram = !fixedProgram;
@@ -158,7 +161,7 @@ export function ActivitiesTable({ fixedProgram, title = "Data Kegiatan", sub }) 
         </div>
         <div className="tbl-actions">
           {editablePrograms(session).length > 0 && <ImportButton path="/activity/import" hint="Unggah .xlsx/.csv dengan format file Ekspor (tab dengan kolom Nama Kegiatan, mis. DataMasuk). Baris yang ID-nya sudah ada akan memperbarui kegiatan tersebut"
-            describe={(d) => importSummary(d, "kegiatan", session?.role === "pic" ? "program tidak dikenal atau di luar akses Anda" : "program tidak dikenal")}
+            describe={(d) => importSummary(d, "kegiatan", isLimited ? "program tidak dikenal atau di luar akses Anda" : "program tidak dikenal")}
             onDone={refreshActivities} />}
           <ExportButton path="/activity/export" filename="data-kegiatan.xlsx"
             query={{ programs, search: st.search, sortBy, sortOrder }} />

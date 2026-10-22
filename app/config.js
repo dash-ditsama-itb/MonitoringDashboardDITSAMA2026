@@ -54,13 +54,14 @@ export const FIN_PROGRAMS = [
   { api: "freeport",           label: "Freeport" },
 ];
 
-// Jabatan (role) -> label tampilan. Program yang dipegang dipilih terpisah saat daftar (khusus PIC).
-export const ROLES = [
-  ["admin", "Admin"],
-  ["kasubdit", "Kasubdit"],
-  ["finance", "Finance"],
-  ["pic", "PIC"],
-  ["leader", "Pimpinan"],
+// Hak akses (grant) yang bisa diberikan ke peran; satu peran boleh punya beberapa grant (haknya digabung).
+// Peran sendiri (Pimpinan, Anggota, PIC OPSI, ...) dibuat Administrator di Pengaturan Akun.
+export const GRANTS = [
+  ["administrator", "Administrator", "Melihat dan mengubah semua data, termasuk Pengaturan Akun"],
+  ["viewer", "Viewer", "Melihat semua data, termasuk Keuangan"],
+  ["finance_editor", "Editor Finance", "Melihat semua data, mengubah Keuangan"],
+  ["finance_viewer", "Viewer Finance", "Melihat semua data, termasuk Keuangan"],
+  ["pic", "PIC", "Melihat semua data kecuali Keuangan, mengubah kegiatan program yang dipilih"],
 ];
 
 // Fase kegiatan, urut tetap: Persiapan -> Proses -> Fase 1..10 -> Pelaporan

@@ -3,14 +3,15 @@ import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router";
 import { useShallow } from "zustand/react/shallow";
 import { DASHBOARDS } from "../config.js";
-import { roleLabel } from "../lib/format.js";
+import { refreshUser } from "../lib/api.js";
+import { grantLabel, programLabel, roleName } from "../lib/format.js";
 import { useAuthStore } from "../stores/auth.js";
 import { useUiStore } from "../stores/ui.js";
 import { ACCESS } from "./Access.jsx";
-import { AccessOverlay, AuthGate } from "./AuthGate.jsx";
+import { AuthGate } from "./AuthGate.jsx";
 import { FeedbackHost } from "./feedback.jsx";
 import { Icon } from "./Icon.jsx";
-import { Sheet } from "./ui.jsx";
+import { Sheet, Spinner } from "./ui.jsx";
 
 const navClass = ({ isActive }) => "nav-item" + (isActive ? " active" : "");
 
@@ -28,11 +29,13 @@ export function NavItem({ session, area, to, end, children }) {
   return <NavLink className={navClass} to={to} end={end}>{children}</NavLink>;
 }
 
-/** Login (satu akun untuk kedua dashboard) lalu Password Akses, baru isi dashboard. */
+/** Login (satu akun untuk kedua dashboard), lalu isi dashboard sesuai hak akses peran. */
 export function Gate({ dashboard, children }) {
   const session = useAuthStore((s) => s.session);
+  // hak akses selalu diambil ulang saat dashboard dibuka, jadi perubahan peran langsung terasa
+  useEffect(() => { if (session?.token) refreshUser(); }, [session?.token]);
   if (!session) return <><AuthGate title={dashboard.title} /><FeedbackHost /></>;
-  if (!session.token) return <><AccessOverlay title={dashboard.title} /><FeedbackHost /></>;
+  if (!session.permissions) return <p className="gate-loading"><Spinner />Memuat akses akun…</p>;
   return children(session);
 }
 
@@ -78,7 +81,7 @@ export function AppShell({ session, dashboard, nav, control, topbarEnd, profile 
         <nav className="rail-nav" aria-label={"Menu " + dashboard.label}>{nav}</nav>
         <button className="rail-foot" type="button" onClick={() => setProfileOpen(true)}>
           <span className="ava">{(session.name || "?").slice(0, 1).toUpperCase()}</span>
-          <span className="rail-who"><b>{session.name}</b><small>{roleLabel(session.role)}</small></span>
+          <span className="rail-who"><b>{session.name}</b><small>{roleName(session)}</small></span>
           <Icon name="right" size={16} />
         </button>
       </aside>
@@ -115,7 +118,9 @@ function ProfileSheet({ open, onClose, session, children }) {
         <div><b>{session.name}</b><div className="muted">{session.email}</div></div>
       </div>
       <dl className="facts">
-        <div><dt>Jabatan</dt><dd>{roleLabel(session.role)}</dd></div>
+        <div><dt>Peran</dt><dd>{roleName(session)}</dd></div>
+        <div><dt>Akses</dt><dd>{session.role.isSuperAdmin ? "Super Admin (semua akses)"
+          : session.role.grants.map((g) => (g === "pic" ? `PIC ${session.role.programs.map(programLabel).join(", ")}` : grantLabel(g))).join(" · ")}</dd></div>
         {children}
       </dl>
       <p className="hint"><Icon name="info" size={14} />Satu akun untuk kedua dashboard. Keluar berlaku untuk Pra-Universitas dan Pendidikan Persiapan.</p>

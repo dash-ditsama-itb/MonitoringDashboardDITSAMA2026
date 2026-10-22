@@ -1,5 +1,5 @@
 // Helper murni (tanpa DOM): label, format angka/tanggal, dan hak akses.
-import { FIN_PROGRAMS, ISSUE_LEVELS, PHASES, PROGRAMS, PROGRESS, ROLES } from "../config.js";
+import { FIN_PROGRAMS, GRANTS, ISSUE_LEVELS, PHASES, PROGRAMS, PROGRESS } from "../config.js";
 
 // ---------------------------------------------------------------- angka ---
 export const fmtNum = (n) => (n === null || n === undefined || n === "" ? "–" : Number(n).toLocaleString("id-ID"));
@@ -62,7 +62,8 @@ const lookup = (pairs) => { const m = Object.fromEntries(pairs); return (v) => m
 export const phaseLabel = lookup(PHASES);
 export const progressLabel = lookup(PROGRESS);
 export const levelLabel = lookup(ISSUE_LEVELS);
-export const roleLabel = lookup(ROLES);
+export const grantLabel = lookup(GRANTS);
+export const roleName = (s) => s?.role?.name || "–";
 export const statusLabel = lookup([["upcoming", "Akan Datang"], ["ongoing", "Berlangsung"], ["done", "Selesai"]]);
 export const finTypeLabel = lookup([["initial_pks", "PKS Awal"], ["addition_pks", "Penambahan PKS"], ["submission", "Pengajuan"]]);
 export const isPks = (r) => r.type === "initial_pks" || r.type === "addition_pks";
@@ -114,23 +115,17 @@ export function attendance(participants) {
 export const skName = (name) => String(name || "").replace(/^\d{10,}-/, "");
 
 // ---------------------------------------------------------------- akses ---
-// mengikuti hak akses backend: Finance hanya Keuangan, PIC tidak bisa membuka Keuangan,
-// Pimpinan (leader) melihat semua tanpa bisa menambah, mengubah, atau menghapus
-export const isReadOnly = (s) => s?.role === "leader";
-export const isAllAccess = (s) => !!s && ["admin", "kasubdit", "leader"].includes(s.role);
-export const canSeeActivities = (s) => !!s && ["admin", "kasubdit", "pic", "leader"].includes(s.role);
-export const canSeeFinance = (s) => !!s && ["admin", "kasubdit", "finance", "leader"].includes(s.role);
-export const canEditFinance = (s) => !!s && ["admin", "kasubdit", "finance"].includes(s.role);
-// Pendidikan Persiapan: semua jabatan melihat laporan; hanya Admin & Kasubdit yang mengelolanya
-export const canManageReports = (s) => !!s && ["admin", "kasubdit"].includes(s.role);
-// daftar nama SDM dipakai bersama semua program: PIC juga boleh menambah, mengubah, menggabungkan, dan menghapus
-export const canEditHumanResources = (s) => !!s && ["admin", "kasubdit", "pic"].includes(s.role);
+// hak akses dihitung backend dari grant peran (GET /auth/me -> permissions); di sini hanya dibaca
+const perms = (s) => s?.permissions || {};
+export const canSeeActivities = (s) => !!s?.permissions;
+export const canSeeFinance = (s) => !!perms(s).readFinance;
+export const canEditFinance = (s) => !!perms(s).writeFinance;
+export const canManageReports = (s) => !!perms(s).manageReports;
+export const canManageUsers = (s) => !!perms(s).manageUsers;
+// daftar nama SDM & SK dipakai bersama semua program: PIC juga boleh mengubahnya
+export const canEditHumanResources = (s) => !!perms(s).writeHumanResources;
 // program kegiatan yang boleh diisi/diubah
-export function editablePrograms(s) {
-  if (!canSeeActivities(s) || isReadOnly(s)) return [];
-  if (s.role === "pic") return PROGRAMS_AZ.filter((p) => (s.programs || []).includes(p.api));
-  return PROGRAMS_AZ;
-}
+export const editablePrograms = (s) => PROGRAMS_AZ.filter((p) => (perms(s).writePrograms || []).includes(p.api));
 export const canEditActivity = (s, programApi) => editablePrograms(s).some((p) => p.api === programApi);
 
 // ------------------------------------------------------------ nama orang ---

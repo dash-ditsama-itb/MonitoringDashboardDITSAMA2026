@@ -12,12 +12,24 @@ export class ApiError extends Error {
 
 // Pesan untuk pengguna (bukan developer): pesan backend (Inggris) -> Bahasa Indonesia.
 // Rincian teknis (status, isi balasan) hanya ditulis ke console.error.
+const PENDING = "Akun Anda menunggu persetujuan Administrator. Anda akan menerima email saat akses aktif, lalu silakan masuk lagi.";
 const SUGT_DOWN = "Data SUGT belum bisa dimuat saat ini. Coba lagi sebentar lagi.";
 const MESSAGES = {
   "Invalid email or password.": "Email atau password salah.",
   "User is not yet verified.": "Email belum diverifikasi. Masukkan kode yang dikirim ke email Anda.",
   "User not verified.": "Email belum diverifikasi.",
-  "User with the provided email already exists.": "Email ini sudah terdaftar. Silakan masuk.",
+  "User with the provided email already exists.": "Email ini sudah terdaftar. Silakan masuk dengan password atau Akun ITB, atau gunakan Lupa password.",
+  "User access is awaiting approval.": PENDING,
+  "Unauthorized.": "Sesi Anda berakhir. Silakan masuk lagi.",
+  "Role not found.": "Peran tidak ditemukan (mungkin sudah dihapus). Muat ulang halaman.",
+  "Role with the provided name already exists.": "Nama peran ini sudah dipakai.",
+  "Programs are required for PIC grant.": "Pilih minimal satu program untuk akses PIC.",
+  "Super Admin role cannot be changed.": "Peran Super Admin tidak bisa diubah atau dihapus.",
+  "Role is still assigned to users.": "Peran ini masih dipakai pengguna. Pindahkan penggunanya ke peran lain dulu.",
+  "You cannot remove the administrator grant from your own role.": "Anda tidak bisa melepas akses Administrator dari peran Anda sendiri.",
+  "You cannot change your own role.": "Anda tidak bisa mengubah peran Anda sendiri.",
+  "You cannot delete your own account.": "Anda tidak bisa menghapus akun Anda sendiri.",
+  "Email can only be changed before the user signs up.": "Email hanya bisa diubah sebelum pengguna mendaftar.",
   "User not found.": "Email tidak terdaftar.",
   "User already verified.": "Email sudah terverifikasi. Silakan masuk.",
   "OTP not found. Please request again.": "Kode tidak ditemukan. Minta kode baru.",
@@ -32,8 +44,6 @@ const MESSAGES = {
   "Duplicate human resource position.": "Setiap peran SDM hanya boleh dipilih sekali per kegiatan.",
   "Human resource members must have the same position.": "Nama hanya bisa digabung dengan nama dari peran yang sama.",
   "Cannot merge a human resource member into itself.": "Pilih nama lain sebagai tujuan penggabungan.",
-  "Invalid access password.": "Password Akses salah.",
-  "Access password verification required.": "Masukkan Password Akses untuk melanjutkan.",
   "Forbidden.": "Anda tidak punya akses untuk tindakan ini.",
   "Activity not found.": "Kegiatan tidak ditemukan (mungkin sudah dihapus).",
   "Financial not found.": "Data keuangan tidak ditemukan (mungkin sudah dihapus).",
@@ -75,7 +85,7 @@ export function errorText(e, fallback = GENERIC) {
 }
 
 const FIELD_LABELS = {
-  email: "Email", password: "Password", name: "Nama", role: "Jabatan", programs: "Program", code: "Kode",
+  email: "Email", password: "Password", name: "Nama", roleId: "Peran", grants: "Akses", programs: "Program", code: "Kode",
   newPassword: "Password baru", program: "Program", date: "Tanggal", pksValue: "Nilai PKS",
   submissionValue: "Nilai pengajuan", achievementValue: "Nilai capaian", feedback: "Umpan balik",
   participants: "Peserta", humanResources: "SDM", memberIds: "Nama SDM", targetMemberId: "Nama tujuan", issues: "Isu", sk: "File SK", pic: "PIC", location: "Lokasi",
@@ -144,8 +154,21 @@ async function failure(res) {
   const auth = useAuthStore.getState();
   // token kedaluwarsa / tidak sah -> keluar; Password Akses belum diverifikasi -> minta lagi
   if (res.status === 401 && auth.session) auth.logout("Sesi Anda berakhir. Silakan masuk lagi.");
-  if (res.status === 403 && body?.message === "Access password verification required.") auth.lockAccess();
+  if (res.status === 403 && auth.session) {
+    if (body?.message === "User access is awaiting approval.") auth.logout(PENDING);
+    else refreshUser();   // peran mungkin baru diubah Administrator: muat ulang hak akses
+  }
   return err;
+}
+
+let refreshing = null;
+/** Muat ulang profil & hak akses dari GET /auth/me (perubahan peran berlaku tanpa masuk ulang). */
+export function refreshUser() {
+  refreshing ||= api("/auth/me")
+    .then((out) => useAuthStore.getState().setUser(out.data.user))
+    .catch(() => {})
+    .finally(() => { refreshing = null; });
+  return refreshing;
 }
 
 /** Panggil endpoint JSON. Mengembalikan isi body (`{ status, data, ... }`) atau melempar ApiError. */

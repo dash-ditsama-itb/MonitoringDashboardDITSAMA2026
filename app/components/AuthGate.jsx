@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { API_URL, DASHBOARDS, ROLES } from "../config.js";
-import { api, ApiError, errorText } from "../lib/api.js";
-import { PROGRAMS_AZ } from "../lib/format.js";
+import { API_URL, DASHBOARDS } from "../config.js";
+import { api, errorText } from "../lib/api.js";
 import { useAuthStore } from "../stores/auth.js";
 import { GateInfo } from "./GateInfo.jsx";
 import { Icon } from "./Icon.jsx";
@@ -10,11 +9,10 @@ import { Spinner } from "./ui.jsx";
 
 const COPY = {
   login: ["Masuk", "Gunakan email dan password akun Anda."],
-  signup: ["Buat akun", "Setelah mendaftar, kami kirim kode verifikasi ke email Anda."],
+  signup: ["Buat akun", "Setelah email terverifikasi, Administrator memberi akses ke akun Anda."],
   verify: ["Verifikasi email", "Masukkan 6 digit kode yang kami kirim ke email Anda."],
   forgot: ["Lupa password", "Masukkan email akun Anda. Kami kirim kode untuk membuat password baru."],
   reset: ["Buat password baru", "Masukkan kode dari email dan password baru Anda."],
-  microsoft: ["Pilih jabatan", "Akun ITB Anda belum terdaftar. Pilih jabatan untuk menyelesaikan pendaftaran."],
 };
 
 const hasMicrosoftToken = () => typeof window !== "undefined" && /[#&]microsoft_token=/.test(window.location.hash);
@@ -70,19 +68,19 @@ function ItbLogo() {
   return <img src={import.meta.env.BASE_URL + "assets/itb-logo.png"} alt="" width="18" height="18" aria-hidden="true" />;
 }
 
-function Who({ name, email }) {
+// ok = hijau, info = biru (mis. menunggu persetujuan), selain itu merah
+function Msg({ msg }) {
+  if (!msg) return null;
+  const tone = msg.ok ? "ok" : msg.info ? "" : "err";
   return (
-    <div className="gate-who">
-      <span className="ava">{(name || "?").slice(0, 1).toUpperCase()}</span>
-      <div><b>{name}</b><small>{email}</small></div>
+    <div className={"note " + tone} role={tone === "err" ? "alert" : "status"}>
+      <Icon name={msg.ok ? "checkCircle" : msg.info ? "info" : "alert"} size={16} /><span>{msg.text}</span>
     </div>
   );
 }
 
-function Msg({ msg }) {
-  if (!msg) return null;
-  return <div className={"note " + (msg.ok ? "ok" : "err")} role={msg.ok ? "status" : "alert"}><Icon name={msg.ok ? "checkCircle" : "alert"} size={16} /><span>{msg.text}</span></div>;
-}
+// akun belum diberi peran oleh Administrator -> tampil sebagai info, bukan error
+const isPending = (err) => err?.raw?.message === "User access is awaiting approval."
 
 /** Gerbang Masuk / Daftar / Verifikasi / Lupa password (tampil sampai user login). title = nama dashboard yang dibuka. */
 export function AuthGate({ title: dashTitle }) {
@@ -97,14 +95,12 @@ export function AuthGate({ title: dashTitle }) {
   };
   const notice = useAuthStore((s) => s.notice);
   const [mode, setMode] = useState(() => (hasMicrosoftToken() ? "sso" : "login"));
-  const [f, setF] = useState({ name: "", role: "pic", email: "", password: "", code: "", programs: [] });
-  const [msg, setMsg] = useState(notice ? { ok: false, text: notice } : null);
+  const [f, setF] = useState({ name: "", email: "", password: "", code: "" });
+  const [msg, setMsg] = useState(notice ? { info: true, text: notice } : null);
   const [busy, setBusy] = useState(false);
-  const [sso, setSso] = useState(null);
 
   const field = (k) => ({ value: f[k], onChange: (e) => setF({ ...f, [k]: e.target.value }) });
   const go = (m, message = null) => { setMode(m); setMsg(message); setF((x) => ({ ...x, code: "", password: m === "login" ? x.password : "" })); };
-  const toggleProgram = (api) => setF({ ...f, programs: f.programs.includes(api) ? f.programs.filter((k) => k !== api) : [...f.programs, api] });
   const email = f.email.trim();
 
   const run = async (fn) => {
@@ -112,10 +108,6 @@ export function AuthGate({ title: dashTitle }) {
     try { await fn(); } catch (e) { return e; } finally { setBusy(false); }
   };
   const post = (path, body) => api(path, { method: "POST", body, token: null });
-  const requirePrograms = () => {
-    if (f.role === "pic" && !f.programs.length) throw new ApiError("Pilih minimal satu program yang Anda pegang.", 0);
-  };
-  const rolePayload = () => ({ role: f.role, ...(f.role === "pic" ? { programs: f.programs } : {}) });
 
   // kembali dari Microsoft: backend menaruh token sementara di fragmen URL (#microsoft_token / #microsoft_error)
   useEffect(() => {
@@ -126,10 +118,8 @@ export function AuthGate({ title: dashTitle }) {
     if (!token) return go("login", { ok: false, text: "Masuk dengan Akun ITB gagal atau dibatalkan. Silakan coba lagi." });
     run(async () => {
       const out = await post("/auth/microsoft/login", { token });
-      if (out.data.accessToken) return ssoLogin(out.data.user, out.data.accessToken);
-      setSso({ token, name: out.data.name, email: out.data.email });
-      go("microsoft");
-    }).then((err) => err && go("login", { ok: false, text: errorText(err) }));
+      ssoLogin(out.data.user, out.data.accessToken);
+    }).then((err) => err && go("login", { ok: false, info: isPending(err), text: errorText(err) }));
   }, []);
 
   async function submit(e) {
@@ -139,29 +129,26 @@ export function AuthGate({ title: dashTitle }) {
         const out = await post("/auth/login", { email, password: f.password });
         login(out.data.user, out.data.accessToken);
       } else if (mode === "signup") {
-        requirePrograms();
-        await post("/auth/register", { name: f.name.trim(), email, password: f.password, ...rolePayload() });
+        await post("/auth/register", { name: f.name.trim(), email, password: f.password });
         go("verify", { ok: true, text: `Kode verifikasi terkirim ke ${email}. Cek juga folder spam.` });
       } else if (mode === "verify") {
-        await post("/auth/otp/email/verify", { email, code: f.code.trim() });
-        go("login", { ok: true, text: "Email terverifikasi. Silakan masuk." });
+        const out = await post("/auth/otp/email/verify", { email, code: f.code.trim() });
+        go("login", out.message === "User email verified, awaiting approval."
+          ? { info: true, text: "Email terverifikasi. Akun Anda menunggu persetujuan Administrator; kami kirim email saat akses aktif." }
+          : { ok: true, text: "Email terverifikasi. Silakan masuk." });
       } else if (mode === "forgot") {
         await post("/auth/otp/password-reset", { email });
         go("reset", { ok: true, text: `Kode terkirim ke ${email}.` });
       } else if (mode === "reset") {
         await post("/auth/otp/password-reset/verify", { email, code: f.code.trim(), newPassword: f.password });
         go("login", { ok: true, text: "Password berhasil diganti. Silakan masuk dengan password baru." });
-      } else if (mode === "microsoft") {
-        requirePrograms();
-        const out = await post("/auth/microsoft/register", { token: sso.token, ...rolePayload() });
-        ssoLogin(out.data.user, out.data.accessToken);
       }
     });
     if (!err) return;
     if (mode === "login" && err.raw?.message === "User is not yet verified.") {
       return go("verify", { ok: false, text: "Email Anda belum diverifikasi. Masukkan kode dari email, atau kirim ulang kode." });
     }
-    setMsg({ ok: false, text: errorText(err) });
+    setMsg({ ok: false, info: isPending(err), text: errorText(err) });
   }
 
   async function resend() {
@@ -186,7 +173,7 @@ export function AuthGate({ title: dashTitle }) {
 
   const [title, sub] = COPY[mode];
   const isEntry = mode === "login" || mode === "signup";
-  const button = { login: "Masuk", signup: "Daftar", verify: "Verifikasi", forgot: "Kirim kode", reset: "Simpan password baru", microsoft: "Selesaikan pendaftaran" }[mode];
+  const button = { login: "Masuk", signup: "Daftar", verify: "Verifikasi", forgot: "Kirim kode", reset: "Simpan password baru" }[mode];
 
   return (
     <Shell title={dashTitle}>
@@ -203,39 +190,15 @@ export function AuthGate({ title: dashTitle }) {
           <p className="gate-sub">{sub}</p>
         </div>
 
-        {mode === "microsoft" && <Who name={sso.name} email={sso.email} />}
-
         {mode === "signup" && (
           <label className="field"><span className="field-lab">Nama lengkap</span>
             <input type="text" autoComplete="name" placeholder="mis. Budi Santoso" required {...field("name")} />
           </label>
         )}
-        {(mode === "signup" || mode === "microsoft") && (
-          <>
-            <label className="field"><span className="field-lab">Jabatan</span>
-              <select {...field("role")}>{ROLES.map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select>
-            </label>
-            {f.role === "pic" && (
-              <fieldset className="checks">
-                <legend className="field-lab">Program yang Anda pegang</legend>
-                <div className="check-grid">
-                  {PROGRAMS_AZ.map((p) => (
-                    <label key={p.api} className={"check" + (f.programs.includes(p.api) ? " on" : "")}>
-                      <input type="checkbox" checked={f.programs.includes(p.api)} onChange={() => toggleProgram(p.api)} />
-                      <span>{p.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-            )}
-          </>
-        )}
 
-        {mode !== "microsoft" && (
-          <label className="field"><span className="field-lab">Email</span>
-            <input type="email" autoComplete="email" placeholder="nama@itb.ac.id" required readOnly={mode === "verify" || mode === "reset"} {...field("email")} />
-          </label>
-        )}
+        <label className="field"><span className="field-lab">Email</span>
+          <input type="email" autoComplete="email" placeholder="nama@itb.ac.id" required readOnly={mode === "verify" || mode === "reset"} {...field("email")} />
+        </label>
 
         {(mode === "verify" || mode === "reset") && (
           <label className="field"><span className="field-lab">Kode verifikasi</span>
@@ -276,48 +239,6 @@ export function AuthGate({ title: dashTitle }) {
             <button type="button" className="link-btn" onClick={() => go("login")}><Icon name="left" size={15} />Kembali ke Masuk</button>
           </div>
         )}
-      </form>
-    </Shell>
-  );
-}
-
-/** Password Akses (muncul setelah login, sebelum data dashboard dibuka). */
-export function AccessOverlay({ title }) {
-  const session = useAuthStore((s) => s.session);
-  const unlock = useAuthStore((s) => s.unlock);
-  const logout = useAuthStore((s) => s.logout);
-  const [pass, setPass] = useState("");
-  const [msg, setMsg] = useState(null);
-  const [busy, setBusy] = useState(false);
-
-  async function check(e) {
-    e.preventDefault();
-    setBusy(true); setMsg(null);
-    try {
-      const out = await api("/auth/access", { method: "POST", body: { password: pass }, token: session.loginToken });
-      unlock(out.data.accessToken);
-    } catch (err) {
-      setMsg({ ok: false, text: errorText(err) });
-    } finally { setBusy(false); }
-  }
-
-  return (
-    <Shell title={title}>
-      <form className="gate-form" onSubmit={check}>
-        <Brand />
-        <Who name={session.name} email={session.email} />
-        <div>
-          <h2 className="gate-title"><Icon name="lock" size={20} />Password Akses</h2>
-          <p className="gate-sub">Satu langkah lagi. Masukkan Password Akses tim untuk membuka data dashboard.</p>
-        </div>
-        <label className="field"><span className="field-lab">Password Akses</span>
-          <PasswordInput value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="off" placeholder="password akses" />
-        </label>
-        <Msg msg={msg} />
-        <button type="submit" className="btn btn-primary btn-block" disabled={busy}>{busy && <Spinner />}Buka dashboard</button>
-        <div className="gate-links">
-          <button type="button" className="link-btn" onClick={() => logout()}><Icon name="logout" size={15} />Keluar, ganti akun</button>
-        </div>
       </form>
     </Shell>
   );

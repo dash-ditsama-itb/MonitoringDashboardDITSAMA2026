@@ -7,7 +7,7 @@ import { Icon } from "../../components/Icon.jsx";
 import { SUGT_PROGRAM } from "../../components/Sugt.jsx";
 import { SelectField, Spinner } from "../../components/ui.jsx";
 import { DASHBOARDS, PROGRAMS } from "../../config.js";
-import { byLabel, isAllAccess, levelLabel, programByApi, progColor, sortLabels, withoutAll } from "../../lib/format.js";
+import { byLabel, canEditFinance, canEditHumanResources, canManageUsers, editablePrograms, levelLabel, progColor, sortLabels, withoutAll } from "../../lib/format.js";
 import { useApi } from "../../stores/data.js";
 import { useUiStore } from "../../stores/ui.js";
 import dashboardCss from "../../styles/dashboard.css?url";
@@ -50,8 +50,17 @@ function Shell({ session }) {
     return out;
   }, [data]);
 
-  const progs = isAllAccess(session) ? "Semua program" : session.role === "finance" ? "Hanya Keuangan"
-    : sortLabels((session.programs || []).map((p) => programByApi(p)?.label || p)).join(", ") || "–";
+  const mine = editablePrograms(session);
+  const writes = [
+    mine.length === PROGRAMS.length ? "Kegiatan semua program" : mine.length ? `Kegiatan ${mine.map((p) => p.label).join(", ")}` : "",
+    canEditFinance(session) ? "Keuangan" : "",
+    canEditHumanResources(session) ? "Daftar SDM & SK" : "",
+    canManageUsers(session) ? "Pengaturan Akun" : "",
+  ].filter(Boolean);
+
+  // jumlah akun yang menunggu persetujuan (badge menu Pengaturan Akun)
+  const users = useApi("/users", {}, { enabled: canManageUsers(session) });
+  const pending = (users.data?.data || []).filter((u) => u.status === "pending").length;
 
   return (
     <AppShell session={session} dashboard={DASHBOARD}
@@ -63,6 +72,12 @@ function Shell({ session }) {
           <NavItem session={session} area="activities" to="/dashboard/dosen"><Icon name="grad" />Portofolio Pengajar</NavItem>
           <NavItem session={session} area="activities" to="/dashboard/input"><Icon name="clipboard" />Data Kegiatan</NavItem>
           <NavItem session={session} area="activities" to="/dashboard/sdm"><Icon name="userCheck" />SDM</NavItem>
+          {canManageUsers(session) && (
+            <NavItem session={session} area="accounts" to="/dashboard/pengaturan-akun">
+              <Icon name="lock" /><span className="nav-txt">Pengaturan Akun</span>
+              {pending > 0 && <span className="nav-badge yellow" title={`${pending} akun menunggu persetujuan`}>{pending}</span>}
+            </NavItem>
+          )}
           <div className="nav-label">Dashboard program</div>
           {NAV_PROGRAMS.map((p) => {
             const b = badges[p.api];
@@ -86,12 +101,7 @@ function Shell({ session }) {
       )}
       profile={(
         <>
-          <div><dt>Akses program</dt><dd>{progs}</dd></div>
-          <div><dt>Hak ubah</dt><dd>{{
-            finance: "Data keuangan",
-            pic: "Data kegiatan program Anda (Keuangan tidak tersedia)",
-            leader: "Hanya melihat: tidak dapat menambah, mengubah, atau menghapus data",
-          }[session.role] || "Semua data kegiatan & keuangan"}</dd></div>
+          <div><dt>Hak ubah</dt><dd>{writes.join(" · ") || "Hanya melihat: tidak dapat menambah, mengubah, atau menghapus data"}</dd></div>
         </>
       )} />
   );
