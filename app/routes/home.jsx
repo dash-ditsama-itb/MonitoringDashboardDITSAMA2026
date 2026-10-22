@@ -49,7 +49,7 @@ export default function Home() {
         <div className="landing-hero">
           {logoFailed
             ? <div className="landing-logo-text"><b>Direktorat Persiapan Bersama</b><span>Institut Teknologi Bandung</span></div>
-            : <img className="landing-logo" src={import.meta.env.BASE_URL + "assets/dpb-logo.png"} alt="Direktorat Persiapan Bersama ITB" onError={() => setLogoFailed(true)} />}
+            : <img className="landing-logo" src={import.meta.env.BASE_URL + "assets/dpb-logo-transparent.png"} alt="Direktorat Persiapan Bersama ITB" onError={() => setLogoFailed(true)} />}
         </div>
 
         <section className="landing-sec" aria-labelledby="pilih-dashboard">

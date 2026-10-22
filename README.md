@@ -32,7 +32,7 @@ app/
 ├── lib/                     # api.js (fetch + pesan error), format.js (label, tanggal, akses)
 ├── components/              # AppShell (gerbang login, menu, pengalih dashboard, profil), tabel, form, Chart.js, dll.
 └── styles/                  # dashboard.css, home.css
-public/assets/dpb-logo.png
+public/assets/dpb-logo-transparent.png
 ```
 
 ## Menjalankan di komputer

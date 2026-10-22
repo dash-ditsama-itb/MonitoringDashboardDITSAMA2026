@@ -30,7 +30,7 @@ function Brand() {
   const [failed, setFailed] = useState(false);
   return failed
     ? <div className="gate-logo-text"><b>Direktorat Persiapan Bersama</b><span>Institut Teknologi Bandung</span></div>
-    : <img className="gate-logo" src={import.meta.env.BASE_URL + "assets/dpb-logo.png"} alt="Direktorat Persiapan Bersama ITB" onError={() => setFailed(true)} />;
+    : <img className="gate-logo" src={import.meta.env.BASE_URL + "assets/dpb-logo-transparent.png"} alt="Direktorat Persiapan Bersama ITB" onError={() => setFailed(true)} />;
 }
 
 function Shell({ title = DASHBOARDS[0].title, children }) {
