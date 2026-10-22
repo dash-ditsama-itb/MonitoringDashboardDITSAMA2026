@@ -3,7 +3,7 @@ import { ChartCanvas } from "../../components/ChartCanvas.jsx";
 import { RequireAccess } from "../../components/Access.jsx";
 import { Icon } from "../../components/Icon.jsx";
 import {
-  Bar, EmptyState, ErrorNote, Kpi, PageHead, SearchInput, SelectField, Sheet, SkeletonCard, Spinner,
+  Bar, EmptyState, ErrorNote, Kpi, PageHead, SearchInput, Segmented, SelectField, Sheet, SkeletonCard, Spinner,
 } from "../../components/ui.jsx";
 import { fmtNum, withoutAll } from "../../lib/format.js";
 import { useApi } from "../../stores/data.js";
@@ -77,7 +77,7 @@ function DosenPage() {
             <Kpi label="Rata-rata (1–5)" value={score(d.kpi.averageScore)} icon="star" />
             <Kpi label="Tertinggi" value={score(d.kpi.highestScore)} hint={nice(d.kpi.highestScoreLecturer)} icon="trophy" />
           </div>
-          <Charts d={d} onSelect={select} />
+          <Charts d={d} onSelect={select} program={ui.program} />
           <section className="card">
             <div className="card-head"><div><h2 className="card-title">{isOsn ? "Bidang" : "Mata kuliah / kelas peserta"}</h2><div className="card-sub">Klik kartu untuk memfilter per {isOsn ? "bidang" : "mata kuliah atau kelas peserta"}</div></div></div>
             {!d.subjects.length ? <div className="empty-inline">Belum ada data.</div> : (
@@ -130,7 +130,7 @@ function DosenPage() {
   );
 }
 
-function Charts({ d, onSelect }) {
+function Charts({ d, onSelect, program }) {
   const top = d.charts.rankings;
   const rank = useMemo(() => ({
     type: "bar",
@@ -163,11 +163,14 @@ function Charts({ d, onSelect }) {
     <section className="card" key="metode"><div className="card-head"><div><h2 className="card-title">Rata-rata per metode</h2><div className="card-sub">Luring / Hibrida / Daring per mata kuliah</div></div></div>
       <ChartCanvas config={metode} height={300} /></section>
   );
-  const extras = [
-    d.aspects?.length > 0 && <AspectCard key="aspek" aspects={d.aspects} />,
-    d.daySessions?.length > 0 && <DayCard key="hari" days={d.daySessions} onSelect={onSelect} />,
-  ].filter(Boolean);
-  const side = showMethod || !extras.length ? methodCard : extras.shift();
+  const fb = d.programFeedback || [];
+  const aspectCard = fb.length > 0 && <ProgramAspectCard key="aspek" list={fb} program={program} />;
+  const feedbackCard = fb.length > 0 && <ProgramFeedbackCard key="feedback" list={fb} program={program} />;
+  const dayCard = d.daySessions?.length > 0 && <DayCard key="hari" days={d.daySessions} onSelect={onSelect} />;
+  // tanpa metode (Riset, BTI, EduQuest, OSN): kartu feedback program menggantikan grafik metode
+  const side = showMethod || !feedbackCard ? methodCard : feedbackCard;
+  const rows = (showMethod ? [[aspectCard, feedbackCard], [dayCard]] : [[aspectCard, dayCard]])
+    .map((r) => r.filter(Boolean)).filter((r) => r.length);
   return (
     <>
       <div className="grid g-2">
@@ -175,8 +178,45 @@ function Charts({ d, onSelect }) {
           <ChartCanvas config={rank} height={Math.max(240, top.length * 24 + 40)} /></section>
         {side}
       </div>
-      {extras}
+      {rows.map((r, i) => (r.length > 1 ? <div className="grid g-2" key={i}>{r}</div> : r[0]))}
     </>
+  );
+}
+
+const fb100 = (v) => (v == null ? "–" : Number(v).toLocaleString("id-ID", { minimumFractionDigits: 1, maximumFractionDigits: 1 }));
+
+// semua aspek form per program, termasuk satu baris narasumber/pengajar (programFeedback dari backend)
+function ProgramAspectCard({ list, program }) {
+  const fixed = list.find((p) => p.program === program);
+  const [pick, setPick] = useState(list[0].program);
+  const cur = fixed || list.find((p) => p.program === pick) || list[0];
+  const aspects = [...cur.aspects].sort((a, b) => b.averageScore - a.averageScore);
+  return (
+    <section className="card">
+      <div className="card-head"><div><h2 className="card-title">Penilaian per aspek <span className="title-prog">{cur.program}</span></h2>
+        <div className="card-sub">Semua komponen form, termasuk narasumber/pengajar · rata-rata 1–5 · klik aspek untuk rincian pertanyaan</div></div></div>
+      {!fixed && list.length > 1 && <div className="asp-tabs"><Segmented label="Program" value={cur.program} onChange={setPick} options={list.map((p) => [p.program, p.program])} /></div>}
+      <AspectList key={cur.program} aspects={aspects} />
+      <div className="asp-total"><span>Feedback {cur.program} · rata-rata {aspects.length} aspek, skala 100</span><b>{fb100(cur.feedbackScore)}</b></div>
+    </section>
+  );
+}
+
+// rata-rata feedback tiap program (skala 100), untuk Umpan balik per program
+function ProgramFeedbackCard({ list, program }) {
+  const rows = [...list].filter((p) => p.feedbackScore != null).sort((a, b) => b.feedbackScore - a.feedbackScore);
+  return (
+    <section className="card">
+      <div className="card-head"><div><h2 className="card-title">Rata-rata feedback program</h2>
+        <div className="card-sub">Rata-rata semua aspek (bobot sama, termasuk narasumber/pengajar) ÷ 5 × 100 · semua penilaian program, tanpa filter</div></div></div>
+      <ul className="asp">{rows.map((p) => (
+        <li key={p.program} className={p.program === program ? "on" : ""}>
+          <span className="asp-lab"><span>{p.program}</span><small>{p.aspects.length} aspek</small></span>
+          <Bar value={p.feedbackScore} tone={tone(p.feedbackScore / 20)} />
+          <b>{fb100(p.feedbackScore)}</b>
+        </li>
+      ))}</ul>
+    </section>
   );
 }
 
@@ -194,17 +234,6 @@ function DayCard({ days, onSelect }) {
           ))}</ul>
         </div>
       ))}</div>
-    </section>
-  );
-}
-
-// rata-rata per kategori & butir dari formulir per sesi (mis. Dosen_RISET)
-function AspectCard({ aspects }) {
-  return (
-    <section className="card">
-      <div className="card-head"><div><h2 className="card-title">Penilaian per aspek</h2>
-        <div className="card-sub">Formulir per sesi (mis. Riset, BTI, OSN) · rata-rata 1–5 sesuai filter · klik aspek untuk rincian pertanyaan</div></div></div>
-      <AspectList aspects={aspects} />
     </section>
   );
 }
