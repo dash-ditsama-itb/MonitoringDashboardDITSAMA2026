@@ -24,10 +24,13 @@
 /* ---------- pilihan dashboard ---------- */
 .landing-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
 .dash-choice{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:16px;
-  background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px 22px;color:var(--ink);text-decoration:none;
-  transition:border-color .18s var(--ease),background-color .18s var(--ease)}
-.dash-choice:hover{border-color:var(--sky);background:var(--subtle)}
-.dash-choice:active{background:var(--pale)}
+  background:#fff;border:1px solid rgba(255,255,255,.9);border-radius:var(--r-lg);padding:20px 22px;color:var(--ink);text-decoration:none;
+  /* kartu putih mengambang di atas latar abu-biru: bayangan navy lembut berlapis */
+  box-shadow:0 1px 2px rgba(32,64,116,.06),0 8px 24px -6px rgba(32,64,116,.16);
+  transition:transform .22s var(--ease),box-shadow .22s var(--ease),border-color .18s var(--ease)}
+.dash-choice:hover{transform:translateY(-4px);border-color:var(--sky);
+  box-shadow:0 2px 4px rgba(32,64,116,.06),0 18px 36px -10px rgba(32,64,116,.28)}
+.dash-choice:active{transform:translateY(-1px);box-shadow:0 1px 2px rgba(32,64,116,.08),0 6px 16px -6px rgba(32,64,116,.2)}
 .dash-choice:focus-visible{outline:2px solid var(--blue);outline-offset:3px;border-radius:var(--r-lg)}
 .dash-choice-ic{width:48px;height:48px;border-radius:12px;background:var(--rail);color:#fff;display:flex;align-items:center;justify-content:center}
 .dash-choice-txt{display:flex;flex-direction:column;gap:3px;min-width:0}
@@ -43,7 +46,8 @@
 .landing-h2::before,.landing-h2::after{content:"";flex:1;min-width:24px;border-top:1px solid #C6D1E0}
 
 .org{--org-line:var(--muted);--org-w:1.5px;--gap:32px;--axis:32%;--drop:28px}
-.org-box{position:relative;background:var(--card);border:1px solid var(--line-2);border-radius:4px;padding:10px 14px;
+/* abu-abu muda & datar, beda dari kartu pilihan dashboard yang putih mengambang */
+.org-box{position:relative;background:#F1F3F6;border:1px solid var(--line-2);border-radius:4px;padding:10px 14px;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-align:center;min-height:58px}
 .org-role{font-size:13px;line-height:1.35;color:var(--ink)}
 .org-name{font-size:13.5px;line-height:1.35;font-weight:700;color:var(--navy)}
@@ -98,4 +102,4 @@
   .org-branches::before,.org-branch::before{display:none}
   .org-branch>.org-box{width:100%}
 }
-@media (prefers-reduced-motion:reduce){ .dash-choice,.dash-choice-go{transition:none} .dash-choice:hover .dash-choice-go{transform:none} }
+@media (prefers-reduced-motion:reduce){ .dash-choice,.dash-choice-go{transition:none} .dash-choice:hover,.dash-choice:active,.dash-choice:hover .dash-choice-go{transform:none} }
