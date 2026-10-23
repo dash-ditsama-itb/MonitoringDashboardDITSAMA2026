@@ -24,6 +24,8 @@ export default [
       index("./routes/persiapan/index.jsx"),
       route("laporan/:reportId", "./routes/persiapan/report.jsx"),
       route("kelola", "./routes/persiapan/manage.jsx"),
+      // Pembinaan Karakter TPB: beranda + ttb / kampanye / mapping / diskusi / dokumentasi
+      route("karakter/:section?", "./routes/persiapan/karakter.jsx"),
     ]),
   ]),
 

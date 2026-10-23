@@ -18,7 +18,8 @@ app/
 │   │   ├── layout.jsx       # menu laporan per bagian
 │   │   ├── index.jsx        # buka laporan pertama (atau keadaan kosong)
 │   │   ├── report.jsx       # /pendidikan-persiapan/laporan/:reportId
-│   │   └── manage.jsx       # /pendidikan-persiapan/kelola — Kelola laporan (Admin & Kasubdit)
+│   │   ├── manage.jsx       # /pendidikan-persiapan/kelola — Kelola laporan (Admin & Kasubdit)
+│   │   └── karakter.jsx     # /pendidikan-persiapan/karakter[/ttb|kampanye|mapping|diskusi|dokumentasi]
 │   └── dashboard/           # /dashboard — Pra-Universitas
 │       ├── layout.jsx       # menu & panel Filter Pra-Universitas
 │       ├── portfolio.jsx    # /dashboard           — Portofolio Program
@@ -77,6 +78,11 @@ Buka `http://localhost:5173/MonitoringDashboardDITSAMA2026/`.
 - Batasan: link "Publish to web" bersifat publik. Siapa pun yang melihat laporan bisa menyalin
   link-nya (Power BI juga menyediakan tombol bagikan). Untuk data sensitif, gunakan Power BI Embedded.
 - Semua jabatan bisa melihat laporan; menu Kelola laporan nonaktif untuk selain Admin & Kasubdit.
+- Menu **Pembinaan Karakter TPB** (paling bawah): beranda dengan slideshow video, Teman Tumbuh Bersama TPB ITB,
+  Kampanye Etika Mahasiswa + Mapping Banner, Diskusi Interaktif, dan Dokumentasi Kegiatan. Datanya sementara di
+  `app/lib/karakter.js` (angka sheet Ringkasan TTB, link video/poster Google Drive, mapping banner Jatinangor);
+  nanti diganti data spreadsheet lewat Apps Script. Video & thumbnail diambil dari Google Drive tanpa Referer
+  (Drive membalas 429 untuk permintaan dari situs lain).
 
 ## Publikasi di GitHub Pages
 Workflow `.github/workflows/deploy.yml` otomatis build & deploy setiap push ke `main`.
