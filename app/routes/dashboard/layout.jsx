@@ -4,7 +4,6 @@ import { useShallow } from "zustand/react/shallow";
 import { ACCESS } from "../../components/Access.jsx";
 import { AppShell, Gate, NavItem } from "../../components/AppShell.jsx";
 import { Icon } from "../../components/Icon.jsx";
-import { SUGT_PROGRAM } from "../../components/Sugt.jsx";
 import { SelectField, Spinner } from "../../components/ui.jsx";
 import { DASHBOARDS, PROGRAMS } from "../../config.js";
 import { byLabel, canEditFinance, canEditHumanResources, canManageUsers, editablePrograms, levelLabel, progColor, sortLabels, withoutAll } from "../../lib/format.js";
@@ -22,11 +21,10 @@ export function meta() {
   return [{ title: DASHBOARD.title }];
 }
 
-// menu "Dashboard program" urut abjad (termasuk SUGT); urutan PROGRAMS tetap karena dipakai untuk warna program
-const NAV_PROGRAMS = [
-  ...PROGRAMS.map((p) => ({ api: p.api, label: p.label, to: `/dashboard/program/${p.key}` })),
-  { api: "sugt", label: "SUGT", to: "/dashboard/sugt" },
-].sort(byLabel((p) => p.label));
+// menu "Dashboard program" urut abjad; urutan PROGRAMS tetap karena dipakai untuk warna program
+const NAV_PROGRAMS = PROGRAMS
+  .map((p) => ({ api: p.api, label: p.label, to: p.api === "sugt" ? "/dashboard/sugt" : `/dashboard/program/${p.key}` }))
+  .sort(byLabel((p) => p.label));
 
 export default function DashboardLayout() {
   return <Gate dashboard={DASHBOARD}>{(session) => <Shell session={session} />}</Gate>;
@@ -113,21 +111,15 @@ function ControlPanel({ open, hidden }) {
   const dash = useUiStore((s) => s.dash);
   const patch = useUiStore((s) => s.patch);
   const set = useUiStore((s) => s.set);
-  // SUGT punya data sendiri (tanpa tahun, bulan, fase, kegiatan, isu): filter lain dinonaktifkan
-  const isSugt = dash.program === SUGT_PROGRAM;
-  const main = useApi("/dashboard", isSugt ? {} : withoutAll(dash));
-  const sugt = useApi("/dashboard/sugt", {}, { enabled: isSugt });
-  const { loading, reload } = isSugt ? sugt : main;
-  const fo = main.data?.data?.filterOptions;
-  const programs = sortLabels([...(fo?.programs || []).filter((p) => p !== SUGT_PROGRAM), SUGT_PROGRAM]);
+  const { data, loading, reload } = useApi("/dashboard", withoutAll(dash));
+  const fo = data?.data?.filterOptions;
+  const programs = sortLabels(fo?.programs);
   const opts = (list) => [ALL, ...(list || [])];
   const keep = (list, v) => (v === ALL || (list || []).includes(v) ? v : ALL);
   const active = Object.values(dash).filter((v) => v !== ALL).length;
-  const reset = { year: ALL, month: ALL, phase: ALL, activity: ALL, issueLevel: ALL };
   const sel = (key, label, list, fmt) => (
     <SelectField label={label} value={keep(list, dash[key])} options={opts(list).map((o) => [o, fmt && o !== ALL ? fmt(o) : o])}
-      disabled={isSugt && key !== "program"}
-      onChange={(v) => patch("dash", { [key]: v, ...(key === "program" ? (v === SUGT_PROGRAM ? reset : { activity: ALL }) : {}) })} />
+      onChange={(v) => patch("dash", { [key]: v, ...(key === "program" ? { activity: ALL } : {}) })} />
   );
   return (
     <aside className={"control" + (open ? " open" : "") + (hidden ? " hide" : "")} aria-label="Filter dashboard">
@@ -137,7 +129,6 @@ function ControlPanel({ open, hidden }) {
       </div>
       <div className="control-body">
         {sel("program", "Program", programs)}
-        {isSugt && <p className="control-note">Filter lain tidak berlaku untuk SUGT.</p>}
         {sel("year", "Tahun", fo?.years)}
         {sel("month", "Bulan", fo?.months)}
         {sel("phase", "Fase", fo?.phases)}
@@ -145,7 +136,7 @@ function ControlPanel({ open, hidden }) {
         {sel("issueLevel", "Level isu", fo?.issueLevels, (v) => levelLabel(v.toLowerCase()))}
         <div className="control-actions">
           {active > 0 && <button className="btn btn-sm on-dark" type="button" onClick={() => patch("dash", { program: ALL, year: ALL, month: ALL, phase: ALL, activity: ALL, issueLevel: ALL })}>Reset</button>}
-          <button className="btn btn-sm on-dark" type="button" disabled={loading} onClick={() => reload(isSugt ? undefined : { refresh: true })}>
+          <button className="btn btn-sm on-dark" type="button" disabled={loading} onClick={() => reload({ refresh: true })}>
             {loading ? <Spinner size={14} /> : <Icon name="refresh" size={15} />}Muat ulang
           </button>
         </div>

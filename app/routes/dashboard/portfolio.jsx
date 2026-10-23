@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { Link, Navigate } from "react-router";
+import { Navigate } from "react-router";
 import { Calendar } from "../../components/Calendar.jsx";
 import { ChartCanvas } from "../../components/ChartCanvas.jsx";
 import { Gantt } from "../../components/Gantt.jsx";
@@ -9,11 +9,11 @@ import {
   isProgramDone, lastPerformed, Performance, ProgramProgress, programStatus, ProgressSummary,
 } from "../../components/ProgressSummary.jsx";
 import { RekapPeserta } from "../../components/RekapPeserta.jsx";
-import { isSugtDone, SUGT_PROGRAM, sugtFeedback, SugtPanel, sugtStatus, sugtUnits } from "../../components/Sugt.jsx";
+import { SugtSummary, withSugt, withSugtFeedback } from "../../components/Sugt.jsx";
 import {
   Bar, EmptyState, ErrorNote, LevelBadge, PageHead, ProgramAbout, SeeMore, Sheet, SkeletonCard,
 } from "../../components/ui.jsx";
-import { PROGRAMS, REKAP_PESERTA, SUGT_PIC, TOTAL_PROGRAMS } from "../../config.js";
+import { PROGRAMS, REKAP_PESERTA, TOTAL_PROGRAMS } from "../../config.js";
 import { byLabel, canSeeActivities, fmtDate, fmtNum, pct, phaseLabel, progColor, PROGRAMS_AZ, withoutAll } from "../../lib/format.js";
 import { useAuthStore } from "../../stores/auth.js";
 import { useApi } from "../../stores/data.js";
@@ -25,10 +25,8 @@ export const handle = { control: true };
 export default function Portfolio() {
   // halaman awal dashboard; Finance langsung diarahkan ke Keuangan
   const session = useAuthStore((s) => s.session);
-  const program = useUiStore((s) => s.dash.program);
   if (!canSeeActivities(session)) return <Navigate to="/dashboard/financial" replace />;
-  // filter Program = SUGT: datanya dari aplikasi SUGT, tampil sebagai dashboard SUGT
-  return program === SUGT_PROGRAM ? <div className="page"><SugtPanel /></div> : <PortfolioPage />;
+  return <PortfolioPage />;
 }
 
 function PortfolioPage() {
@@ -60,9 +58,11 @@ function PortfolioPage() {
       {!d ? <PortfolioSkeleton /> : (
         <>
           <Progress kpi={d.kpi} portfolio={d.portfolio} sugt={d.sugt} program={shown} last={last} />
+          {shown?.api === "sugt" && <SugtSummary />}
 
           <div className="grid g-5-7">
-            <Performance strip={shown ? d.performanceStrip : withProgramFeedback(d.performanceStrip, d.portfolio, d.sugt)}
+            <Performance strip={!shown ? withProgramFeedback(d.performanceStrip, d.portfolio, d.sugt)
+              : shown.api === "sugt" ? withSugtFeedback(d.performanceStrip, d.sugt) : d.performanceStrip}
               title={"Performa kegiatan " + (shown ? shown.label : "semua program")} />
             <PortfolioList items={d.portfolio} sugt={d.sugt} program={shown} />
           </div>
@@ -117,7 +117,7 @@ function Progress({ kpi, portfolio, sugt, program, last }) {
   const note = kpi.totalActivities
     ? `${fmtNum(kpi.totalDone)} dari ${fmtNum(kpi.totalActivities)} total aktivitas program selesai (${kpi.progress}%)`
     : "Belum ada aktivitas tercatat";
-  const done = portfolio.filter(isProgramDone).length + (isSugtDone(sugt) ? 1 : 0);
+  const done = portfolioRows(portfolio, sugt).filter(isProgramDone).length;
   const p = pct(done, TOTAL_PROGRAMS);
   return <ProgressSummary label="Program Selesai" info="progress" kpi={kpi} progress={p}
     value={`${done}/${TOTAL_PROGRAMS}`} unit={`program (${p}%)`} note={note} last={last} showProgram />;
@@ -125,17 +125,24 @@ function Progress({ kpi, portfolio, sugt, program, last }) {
 
 // filter Semua program: Umpan Balik Peserta = rata-rata umpan balik tiap program (termasuk SUGT), bobot sama
 function withProgramFeedback(strip, portfolio, sugt) {
-  const vals = [...portfolio.map((p) => p.performanceStrip?.feedback), sugtFeedback(sugt)].filter((v) => v > 0);
+  const vals = portfolioRows(portfolio, sugt).map((p) => p.performanceStrip?.feedback).filter((v) => v > 0);
   return { ...strip, feedback: vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0 };
 }
 
+// semua program monitoring urut abjad (yang belum punya aktivitas tetap muncul);
+// baris SUGT = aktivitas di dashboard ini + kegiatan terlaksana di aplikasi SUGT
+function portfolioRows(items, sugt, programs = PROGRAMS_AZ) {
+  return programs.map((pr) => {
+    const p = {
+      pics: [], completedActivities: 0, ongoingActivities: 0, totalActivities: 0,
+      ...items.find((x) => x.program === pr.api), program: pr.api, label: pr.label,
+    };
+    return p.program === "sugt" ? withSugt(p, sugt) : p;
+  });
+}
+
 function PortfolioList({ items, sugt, program }) {
-  // tampilkan semua program monitoring (yang belum punya aktivitas tetap muncul), atau hanya program terpilih
-  // urut abjad bersama SUGT (seperti menu Dashboard program)
-  const rows = (program ? [program] : [...PROGRAMS_AZ, { api: "sugt", label: "SUGT" }].sort(byLabel((p) => p.label))).map((pr) => ({
-    pics: [], completedActivities: 0, ongoingActivities: 0, totalActivities: 0,
-    ...items.find((x) => x.program === pr.api), program: pr.api, label: pr.label,
-  }));
+  const rows = portfolioRows(items, sugt, program ? [program] : PROGRAMS_AZ);
   return (
     <section className="card">
       <div className="card-head"><div><h2 className="card-title">Kinerja Portofolio Program</h2>
@@ -150,7 +157,6 @@ function PortfolioList({ items, sugt, program }) {
           <span>Performa<InfoTip k="programPerformance" /></span>
         </li>
         {rows.map((p) => {
-          if (p.program === "sugt") return <SugtRow key="sugt" s={sugt} />;
           const [label, tone] = programStatus(p);
           const prog = pct(p.completedActivities, p.totalActivities);
           const perf = p.totalActivities ? p.performance ?? null : null;
@@ -169,27 +175,6 @@ function PortfolioList({ items, sugt, program }) {
         })}
       </ul>
     </section>
-  );
-}
-
-// SUGT: kegiatan = 8 sesi + pretest + posttest per sekolah; Performa = umpan balik SUGT (satu-satunya indikatornya)
-function SugtRow({ s }) {
-  const u = s && sugtUnits(s);
-  const [label, tone] = s ? sugtStatus(s) : ["Tidak tersedia", "idle"];
-  const perf = sugtFeedback(s);
-  return (
-    <li>
-      <span className="port-dot" style={{ background: progColor("sugt") }} />
-      <div className="port-nm"><Link className="row-link" to="/dashboard/sugt"><b>SUGT</b></Link>
-        <small title={s ? undefined : "Data SUGT tidak dapat dimuat"}>PIC: {SUGT_PIC}</small>
-        <SlimBar value={u?.percent} tone={tone} /></div>
-      <div className="port-cnt" title={u ? `${u.completed} dari ${u.total} kegiatan terlaksana` : undefined}>
-        {u ? <>{fmtNum(u.completed)}<span className="muted">/{fmtNum(u.total)}</span></> : <span className="muted">–</span>}</div>
-      <div className="port-score"><small>Progres</small><Bar value={u?.percent} tone={tone === "ok" ? "ok" : ""} />
-        <b>{u ? u.percent + "%" : <span className="muted">–</span>}</b></div>
-      <span className={"pill " + tone}>{label}</span>
-      <PerfValue value={perf} empty="Belum ada umpan balik SUGT" />
-    </li>
   );
 }
 

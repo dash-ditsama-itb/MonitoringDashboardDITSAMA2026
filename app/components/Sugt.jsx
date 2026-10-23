@@ -1,15 +1,12 @@
-// Ringkasan program SUGT (dari GET /dashboard/sugt dan field `sugt` di GET /dashboard).
-import { SUGT_URL } from "../config.js";
+// Ringkasan kelas luring & daring SUGT dari aplikasi SUGT (GET /dashboard/sugt dan field `sugt` di GET /dashboard).
+// Kegiatan SUGT lainnya dicatat di dashboard ini seperti program lain.
+import { SUGT_PIC, SUGT_URL } from "../config.js";
 import { fmtDateTime, fmtNum, fmtRelative, pct } from "../lib/format.js";
 import { useApi } from "../stores/data.js";
 import { Icon } from "./Icon.jsx";
 import { InfoTip } from "./InfoTip.jsx";
 import { Performance } from "./ProgressSummary.jsx";
-import { RekapPeserta } from "./RekapPeserta.jsx";
-import { Bar, EmptyState, ErrorNote, PageHead, SkeletonCard, Spinner } from "./ui.jsx";
-
-// nilai filter Program di Portofolio Program untuk menampilkan SUGT
-export const SUGT_PROGRAM = "SUGT";
+import { Bar, EmptyState, ErrorNote, SkeletonCard, Spinner } from "./ui.jsx";
 
 // kegiatan SUGT = 10 per sekolah (8 sesi + pretest + posttest)
 export const sugtUnits = (s) => s.progress.kegiatanTerlaksana;
@@ -106,27 +103,55 @@ export function sugtFeedback(s) {
   return parts.length ? Math.round((parts.reduce((a, b) => a + b, 0) / parts.length) * 10) : null;
 }
 
-/** Dashboard SUGT lengkap (judul, tombol, angka, umpan balik); dipakai menu SUGT dan filter Program = SUGT. */
-export function SugtPanel() {
+// rata-rata persen yang sudah terisi (> 0); null bila belum ada
+const meanPct = (vals) => {
+  const v = vals.filter((x) => x > 0);
+  return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length) : null;
+};
+
+/** Umpan Balik SUGT = rata-rata umpan balik aktivitas di dashboard ini dan umpan balik dari aplikasi SUGT. */
+export const withSugtFeedback = (strip, s) => ({ ...strip, feedback: meanPct([strip?.feedback, sugtFeedback(s)]) ?? 0 });
+
+/** Baris SUGT di Kinerja Portofolio Program: aktivitas di dashboard ini + Kegiatan Terlaksana di aplikasi SUGT. */
+export function withSugt(p, s) {
+  const pics = [...new Set([...p.pics, SUGT_PIC])];
+  if (!s) return { ...p, pics };
+  const u = sugtUnits(s);
+  return {
+    ...p, pics,
+    completedActivities: p.completedActivities + u.completed,
+    totalActivities: p.totalActivities + u.total,
+    performance: meanPct([p.totalActivities ? p.performance : null, sugtFeedback(s)]),
+    performanceStrip: withSugtFeedback(p.performanceStrip, s),
+  };
+}
+
+/** Kelas luring & daring dari aplikasi SUGT; tampil di dashboard SUGT dan Portofolio Program (filter Program = SUGT). */
+export function SugtSummary() {
   const { data, error, loading, reload } = useApi("/dashboard/sugt");
   const s = data?.data;
   const home = s?.progress.detailUrl || SUGT_URL;
 
   return (
     <>
-      <PageHead title={<>Sekolah Unggul Garuda Transformasi<span className="title-abbr">SUGT</span></>}
-        sub={s ? <span title={fmtDateTime(s.generatedAt)}>Data diperbarui {fmtRelative(s.generatedAt)}</span> : "Ringkasan kegiatan dan umpan balik SUGT"}>
-        {loading && s && <span className="tb-loading"><Spinner size={14} />Memperbarui…</span>}
-        <button type="button" className="btn btn-sm" onClick={() => reload()} disabled={loading}><Icon name="refresh" size={15} />Muat ulang</button>
-      </PageHead>
-      <div className="prog-link">
-        <a className="btn btn-sm" href={home} target="_blank" rel="noopener noreferrer"><Icon name="external" size={15} />Buka detail web SUGT</a>
+      <div className="sugt-head">
+        <div>
+          <h2 className="sugt-title">Kelas luring &amp; daring dari aplikasi SUGT</h2>
+          <div className="card-sub">{s
+            ? <span title={fmtDateTime(s.generatedAt)}>Data diperbarui {fmtRelative(s.generatedAt)} · tidak ikut filter</span>
+            : "Sesi kelas, pretest, posttest, dan umpan balik dicatat di aplikasi SUGT"}</div>
+        </div>
+        <div className="sugt-actions">
+          {loading && s && <span className="tb-loading"><Spinner size={14} />Memperbarui…</span>}
+          <button type="button" className="btn btn-sm" onClick={() => reload()} disabled={loading}><Icon name="refresh" size={15} />Muat ulang</button>
+          <a className="btn btn-sm" href={home} target="_blank" rel="noopener noreferrer"><Icon name="external" size={15} />Buka detail web SUGT</a>
+        </div>
       </div>
       <ErrorNote error={error} onRetry={() => reload()} />
       {!s ? (
         error ? (
           <section className="card">
-            <EmptyState icon="alert" title="Ringkasan SUGT belum bisa ditampilkan">
+            <EmptyState icon="alert" title="Ringkasan kelas SUGT belum bisa ditampilkan">
               Data lengkap tetap bisa dilihat langsung di aplikasi SUGT.
             </EmptyState>
           </section>
@@ -135,8 +160,8 @@ export function SugtPanel() {
         <>
           <SugtProgress s={s} />
           <SugtMeters s={s} links />
-          <Performance title="Performa kegiatan SUGT" strip={{ feedback: sugtFeedback(s) }}
-            sub="Dari aplikasi SUGT, baru Umpan Balik Peserta yang tersedia · tekan (i) untuk cara hitungnya"
+          <Performance title="Umpan balik kelas SUGT" strip={{ feedback: sugtFeedback(s) }}
+            sub="Dari aplikasi SUGT · tekan (i) untuk cara hitungnya"
             info={{ feedback: "sugtFeedback" }} empty="belum tersedia dari aplikasi SUGT" />
           <div className="grid g-2">
             <FeedbackCard title="Umpan Balik Peserta" info="sugtParticipantFeedback" f={s.participantFeedback}
@@ -146,7 +171,6 @@ export function SugtPanel() {
           </div>
         </>
       )}
-      <RekapPeserta program="sugt" programLabel="SUGT" />
     </>
   );
 }

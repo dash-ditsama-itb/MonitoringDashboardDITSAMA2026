@@ -10,12 +10,13 @@ import { lastPerformed, ProgramProgress } from "../../components/ProgressSummary
 import { ErrorNote, PageHead, ProgramAbout, SkeletonCard, Spinner } from "../../components/ui.jsx";
 import { canEditActivity, fmtDate, phaseLabel, programByKey, PROG_COLORS } from "../../lib/format.js";
 import { RekapPeserta } from "../../components/RekapPeserta.jsx";
+import { SugtSummary } from "../../components/Sugt.jsx";
 import { PHASES } from "../../config.js";
 import { useAuthStore } from "../../stores/auth.js";
 import { useApi } from "../../stores/data.js";
 
 export function clientLoader({ params }) {
-  const program = programByKey(params.programKey);
+  const program = programByKey(params.programKey ?? "SUGT");
   if (!program) throw data(`Program "${params.programKey}" tidak dikenal.`, { status: 404 });
   return { program };
 }
@@ -41,6 +42,7 @@ function ProgramPage({ loaderData }) {
       {!d ? <><div className="grid g-2"><SkeletonCard /><SkeletonCard /></div></> : (
         <>
           <ProgramProgress program={program} kpi={d.kpi} last={lastPerformed(d.activities)} />
+          {program.api === "sugt" && <SugtSummary />}
           <div className="grid g-2">
             <MilestoneCard title="Sedang Berlangsung" info="ongoing" tone="red" items={d.milestones.ongoing} program={program}
               empty="Tidak ada kegiatan dalam rentang H-2 sampai H+7." />

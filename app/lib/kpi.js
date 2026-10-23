@@ -46,9 +46,9 @@ export const KPI = {
   progress: {
     title: "Program Selesai",
     arti: "Jumlah program yang seluruh aktivitasnya sudah selesai, dibanding total program DITSAMA.",
-    rumus: "Jumlah program Selesai ÷ total program (10, termasuk SUGT) × 100%. Keterangan di bawah bar: aktivitas Selesai ÷ seluruh aktivitas (tanpa SUGT).",
+    rumus: "Jumlah program Selesai ÷ total program (10, termasuk SUGT) × 100%. Keterangan di bawah bar: aktivitas Selesai ÷ seluruh aktivitas yang dicatat di dashboard ini (tanpa kelas dari aplikasi SUGT).",
     skor: STATUS_KEGIATAN,
-    catatan: "Program dihitung Selesai bila punya aktivitas dan semuanya Selesai. SUGT dihitung Selesai bila Kegiatan Terlaksana-nya 100%. Ikut filter yang dipilih.",
+    catatan: "Program dihitung Selesai bila punya aktivitas dan semuanya Selesai. SUGT dihitung Selesai bila aktivitasnya di dashboard ini dan Kegiatan Terlaksana di aplikasi SUGT semuanya selesai. Ikut filter yang dipilih.",
   },
   programProgress: {
     title: "Kemajuan Program",
@@ -76,7 +76,7 @@ export const KPI = {
     arti: "Persentase aktivitas program yang sudah selesai.",
     rumus: "Aktivitas Selesai ÷ seluruh aktivitas program × 100%.",
     skor: STATUS_KEGIATAN,
-    catatan: "Program tanpa aktivitas ditampilkan “–”. SUGT: Performa = umpan balik SUGT, karena hanya indikator itu yang tersedia dari aplikasi SUGT.",
+    catatan: "Program tanpa aktivitas ditampilkan “–”. SUGT: Selesai / Total dan Progres menggabungkan aktivitas di dashboard ini dengan Kegiatan Terlaksana (sesi kelas, pretest, posttest) dari aplikasi SUGT.",
   },
   performanceScore: {
     title: "Nilai Kinerja",
@@ -89,7 +89,7 @@ export const KPI = {
     arti: "Kualitas pelaksanaan program, dirangkum jadi satu angka.",
     rumus: "Rata-rata 5 indikator Performa kegiatan program tersebut: Nilai Capaian Peserta, Performa Kehadiran Peserta, Performa Keberjalanan Aktivitas, Umpan Balik Peserta, dan Nilai Isu & Peringatan.",
     skor: [["Baik (hijau)", "≥ 80%"], ["Perlu perhatian (kuning)", "60% – 79%"], ["Kritis (merah)", "< 60%"]],
-    catatan: "Indikator yang belum diisi kegiatan mana pun tidak ikut dirata-rata, mis. (100 + 75 + 90) ÷ 3 = 88%. Program tanpa aktivitas ditampilkan “–”. Angkanya sama dengan rata-rata kartu Performa kegiatan saat program itu difilter.",
+    catatan: "Indikator yang belum diisi kegiatan mana pun tidak ikut dirata-rata, mis. (100 + 75 + 90) ÷ 3 = 88%. Program tanpa aktivitas ditampilkan “–”. Angkanya sama dengan rata-rata kartu Performa kegiatan saat program itu difilter. SUGT: rata-rata Performa aktivitas di dashboard ini dan Umpan Balik SUGT dari aplikasi SUGT.",
   },
   status: {
     title: "Status Program",

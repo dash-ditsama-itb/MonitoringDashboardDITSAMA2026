@@ -689,6 +689,10 @@ dialog.confirm[open]{animation:pop .2s var(--ease)}
 .sugt-facts dd .muted{font-size:14px;font-weight:600}
 .sugt-meters .kpi{display:flex;flex-direction:column;gap:2px}
 .sugt-meters .link-btn{margin-top:6px}
+.sugt-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.sugt-title{margin:0;font-size:16px;font-weight:800;color:var(--navy)}
+.sugt-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sugt-actions a.btn{text-decoration:none}
 .perf.rating li{grid-template-columns:minmax(0,1fr) 46px}
 .perf.rating .perf-lab{grid-column:1 / 3}
 .perf.rating li .meter{grid-column:1}

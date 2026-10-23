@@ -14,7 +14,8 @@ export default [
       route("sdm", "./routes/dashboard/sdm.jsx"),
       route("pengaturan-akun", "./routes/dashboard/accounts.jsx"),
       route("program/:programKey", "./routes/dashboard/program.jsx"),
-      route("sugt", "./routes/dashboard/sugt.jsx"),
+      // dashboard SUGT = dashboard program SUGT + kelas luring & daring dari aplikasi SUGT
+      route("sugt", "./routes/dashboard/program.jsx", { id: "sugt-dashboard" }),
     ]),
   ]),
 
