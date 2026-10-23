@@ -38,7 +38,7 @@ function ReportView({ report }) {
   return (
     <div className="page report-page">
       <PageHead title={report.title} sub={report.section}>
-        <button type="button" className="btn btn-sm" onClick={fullscreen}><Icon name="expand" size={15} />Layar penuh</button>
+        <button type="button" className="btn" onClick={fullscreen}><Icon name="expand" size={16} />Layar penuh</button>
       </PageHead>
       <p className="note report-hint"><Icon name="info" size={16} />Laporan Power BI paling nyaman dilihat dengan Layar penuh atau ponsel dalam posisi mendatar.</p>
       <div className="report-frame" ref={frame}>

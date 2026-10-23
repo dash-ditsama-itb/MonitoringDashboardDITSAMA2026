@@ -11,7 +11,7 @@ import {
 import { RekapPeserta } from "../../components/RekapPeserta.jsx";
 import { SugtSummary, withSugt, withSugtFeedback } from "../../components/Sugt.jsx";
 import {
-  Bar, EmptyState, ErrorNote, LevelBadge, PageHead, ProgramAbout, SeeMore, Sheet, SkeletonCard,
+  Bar, EmptyState, ErrorNote, LevelBadge, PageHead, ProgramAbout, Refreshing, SearchInput, SeeMore, Sheet, SkeletonCard,
 } from "../../components/ui.jsx";
 import { PROGRAMS, REKAP_PESERTA, TOTAL_PROGRAMS } from "../../config.js";
 import { byLabel, canSeeActivities, fmtDate, fmtNum, pct, phaseLabel, progColor, PROGRAMS_AZ, withoutAll } from "../../lib/format.js";
@@ -51,7 +51,7 @@ function PortfolioPage() {
     <div className="page">
       <PageHead title={program ? program.fullName : "Portofolio Program"}
         sub={filters.length ? "Filter: " + filters.join(" · ") : "Semua program DITSAMA 2026"}>
-        {loading && d && <span className="tb-loading"><Icon name="spinner" size={14} className="spin" />Memperbarui…</span>}
+        {loading && d && <Refreshing />}
       </PageHead>
       <ErrorNote error={error} onRetry={() => reload()} />
       {program && <ProgramAbout program={program} />}
@@ -312,10 +312,7 @@ function Capaian({ cap }) {
       <div className="card-head">
         <div><h2 className="card-title">Capaian peserta</h2>
           <div className="card-sub">{cap.totalAchievements} capaian · {cap.totalParticipants} peserta (ikut filter program &amp; tahun)</div></div>
-        <div className="search compact">
-          <Icon name="search" size={16} />
-          <input type="search" placeholder="Cari nama / kategori" aria-label="Cari capaian" value={q} onChange={(e) => useUiStore.setState({ capSearch: e.target.value })} />
-        </div>
+        <SearchInput className="compact" value={q} onChange={(v) => useUiStore.setState({ capSearch: v })} placeholder="Cari nama / kategori" delay={0} />
       </div>
       {cap.summary.length > 0 && (
         <div className="medals">{cap.summary.filter((s) => s.count > 0).map((s) => <span key={s.cls} className={"medal " + s.cls}>{s.label}<b>{s.count}</b></span>)}</div>

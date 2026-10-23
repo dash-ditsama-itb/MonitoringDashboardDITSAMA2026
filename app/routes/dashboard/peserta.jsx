@@ -3,7 +3,7 @@ import { ChartCanvas } from "../../components/ChartCanvas.jsx";
 import { RequireAccess } from "../../components/Access.jsx";
 import { Icon } from "../../components/Icon.jsx";
 import {
-  Bar, EmptyState, ErrorNote, Kpi, PageHead, Pagination, SearchInput, Segmented, SelectField, Sheet, SkeletonCard, Spinner,
+  Bar, EmptyState, ErrorNote, Kpi, PageHead, Pagination, Refreshing, SearchInput, Segmented, SelectField, Sheet, SkeletonCard, Spinner, TableSkeleton,
 } from "../../components/ui.jsx";
 import { RekapPeserta } from "../../components/RekapPeserta.jsx";
 import { PROGRAMS, REKAP_PESERTA } from "../../config.js";
@@ -383,8 +383,7 @@ function Schools({ d, scope }) {
     <section className="card">
       <div className="card-head">
         <div><h2 className="card-title"><Scoped title="Sebaran sekolah" scope={scope} /></h2><div className="card-sub">{d.schools.length} sekolah/instansi{ql && ` · ${list.length} cocok`}</div></div>
-        <div className="search compact"><Icon name="search" size={16} />
-          <input type="search" placeholder="Cari sekolah atau provinsi" aria-label="Cari sekolah" value={q} onChange={(e) => patch("pst", { schoolSearch: e.target.value })} /></div>
+        <SearchInput className="compact" value={q} onChange={(v) => patch("pst", { schoolSearch: v })} placeholder="Cari sekolah atau provinsi" delay={0} />
       </div>
       {!list.length ? <div className="empty-inline">Tidak ada sekolah yang cocok.</div> : (
         <div className="tbl-scroll"><table className="tbl compact">
@@ -427,12 +426,13 @@ function Participants({ query, exams, scope }) {
         <div className="card-sub">{data?.pagination ? fmtNum(data.pagination.totalRecords) + " peserta sesuai filter" : "Memuat…"}</div></div></div>
       <div className="tbl-toolbar">
         <SearchInput value={ui.search} onChange={(v) => patch("pst", { search: v, page: 1 })} placeholder="Cari nama, sekolah, atau kelompok" />
+        {loading && data && <Refreshing />}
       </div>
       <ErrorNote error={error} onRetry={() => reload()} />
-      {!data && loading ? <SkeletonCard lines={6} /> : !rows.length ? (
+      {!data && loading ? <TableSkeleton /> : !rows.length ? (
         <EmptyState icon={ui.search ? "search" : "users"} title={ui.search ? `Tidak ada peserta yang cocok dengan "${ui.search}"` : "Belum ada peserta untuk filter ini"} />
       ) : (
-        <div className={"tbl-body" + (loading ? " is-loading" : "")}>
+        <div className={"tbl-body" + (loading ? " is-loading" : "")} aria-busy={loading}>
           <div className="tbl-scroll"><table className="tbl pst-tbl">
             <thead><tr><th>Peserta</th><th>Program</th><th className="c-fak">Fakultas / jurusan</th><th className="c-kel">Kelompok</th><th>Nilai</th></tr></thead>
             <tbody>{rows.map((p, i) => (

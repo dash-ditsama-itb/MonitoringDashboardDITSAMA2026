@@ -10,7 +10,7 @@ import { invalidate, useApi } from "../stores/data.js";
 import { confirmAction, toast } from "./feedback.jsx";
 import { Icon } from "./Icon.jsx";
 import { ExportButton, ImportButton, importSummary } from "./ImportExport.jsx";
-import { EmptyState, ErrorNote, Pagination, SearchInput, Segmented, Sheet, Skeleton, Spinner } from "./ui.jsx";
+import { EmptyState, ErrorNote, Pagination, SearchInput, Segmented, Sheet, Spinner, TableSkeleton } from "./ui.jsx";
 
 const SORTS = [
   ["date:desc", "Tanggal (terbaru)"], ["date:asc", "Tanggal (terlama)"],
@@ -117,7 +117,7 @@ export function FinanceTable({ filters, ui, update }) {
       <ErrorNote error={error} onRetry={() => reload()} />
 
       {!data && loading ? (
-        <div className="tbl-skel">{Array.from({ length: 5 }, (_, i) => <div key={i} className="tbl-skel-row"><Skeleton h={14} w={90} /><Skeleton h={22} w={110} r={11} /><Skeleton h={14} w="40%" /><Skeleton h={14} w={120} /></div>)}</div>
+        <TableSkeleton rows={5} check={canEdit} />
       ) : rows.length === 0 && !error ? (
         ui.search
           ? <EmptyState icon="search" title={`Tidak ada transaksi yang cocok dengan "${ui.search}"`}

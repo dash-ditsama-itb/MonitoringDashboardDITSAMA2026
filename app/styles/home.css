@@ -47,7 +47,7 @@
 
 /* warna unit dari logo DPB: Pendidikan Persiapan biru, Pra-Universitas oranye */
 .org{--org-line:#A9B7CB;--org-w:1.5px;--gap:32px;--axis:32%;--drop:28px;--unit:#8A96A8;--unit-bg:#F4F6F9}
-.org .unit-persiapan{--unit:#3a6db0;--unit-bg:#EEF4FC}
+.org .unit-persiapan{--unit:var(--blue);--unit-bg:#EEF4FC}
 .org .unit-pra{--unit:#E8862B;--unit-bg:#FDF3E8}
 /* kotak sedikit timbul (bayangan tipis), lebih kecil dari kartu pilihan dashboard yang mengambang */
 .org-box{position:relative;background:var(--unit-bg);border:1px solid rgba(32,64,116,.1);border-radius:8px;padding:10px 14px;
@@ -60,9 +60,10 @@
 .org-box.lead{padding:12px 18px;background:var(--rail);border-color:transparent;box-shadow:0 2px 4px rgba(32,64,116,.12),0 10px 22px -10px rgba(32,64,116,.45)}
 .org-box.lead .org-role{font-size:13.5px;color:#BCD2EC}
 .org-box.lead .org-name{font-size:15px;font-weight:800;color:#fff}
-/* Kepala subdirektorat: putih dengan garis warna unit di atas; seksi: warna unit muda dengan garis di kiri */
+/* Kepala subdirektorat: putih dengan garis warna unit di atas; seksi: warna unit muda dengan bingkai tipis warna unit
+   (tanpa garis tebal di sisi kiri: DESIGN.md tidak memakai garis sisi berwarna) */
 .org-branch>.org-box{background:#fff;border-top:3px solid var(--unit)}
-.org-sections .org-box{border-left:3px solid var(--unit)}
+.org-sections .org-box{border-color:color-mix(in srgb,var(--unit) 38%,transparent)}
 
 /* Direktur di tengah; Sekretariat bercabang ke kanan dari garis utama */
 .org-head{display:flex;justify-content:center}

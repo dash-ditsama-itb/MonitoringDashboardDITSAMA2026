@@ -6,7 +6,7 @@ import { useApi } from "../stores/data.js";
 import { Icon } from "./Icon.jsx";
 import { InfoTip } from "./InfoTip.jsx";
 import { Performance } from "./ProgressSummary.jsx";
-import { Bar, EmptyState, ErrorNote, SkeletonCard, Spinner } from "./ui.jsx";
+import { Bar, EmptyState, ErrorNote, Refreshing, SkeletonCard } from "./ui.jsx";
 
 // kegiatan SUGT = 10 per sekolah (8 sesi + pretest + posttest)
 export const sugtUnits = (s) => s.progress.kegiatanTerlaksana;
@@ -142,7 +142,7 @@ export function SugtSummary() {
             : "Sesi kelas, pretest, posttest, dan umpan balik dicatat di aplikasi SUGT"}</div>
         </div>
         <div className="sugt-actions">
-          {loading && s && <span className="tb-loading"><Spinner size={14} />Memperbarui…</span>}
+          {loading && s && <Refreshing />}
           <button type="button" className="btn btn-sm" onClick={() => reload()} disabled={loading}><Icon name="refresh" size={15} />Muat ulang</button>
           <a className="btn btn-sm" href={home} target="_blank" rel="noopener noreferrer"><Icon name="external" size={15} />Buka detail web SUGT</a>
         </div>

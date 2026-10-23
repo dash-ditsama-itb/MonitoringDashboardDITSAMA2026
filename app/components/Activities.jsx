@@ -13,7 +13,7 @@ import { confirmAction, toast } from "./feedback.jsx";
 import { Icon } from "./Icon.jsx";
 import { ExportButton, ImportButton, importSummary } from "./ImportExport.jsx";
 import {
-  Bar, EmptyState, ErrorNote, LevelBadge, Pagination, SearchInput, Sheet, Skeleton, Spinner, StatusBadge,
+  Bar, EmptyState, ErrorNote, LevelBadge, Pagination, Refreshing, SearchInput, Sheet, Spinner, StatusBadge, TableSkeleton,
 } from "./ui.jsx";
 
 const SORTS = [
@@ -183,7 +183,7 @@ export function ActivitiesTable({ fixedProgram, title = "Data Kegiatan", sub }) 
         <select className="tb-select" value={st.sort} onChange={(e) => update({ sort: e.target.value, page: 1 })} aria-label="Urutkan">
           {SORTS.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
         </select>
-        {loading && fresh === false && rows.length > 0 && <span className="tb-loading"><Spinner size={14} />Memuat…</span>}
+        {loading && fresh === false && rows.length > 0 && <Refreshing />}
       </div>
 
       {selected.size > 0 && (
@@ -196,7 +196,7 @@ export function ActivitiesTable({ fixedProgram, title = "Data Kegiatan", sub }) 
 
       <ErrorNote error={error} onRetry={() => reload()} />
 
-      {!data && loading ? <TableSkeleton /> : rows.length === 0 && !error ? (
+      {!data && loading ? <TableSkeleton check={editablePrograms(session).length > 0} /> : rows.length === 0 && !error ? (
         searching
           ? <EmptyState icon="search" title={`Tidak ada kegiatan yang cocok dengan "${st.search}"`}
               action={<button type="button" className="btn btn-sm" onClick={() => update({ search: "", page: 1 })}>Hapus pencarian</button>}>
@@ -307,19 +307,6 @@ export function ActivitiesTable({ fixedProgram, title = "Data Kegiatan", sub }) 
       <ActivityForm open={!!form} activity={form?.activity || null} defaultProgram={fixedProgram || (st.program !== "mine" ? st.program : "")}
         onClose={() => setForm(null)} />
     </section>
-  );
-}
-
-function TableSkeleton() {
-  return (
-    <div className="tbl-skel" aria-hidden="true">
-      {Array.from({ length: 6 }, (_, i) => (
-        <div key={i} className="tbl-skel-row">
-          <Skeleton h={14} w={16} r={4} /><div style={{ flex: 1 }}><Skeleton h={14} w={`${70 - i * 6}%`} /><Skeleton h={10} w="35%" style={{ marginTop: 7 }} /></div>
-          <Skeleton h={14} w={90} /><Skeleton h={22} w={96} r={11} /><Skeleton h={14} w={110} />
-        </div>
-      ))}
-    </div>
   );
 }
 

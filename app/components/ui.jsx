@@ -63,6 +63,37 @@ export function ErrorNote({ error, onRetry }) {
 export function Skeleton({ h = 14, w = "100%", r = 6, style }) {
   return <span className="skel" style={{ height: h, width: w, borderRadius: r, ...style }} />;
 }
+
+/** Kerangka baris tabel saat data pertama dimuat (semua tabel memakai ini). check = tabel dengan kotak pilih. */
+export function TableSkeleton({ rows = 6, check = false }) {
+  return (
+    <div className="tbl-skel" role="status">
+      <span className="sr-only">Memuat data…</span>
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="tbl-skel-row" aria-hidden="true">
+          {check && <Skeleton h={14} w={16} r={4} />}
+          <div className="tbl-skel-main"><Skeleton h={14} w={`${70 - i * 6}%`} /><Skeleton h={10} w="35%" /></div>
+          <Skeleton h={14} w={90} /><Skeleton h={22} w={96} r={11} /><Skeleton h={14} w={110} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Kerangka daftar pilihan (kotak centang) saat dimuat. */
+export function CheckGridSkeleton({ items = 4 }) {
+  return (
+    <div className="check-grid" role="status">
+      <span className="sr-only">Memuat daftar…</span>
+      {Array.from({ length: items }, (_, i) => <Skeleton key={i} h={42} r={10} />)}
+    </div>
+  );
+}
+
+/** Penanda "Memperbarui…" saat data yang sudah tampil sedang dimuat ulang (topbar halaman atau toolbar tabel). */
+export function Refreshing() {
+  return <span className="tb-loading" role="status"><Spinner size={14} />Memperbarui…</span>;
+}
 export function SkeletonCard({ lines = 4, h = 160 }) {
   return (
     <div className="card">
@@ -75,7 +106,7 @@ export function SkeletonCard({ lines = 4, h = 160 }) {
 }
 
 /** Kotak pencarian dengan jeda ketik (tidak memanggil server di setiap huruf). */
-export function SearchInput({ value, onChange, placeholder, delay = 350 }) {
+export function SearchInput({ value, onChange, placeholder, delay = 350, className = "" }) {
   const [v, setV] = useState(value);
   const first = useRef(true);
   useEffect(() => { setV(value); }, [value]);
@@ -86,7 +117,7 @@ export function SearchInput({ value, onChange, placeholder, delay = 350 }) {
     return () => clearTimeout(t);
   }, [v]);
   return (
-    <div className="search">
+    <div className={"search" + (className ? " " + className : "")}>
       <Icon name="search" size={16} />
       <input type="search" value={v} placeholder={placeholder} aria-label={placeholder} onChange={(e) => setV(e.target.value)} />
       {v && <button type="button" className="search-x" aria-label="Hapus pencarian" onClick={() => { setV(""); onChange(""); }}><Icon name="x" size={14} /></button>}

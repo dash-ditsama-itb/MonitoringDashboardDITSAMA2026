@@ -126,6 +126,7 @@ function ReportForm({ open, report, sections, onClose }) {
   return (
     <Sheet open={open} onClose={onClose} title={report ? "Ubah laporan" : "Tambah laporan"} footer={(
       <>
+        {err && <div className="foot-err" role="alert"><Icon name="alert" size={16} />{err}</div>}
         <span className="grow" />
         <button type="button" className="btn" onClick={onClose} disabled={busy}>Batal</button>
         <button type="button" className="btn btn-primary" onClick={save} disabled={busy}>{busy && <Spinner />}Simpan</button>
@@ -147,7 +148,6 @@ function ReportForm({ open, report, sections, onClose }) {
           {f.url.trim() && (linkOk
             ? link !== f.url.trim() && <p className="hint"><Icon name="checkCircle" size={14} />Link diambil dari kode embed: <span className="trunc">{link}</span></p>
             : <p className="hint err"><Icon name="alert" size={14} />Bukan link Power BI. Salin dari Power BI: File → Embed report → Publish to web.</p>)}
-          {err && <div className="note err" role="alert"><Icon name="alert" size={16} /><span>{err}</span></div>}
         </form>
       )}
     </Sheet>

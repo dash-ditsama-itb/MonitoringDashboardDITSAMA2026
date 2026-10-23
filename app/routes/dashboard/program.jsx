@@ -7,7 +7,7 @@ import { Gantt } from "../../components/Gantt.jsx";
 import { Icon } from "../../components/Icon.jsx";
 import { InfoTip } from "../../components/InfoTip.jsx";
 import { lastPerformed, ProgramProgress } from "../../components/ProgressSummary.jsx";
-import { ErrorNote, PageHead, ProgramAbout, SkeletonCard, Spinner } from "../../components/ui.jsx";
+import { ErrorNote, PageHead, ProgramAbout, Refreshing, SkeletonCard } from "../../components/ui.jsx";
 import { canEditActivity, fmtDate, phaseLabel, programByKey, PROG_COLORS } from "../../lib/format.js";
 import { RekapPeserta } from "../../components/RekapPeserta.jsx";
 import { SugtSummary } from "../../components/Sugt.jsx";
@@ -35,7 +35,7 @@ function ProgramPage({ loaderData }) {
   return (
     <div className="page">
       <PageHead title={<>{program.fullName}<span className="title-abbr">{program.label}</span></>}>
-        {loading && d && <span className="tb-loading"><Spinner size={14} />Memperbarui…</span>}
+        {loading && d && <Refreshing />}
       </PageHead>
       <ErrorNote error={error} onRetry={() => reload()} />
       <ProgramAbout program={program} />

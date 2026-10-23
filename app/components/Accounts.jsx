@@ -8,7 +8,7 @@ import { useAuthStore } from "../stores/auth.js";
 import { invalidate, useApi } from "../stores/data.js";
 import { confirmAction, toast } from "./feedback.jsx";
 import { Icon } from "./Icon.jsx";
-import { EmptyState, ErrorNote, SearchInput, Segmented, Sheet, Skeleton, Spinner } from "./ui.jsx";
+import { EmptyState, ErrorNote, Refreshing, SearchInput, Segmented, Sheet, Spinner, TableSkeleton } from "./ui.jsx";
 
 const ALL = "Semua";
 const STATUS = {
@@ -86,12 +86,12 @@ function UsersTable() {
           <option value={ALL}>Semua status</option>
           {Object.entries(STATUS).map(([v, [t]]) => <option key={v} value={v}>{t}</option>)}
         </select>
-        {loading && data && <span className="tb-loading"><Spinner size={14} />Memuat…</span>}
+        {loading && data && <Refreshing />}
       </div>
 
       <ErrorNote error={error} onRetry={() => reload()} />
 
-      {!data && loading ? <div className="tbl-body"><Skeleton h={200} /></div> : rows.length === 0 && !error ? (
+      {!data && loading ? <TableSkeleton rows={5} /> : rows.length === 0 && !error ? (
         <EmptyState icon={q ? "search" : "users"} title={q ? `Tidak ada akun yang cocok dengan "${q}"` : "Tidak ada akun"}>
           {q ? "Coba kata kunci lain." : "Akun yang mendaftar atau Anda tambahkan akan muncul di sini."}
         </EmptyState>
@@ -256,7 +256,7 @@ function RolesTable() {
 
       <ErrorNote error={error} onRetry={() => reload()} />
 
-      {!data && loading ? <div className="tbl-body"><Skeleton h={200} /></div> : (
+      {!data && loading ? <TableSkeleton rows={4} /> : (
         <div className={"tbl-body" + (loading ? " is-loading" : "")} aria-busy={loading}>
           <div className="tbl-scroll">
             <table className="tbl acc-tbl">

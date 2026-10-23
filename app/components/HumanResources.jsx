@@ -8,7 +8,7 @@ import { useAuthStore } from "../stores/auth.js";
 import { invalidate, useApi } from "../stores/data.js";
 import { confirmAction, toast } from "./feedback.jsx";
 import { Icon } from "./Icon.jsx";
-import { EmptyState, ErrorNote, SearchInput, Sheet, Skeleton, Spinner } from "./ui.jsx";
+import { CheckGridSkeleton, EmptyState, ErrorNote, Refreshing, SearchInput, Sheet, Spinner, TableSkeleton } from "./ui.jsx";
 
 const ALL = "Semua";
 const LAINNYA = "__LAINNYA__";
@@ -87,7 +87,7 @@ export function MemberPicker({ position, value, known, onChange }) {
         {shown.length > 0 && <button type="button" className="link-btn" onClick={toggleShown}>{allShownOn ? "Kosongkan" : "Pilih semua"}</button>}
       </div>
       {error ? <ErrorNote error={error} onRetry={() => reload()} />
-        : !data && loading ? <Skeleton h={80} />
+        : !data && loading ? <CheckGridSkeleton />
         : shown.length === 0 ? (
           <p className="hint">{q ? `Tidak ada nama ${position} yang cocok dengan "${q}".` : `Belum ada nama untuk peran ${position}. Tambahkan di bawah.`}</p>
         ) : (
@@ -167,12 +167,12 @@ export function HumanResourcesTable() {
           <option value={ALL}>Semua peran</option>
           {positions.map((p) => <option key={p} value={p}>{p}</option>)}
         </select>
-        {loading && data && <span className="tb-loading"><Spinner size={14} />Memuat…</span>}
+        {loading && data && <Refreshing />}
       </div>
 
       <ErrorNote error={error} onRetry={() => reload()} />
 
-      {!data && loading ? <div className="tbl-body"><Skeleton h={200} /></div> : rows.length === 0 && !error ? (
+      {!data && loading ? <TableSkeleton check={canEdit} /> : rows.length === 0 && !error ? (
         <EmptyState icon={q ? "search" : "users"} title={q ? `Tidak ada nama yang cocok dengan "${q}"` : "Belum ada nama SDM"}>
           {q ? "Coba kata kunci lain." : "Nama yang ditambahkan di sini atau di form kegiatan akan muncul di daftar ini."}
         </EmptyState>

@@ -3,7 +3,7 @@ import { ChartCanvas } from "../../components/ChartCanvas.jsx";
 import { FinanceTable } from "../../components/Finance.jsx";
 import { RequireAccess } from "../../components/Access.jsx";
 import { Icon } from "../../components/Icon.jsx";
-import { Bar, ErrorNote, Kpi, PageHead, SelectField, SkeletonCard, Spinner } from "../../components/ui.jsx";
+import { Bar, ErrorNote, Kpi, PageHead, Refreshing, SelectField, SkeletonCard } from "../../components/ui.jsx";
 import { byLabel, FIN_PROGRAMS_AZ, finProgramLabel, fmtRupiah, fmtRupiahShort, MONTHS, progColor } from "../../lib/format.js";
 import { useApi } from "../../stores/data.js";
 import { useUiStore } from "../../stores/ui.js";
@@ -36,7 +36,7 @@ function FinancialPage() {
   return (
     <div className="page">
       <PageHead title="Keuangan" sub="PKS, pengajuan dana, dan saldo per program">
-        {loading && d && <span className="tb-loading"><Spinner size={14} />Memperbarui…</span>}
+        {loading && d && <Refreshing />}
       </PageHead>
 
       <section className="card filter-bar">
