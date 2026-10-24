@@ -104,3 +104,5 @@ di `vite.config.js`.
   atau dibuka di tab baru, sampai token kedaluwarsa (`ACCESS_TOKEN_EXPIRE_IN_MINUTES` di backend,
   default 7 hari) atau pengguna menekan **Keluar**. Masuk/keluar di satu tab ikut berlaku di tab lain.
 - Di komputer bersama, selalu tekan **Keluar** setelah selesai.
+
+.
