@@ -153,12 +153,14 @@
 
 /* mapping */
 .kr-bars{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
-.kr-bars li{display:grid;grid-template-columns:170px minmax(0,1fr) 72px;gap:10px;align-items:center;font-size:13px}
+.kr-bars li{display:grid;grid-template-columns:170px minmax(0,1fr) 104px;gap:10px;align-items:center;font-size:13px}
 .kr-bars .meter{height:10px}.kr-bars b{text-align:right;color:var(--navy);font-variant-numeric:tabular-nums}
 .kr-matrix th.c,.kr-matrix td.c{text-align:center;white-space:normal}
 .kr-matrix th.c{font-size:11.5px;min-width:72px}
 .kr-group td{background:var(--subtle);font-weight:800;color:var(--navy)}
 .kr-room{padding-left:22px!important}
+.kr-room small.kr-note{display:block;font-size:11.5px;color:var(--muted);font-weight:400}
+.kr-na{color:#B8C3D3;font-weight:700}
 .kr-dot{display:inline-block;width:16px;height:16px;border-radius:5px;background:#EDF1F6;border:1px solid #DDE4EE;vertical-align:middle}
 .kr-dot.on{background:var(--kr-green);border-color:var(--kr-green)}
 
@@ -182,7 +184,7 @@
   .kr-ttb-top{grid-template-columns:minmax(0,1fr)}
   .kr-weeks{gap:2px}.kr-wk b{font-size:9.5px}.kr-wk .col em{font-size:9.5px}
   .kr-meet{grid-template-columns:repeat(7,minmax(0,1fr))}
-  .kr-bars li{grid-template-columns:120px minmax(0,1fr) 64px}
+  .kr-bars li{grid-template-columns:120px minmax(0,1fr) 96px}
   .kr-ebook{grid-template-columns:110px minmax(0,1fr)}.kr-ebook img{width:110px}
   .kpi-row.kr-two{grid-template-columns:minmax(0,1fr)}
 }

@@ -79,28 +79,30 @@ Buka `http://localhost:5173/MonitoringDashboardDITSAMA2026/`.
   link-nya (Power BI juga menyediakan tombol bagikan). Untuk data sensitif, gunakan Power BI Embedded.
 - Semua jabatan bisa melihat laporan; menu Kelola laporan nonaktif untuk selain Admin & Kasubdit.
 - Menu **Pembinaan Karakter TPB** (paling bawah): beranda dengan slideshow video, Teman Tumbuh Bersama TPB ITB,
-  Kampanye Etika Mahasiswa + Mapping Banner, Diskusi Interaktif, dan Dokumentasi Kegiatan. Datanya sementara di
-  `app/lib/karakter.js` (angka sheet Ringkasan TTB, link video/poster Google Drive, mapping banner Jatinangor);
-  nanti diganti data spreadsheet lewat Apps Script. Video slideshow berputar otomatis lewat pemutar Google Drive
+  Kampanye Etika Mahasiswa + Mapping Banner, Diskusi Interaktif, dan Dokumentasi Kegiatan. Link video/poster/buku ada di
+  `app/lib/karakter.js`; angka TTB dan Mapping Banner diambil dari spreadsheet lewat Apps Script (lihat di bawah). Video slideshow berputar otomatis lewat pemutar Google Drive
   dan berlanjut ke video berikutnya setelah durasinya habis (`dur` di `CAMPAIGN_VIDEOS`; Drive menolak file video
   diputar langsung lewat `<video>` dari situs lain). Thumbnail Drive
   dimuat tanpa Referer (Drive membalas 429 untuk permintaan dari situs lain). Buku panduan tampil sebagai sampul
   yang dibuka menjadi dua halaman (sampul + sinopsis, `public/assets/panduan-tumbuh-*.jpg`).
 
-### Data TTB otomatis dari spreadsheet (Apps Script)
-Halaman **Teman Tumbuh (TTB)** membaca tab `Ringkasan` dan `Timeline` spreadsheet TTB lewat
-`apps-script/ttb-ringkasan.gs`. Pemasangan (sekali, oleh pemilik spreadsheet):
+### Data TTB & Mapping Banner otomatis dari spreadsheet (Apps Script)
+Halaman **Teman Tumbuh (TTB)** dan **Mapping Banner** membaca spreadsheet TTB lewat `apps-script/dashboard-karakter.gs`
+(satu web app, dua data): `?data=ttb` → tab `Ringkasan` + `Timeline`; `?data=mapping` → tab `Kampanye_Lokasi`
+(atau `Lokasi Kampanye`), yang diisi menu **Pembaruan Data → Perbarui data lokasi kampanye** di spreadsheet.
+Pemasangan (sekali, oleh pemilik proyek Apps Script spreadsheet):
 1. Buka spreadsheet TTB → **Ekstensi → Apps Script** → tombol **+ → Skrip** (file baru, mis. `Dashboard_TTB`),
-   tempel isi `apps-script/ttb-ringkasan.gs`, simpan. **Jangan menghapus kode lain** yang sudah ada di proyek itu.
-2. (Opsional) pilih fungsi `cobaLihatDataTtb` → **Jalankan** → izinkan akses → cek hasilnya di Log eksekusi.
+   tempel isi `apps-script/dashboard-karakter.gs`, simpan. **Jangan menghapus kode lain** yang sudah ada di proyek itu.
+2. (Opsional) jalankan `cobaLihatDataTtb` dan `cobaLihatDataMapping` → izinkan akses → cek Log eksekusi.
 3. **Terapkan → Deployment baru** → jenis **Aplikasi web**; Jalankan sebagai: **Saya**; Yang memiliki akses: **Siapa saja** → Terapkan.
-4. Salin URL yang berakhiran `/exec`, isi ke `TTB_API_URL` di `app/lib/karakter.js`, lalu push.
+4. Salin URL yang berakhiran `/exec`, isi ke `KARAKTER_API_URL` di `app/lib/karakter.js`, lalu push.
 
-Setelah itu cukup ubah data di tab Kelompok/Pertemuan/Timeline; dashboard ikut berubah (jeda paling lama ±1 menit
-karena cache script). Bila script diubah, gunakan **Kelola deployment → Edit → Versi baru** agar URL tetap sama.
-Baris Ringkasan dikenali dari teks labelnya, jadi boleh digeser; indikator bernomor yang kolom TARGET-nya diisi otomatis
-tampil di kartu "Indikator vs target". Bila spreadsheet tidak bisa dihubungi, halaman memakai data terakhir yang
-tersimpan di browser, lalu angka cadangan `TTB` di `karakter.js`.
+Setelah itu cukup ubah data di spreadsheet (tab Kelompok/Pertemuan/Timeline, atau jalankan menu lokasi kampanye);
+dashboard ikut berubah (jeda paling lama ±1 menit karena cache script). Bila script diubah, gunakan
+**Kelola deployment → Edit → Versi baru** agar URL tetap sama. Baris Ringkasan dikenali dari teks labelnya, jadi boleh
+digeser; indikator bernomor yang kolom TARGET-nya diisi otomatis tampil di kartu "Indikator vs target". Di Mapping Banner,
+jenis banner yang tidak ada barisnya untuk suatu lokasi ditampilkan "–" (tidak direncanakan). Bila spreadsheet tidak bisa
+dihubungi, halaman memakai data terakhir yang tersimpan di browser, lalu data cadangan (`TTB`, `MAPPING_FALLBACK`) di `karakter.js`.
 
 ## Publikasi di GitHub Pages
 Workflow `.github/workflows/deploy.yml` otomatis build & deploy setiap push ke `main`.

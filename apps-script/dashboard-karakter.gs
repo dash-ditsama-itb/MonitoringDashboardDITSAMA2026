@@ -1,13 +1,14 @@
 /**
- * Data dashboard Teman Tumbuh Bersama (TTB) TPB ITB untuk halaman
- * Pendidikan Persiapan → Pembinaan Karakter TPB → Teman Tumbuh (TTB).
+ * Data dashboard Pembinaan Karakter TPB (Pendidikan Persiapan) dari spreadsheet TTB, dikirim sebagai JSON:
+ *   <URL /exec>?data=ttb      → halaman Teman Tumbuh (TTB): tab "Ringkasan" dan "Timeline"
+ *   <URL /exec>?data=mapping  → halaman Mapping Banner: tab "Kampanye_Lokasi" / "Lokasi Kampanye"
+ *                               (diisi menu Pembaruan Data → Perbarui data lokasi kampanye)
  *
- * Membaca tab "Ringkasan" dan "Timeline" di spreadsheet TTB, lalu mengirimnya sebagai JSON.
  * Pasang di spreadsheet TTB: Ekstensi → Apps Script → tambah FILE BARU (tombol + → Skrip, mis. "Dashboard_TTB")
  * lalu tempel file ini; jangan menghapus kode lain yang sudah ada (mis. pembaruan dari file klaster).
  * Terapkan → Deployment baru → jenis "Aplikasi web", Jalankan sebagai "Saya", Yang memiliki akses "Siapa saja".
- * Salin URL /exec-nya ke TTB_API_URL di app/lib/karakter.js (lihat README).
- * Semua nama di file ini berawalan TTB_/ttb agar tidak bentrok dengan kode lain di proyek yang sama
+ * Salin URL /exec-nya ke KARAKTER_API_URL di app/lib/karakter.js (lihat README).
+ * Semua nama di file ini berawalan TTB_/ttb/MAP_/map agar tidak bentrok dengan kode lain di proyek yang sama
  * (semua file .gs dalam satu proyek berbagi nama global); hanya doGet yang harus bernama tetap.
  *
  * Baris di Ringkasan dikenali dari teks labelnya (kolom A), bukan dari nomor baris, jadi baris boleh
@@ -38,18 +39,25 @@ const TTB_FIELDS = [
   [/^kekurangan/i, 'meetingsShort'],
 ];
 
-function doGet() {
+function doGet(e) {
+  const key = String((e && e.parameter && e.parameter.data) || 'ttb').toLowerCase();
+  const build = { ttb: buildTtb, mapping: buildMapping }[key];
+  if (!build) return ttbJson_({ ok: false, error: 'Parameter data tidak dikenal: ' + key + ' (pakai ttb atau mapping)' });
   const cache = CacheService.getScriptCache();
-  let body = cache.get('ttb');
+  let body = cache.get(key);
   if (!body) {
     try {
-      body = JSON.stringify(buildTtb());
-      cache.put('ttb', body, TTB_CACHE_SECONDS);
+      body = JSON.stringify(build());
+      cache.put(key, body, TTB_CACHE_SECONDS);
     } catch (err) {
       body = JSON.stringify({ ok: false, error: String(err && err.message || err) });
     }
   }
   return ContentService.createTextOutput(body).setMimeType(ContentService.MimeType.JSON);
+}
+
+function ttbJson_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
 }
 
 function buildTtb() {
@@ -138,7 +146,44 @@ function ttbIsoDate_(v, tz) {
   return m ? m[3] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2) : '';
 }
 
+/* ---------- MAPPING BANNER (Kampanye Etika) ---------- */
+
+// tab hasil menu "Perbarui data lokasi kampanye"; nama kedua untuk tab yang sudah diganti namanya
+const MAP_SHEETS = ['Kampanye_Lokasi', 'Lokasi Kampanye'];
+
+function buildMapping() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = MAP_SHEETS.map((n) => ss.getSheetByName(n)).find((sh) => sh && sh.getLastRow() > 1);
+  if (!sheet) throw new Error('Tab ' + MAP_SHEETS.join(' / ') + ' tidak ditemukan atau masih kosong');
+  const rows = sheet.getDataRange().getValues();
+  const head = rows[0].map((h) => String(h).trim().toLowerCase());
+  const col = (name) => head.indexOf(name.toLowerCase());
+  const c = {
+    year: col('Tahun'), campus: col('Kampus'), area: col('Area'), location: col('Lokasi'),
+    theme: col('Jenis_Materi'), status: col('Status'), note: col('Catatan_Lokasi'),
+  };
+  if (c.location < 0 || c.theme < 0 || c.status < 0) throw new Error('Kolom Lokasi / Jenis_Materi / Status tidak ditemukan di tab ' + sheet.getName());
+  const cell = (row, i) => (i < 0 ? '' : String(row[i]).trim());
+  const items = rows.slice(1)
+    .filter((row) => cell(row, c.location) && cell(row, c.theme))
+    .map((row) => ({
+      year: cell(row, c.year),
+      campus: cell(row, c.campus),
+      area: cell(row, c.area),
+      location: cell(row, c.location),
+      theme: cell(row, c.theme),
+      done: /^sudah$/i.test(cell(row, c.status)),
+      note: cell(row, c.note),
+    }));
+  return { ok: true, updatedAt: new Date().toISOString(), sheet: sheet.getName(), items: items };
+}
+
 // Jalankan dari editor Apps Script untuk melihat hasilnya di Log eksekusi.
 function cobaLihatDataTtb() {
   Logger.log(JSON.stringify(buildTtb(), null, 2));
+}
+
+function cobaLihatDataMapping() {
+  const d = buildMapping();
+  Logger.log(d.items.length + ' baris dari tab ' + d.sheet + '; contoh: ' + JSON.stringify(d.items.slice(0, 3), null, 2));
 }
