@@ -90,8 +90,9 @@ Buka `http://localhost:5173/MonitoringDashboardDITSAMA2026/`.
 ### Data TTB otomatis dari spreadsheet (Apps Script)
 Halaman **Teman Tumbuh (TTB)** membaca tab `Ringkasan` dan `Timeline` spreadsheet TTB lewat
 `apps-script/ttb-ringkasan.gs`. Pemasangan (sekali, oleh pemilik spreadsheet):
-1. Buka spreadsheet TTB → **Ekstensi → Apps Script**, hapus isi `Code.gs`, tempel isi `apps-script/ttb-ringkasan.gs`, simpan.
-2. (Opsional) pilih fungsi `cobaLihatData` → **Jalankan** → izinkan akses → cek hasilnya di Log eksekusi.
+1. Buka spreadsheet TTB → **Ekstensi → Apps Script** → tombol **+ → Skrip** (file baru, mis. `Dashboard_TTB`),
+   tempel isi `apps-script/ttb-ringkasan.gs`, simpan. **Jangan menghapus kode lain** yang sudah ada di proyek itu.
+2. (Opsional) pilih fungsi `cobaLihatDataTtb` → **Jalankan** → izinkan akses → cek hasilnya di Log eksekusi.
 3. **Terapkan → Deployment baru** → jenis **Aplikasi web**; Jalankan sebagai: **Saya**; Yang memiliki akses: **Siapa saja** → Terapkan.
 4. Salin URL yang berakhiran `/exec`, isi ke `TTB_API_URL` di `app/lib/karakter.js`, lalu push.
 
