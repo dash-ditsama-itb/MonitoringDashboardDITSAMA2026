@@ -18,17 +18,17 @@
 
 /* slideshow */
 .kr-show{background:#0f1d36;border-radius:var(--r-xl);overflow:hidden}
-.kr-stage{position:relative;aspect-ratio:21/9;background:#132544}
+.kr-stage{position:relative;aspect-ratio:16/9;max-height:72vh;width:100%;background:#000}
 .kr-stage img,.kr-stage iframe{position:absolute;inset:0;width:100%;height:100%;border:0;object-fit:cover}
-.kr-play{position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);width:76px;height:76px;border-radius:50%;border:0;cursor:pointer;
-  background:rgba(255,255,255,.92);box-shadow:0 8px 24px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;transition:transform .18s var(--ease)}
-.kr-play:hover{transform:translate(-50%,-50%) scale(1.06)}
-.kr-play span{width:0;height:0;border-style:solid;border-width:13px 0 13px 22px;border-color:transparent transparent transparent var(--navy);margin-left:5px}
-.kr-cap{position:absolute;left:0;right:0;bottom:0;padding:22px 24px 18px;color:#fff;background:linear-gradient(transparent,rgba(5,12,28,.8))}
-.kr-cap b{display:block;font-size:20px;line-height:1.3}.kr-cap span{font-size:13px;color:#d5e1f3}
-.kr-badge,.kr-count{position:absolute;top:14px;font-size:12px;font-weight:700;border-radius:999px;padding:4px 11px}
-.kr-badge{left:14px;background:rgba(255,255,255,.92);color:var(--navy)}
-.kr-count{right:14px;background:rgba(0,0,0,.45);color:#fff}
+/* judul, label & kontrol di bawah pemutar (tidak menutupi tombol pemutar Drive) */
+.kr-cap{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 18px;color:#fff;background:#0f1d36}
+.kr-cap b{display:block;font-size:18px;line-height:1.3;margin-top:6px}.kr-cap span{font-size:13px;color:#d5e1f3}
+.kr-badge,.kr-count{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:4px 11px}
+.kr-cap .kr-badge{background:rgba(255,255,255,.92);color:var(--navy)}
+.kr-cap .kr-count{background:rgba(255,255,255,.14);color:#fff}
+.kr-ctrl{display:flex;align-items:center;gap:8px}
+.kr-ctrl button{border:0;cursor:pointer;border-radius:999px;padding:6px 12px;font:inherit;font-size:12px;font-weight:700;background:rgba(255,255,255,.9);color:var(--navy)}
+.kr-ctrl button:hover{background:#fff}
 .kr-arrow{position:absolute;top:46%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;border:0;cursor:pointer;
   background:rgba(255,255,255,.88);color:var(--navy);display:flex;align-items:center;justify-content:center}
 .kr-arrow.l{left:14px}.kr-arrow.r{right:14px}
@@ -88,7 +88,30 @@
 .kr-poster-body{display:flex;flex-direction:column;gap:6px;padding:10px 12px 12px}
 .kr-poster-body b{color:var(--navy);font-size:13.5px;line-height:1.3}
 .kr-ebook{display:grid;grid-template-columns:150px minmax(0,1fr);gap:20px;align-items:center}
-.kr-ebook img{width:150px;border-radius:8px;box-shadow:0 12px 26px -10px rgba(10,30,70,.5)}
+.kr-ebook img{width:150px;border-radius:8px;box-shadow:0 12px 26px -10px rgba(10,30,70,.5);display:block}
+.kr-cover{border:0;padding:0;background:none;cursor:pointer;border-radius:8px;transition:transform .18s var(--ease)}
+.kr-cover:hover{transform:translateY(-3px) rotate(-1deg)}
+
+/* buku dua halaman (modal) */
+.kr-modal{position:fixed;inset:0;z-index:100;background:rgba(8,16,34,.72);display:flex;align-items:center;justify-content:center;padding:16px}
+.kr-modal-box{width:min(940px,100%);display:flex;flex-direction:column;gap:14px}
+.kr-modal-head{display:flex;justify-content:space-between;align-items:center;color:#fff;font-size:15px}
+.kr-close{width:36px;height:36px;border-radius:50%;border:0;cursor:pointer;background:rgba(255,255,255,.92);color:var(--navy);display:flex;align-items:center;justify-content:center}
+.kr-book{--pw:min(440px,calc((100vw - 32px) / 2),calc((100vh - 170px) * .68));position:relative;width:calc(var(--pw) * 2);height:calc(var(--pw) * 1.47);margin:0 auto;perspective:2200px;
+  transform:translateX(-25%);transition:transform .7s var(--ease)}
+.kr-book.open{transform:none}
+.kr-page,.kr-leaf{position:absolute;top:0;left:50%;width:50%;height:100%}
+.kr-page{background:#fff;border-radius:0 6px 6px 0;overflow:hidden;box-shadow:0 18px 40px -14px rgba(0,0,0,.6)}
+.kr-page::before{content:"";position:absolute;inset:0 auto 0 0;width:28px;background:linear-gradient(90deg,rgba(0,0,0,.22),transparent);pointer-events:none}
+.kr-leaf{border:0;padding:0;background:none;cursor:pointer;transform-origin:left center;transform-style:preserve-3d;transition:transform .9s var(--ease)}
+.kr-book.open .kr-leaf{transform:rotateY(-180deg)}
+.kr-face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;overflow:hidden;box-shadow:0 18px 40px -14px rgba(0,0,0,.6)}
+.kr-face.front{border-radius:0 6px 6px 0}
+.kr-face.back{transform:rotateY(180deg);border-radius:6px 0 0 6px}
+.kr-face.back::after{content:"";position:absolute;inset:0 0 0 auto;width:28px;background:linear-gradient(270deg,rgba(0,0,0,.22),transparent)}
+.kr-page img,.kr-face img{width:100%;height:100%;object-fit:cover;display:block}
+.kr-book-nav{display:flex;justify-content:center;align-items:center;gap:14px;flex-wrap:wrap}
+.kr-book-nav .kr-muted{color:#d5e1f3}
 .kr-ebook .btn{margin-top:12px}
 .kpi-row.kr-two{grid-template-columns:repeat(2,minmax(0,1fr));margin-bottom:14px}
 
@@ -116,8 +139,7 @@
   .kr-gallery{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
 @media (max-width:760px){
-  .kr-stage{aspect-ratio:16/10}
-  .kr-cap b{font-size:16px}
+  .kr-cap b{font-size:15px}
   .kr-progs,.kr-flow{grid-template-columns:minmax(0,1fr)}
   .kr-flow li:not(:last-child)::after{content:"↓";right:auto;left:50%;top:auto;bottom:-24px;transform:translateX(-50%)}
   .kr-posters,.kr-gallery{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -128,4 +150,4 @@
   .kr-ebook{grid-template-columns:110px minmax(0,1fr)}.kr-ebook img{width:110px}
   .kpi-row.kr-two{grid-template-columns:minmax(0,1fr)}
 }
-@media (prefers-reduced-motion:reduce){ .kr-prog,.kr-play{transition:none} .kr-prog:hover{transform:none} }
+@media (prefers-reduced-motion:reduce){ .kr-prog,.kr-cover,.kr-book,.kr-leaf{transition:none} .kr-prog:hover{transform:none} }
