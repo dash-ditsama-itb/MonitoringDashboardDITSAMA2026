@@ -31,27 +31,52 @@ export const KARAKTER_PROGRAMS = [
 ];
 
 // 1. Teman Tumbuh Bersama — sheet "Ringkasan" (angka dihitung otomatis dari tab Kelompok & Pertemuan)
+// URL web app Apps Script di spreadsheet TTB (apps-script/ttb-ringkasan.gs). Selama kosong / tidak bisa dihubungi,
+// halaman TTB memakai data terakhir yang tersimpan di browser, lalu angka cadangan TTB di bawah.
+export const TTB_API_URL = "";
+export const TTB_LIVE_YEAR = "2026";
+// angka cadangan = isi sheet Ringkasan & Timeline per 25 Okt 2026 (bentuknya sama dengan JSON Apps Script)
 export const TTB = {
   2026: {
-    targetMeetings: 14,
+    asOf: "2026-10-25",
+    targetMeetings: 14, // target pertemuan per kelompok (satu semester)
+    targetToDate: 5, // target pertemuan kumulatif s.d. pekan ini (tab Timeline)
+    week: 6,
     students: 5539,
     mentors: 521,
     lecturers: 54,
     groups: 523,
-    realization: 15.2, // pertemuan terlaksana ÷ (kelompok × target)
+    realization: 42.45, // pertemuan terlaksana ÷ target pertemuan s.d. pekan ini
     reportCompleteness: 71.1, // kelompok yang sudah lapor (lengkap / sebagian) ÷ total kelompok
     studentAttendance: 51.7,
     mentorAttendance: 100,
-    groupsDone: 0, // kelompok dengan pertemuan terlaksana ≥ target
+    groupsDone: 27, // kelompok dengan pertemuan terlaksana ≥ target
+    meetingsTarget: 2615,
+    meetingsHeld: 1110,
+    meetingsShort: 1505,
+    // indikator yang punya kolom TARGET di Ringkasan
+    targets: [
+      { key: "realization", label: "Realisasi kegiatan", value: 42.45, target: 100, gap: -57.55, unit: "%" },
+      { key: "groupsDone", label: "Kelompok yang menyelesaikan target pertemuan", value: 27, target: 523, gap: -496, unit: "" },
+    ],
+    timeline: [
+      { week: 1, start: "2026-09-14", end: "2026-09-20", activity: "Pembukaan TTB TPB 2026 + Pertemuan Daring", cumTarget: 1 },
+      { week: 2, start: "2026-09-21", end: "2026-09-27", activity: "Pertemuan Luring", cumTarget: 2 },
+      { week: 3, start: "2026-09-28", end: "2026-10-04", activity: "Pertemuan Luring", cumTarget: 3 },
+      { week: 4, start: "2026-10-05", end: "2026-10-11", activity: "Pertemuan Daring", cumTarget: 4 },
+      { week: 5, start: "2026-10-12", end: "2026-10-18", activity: "UTS (tidak ada pertemuan)", cumTarget: 4 },
+      { week: 6, start: "2026-10-19", end: "2026-10-25", activity: "Dapat dilakukan secara luring/hybrid", cumTarget: 5 },
+      { week: 7, start: "2026-10-26", end: "2026-11-01", activity: "Pertemuan Daring", cumTarget: 6 },
+      { week: 8, start: "2026-11-02", end: "2026-11-08", activity: "Pertemuan Luring", cumTarget: 7 },
+      { week: 9, start: "2026-11-09", end: "2026-11-15", activity: "Pertemuan Luring", cumTarget: 8 },
+      { week: 10, start: "2026-11-16", end: "2026-11-22", activity: "Pertemuan Daring", cumTarget: 9 },
+      { week: 11, start: "2026-11-23", end: "2026-11-29", activity: "Pertemuan Daring", cumTarget: 10 },
+      { week: 12, start: "2026-11-30", end: "2026-12-06", activity: "Pertemuan Daring", cumTarget: 11 },
+      { week: 13, start: "2026-12-07", end: "2026-12-13", activity: "Pertemuan Luring", cumTarget: 12 },
+      { week: 14, start: "2026-12-14", end: "2026-12-20", activity: "Pertemuan Daring", cumTarget: 13 },
+    ],
   },
 };
-export const TTB_STAGES = [
-  ["Pembinaan pementor", "oleh dosen pembina"],
-  ["Pembentukan kelompok", "mentor & mentee"],
-  ["Pertemuan mentoring", "target 14 pertemuan"],
-  ["Laporan kelompok", "pemantauan"],
-  ["Evaluasi akhir", "akhir semester"],
-];
 
 // 2. Kampanye Etika Mahasiswa — video karya mahasiswa (judul dari nama file di Drive)
 // dur = durasi video (detik), untuk pindah otomatis ke video berikutnya
