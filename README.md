@@ -88,8 +88,10 @@ Buka `http://localhost:5173/MonitoringDashboardDITSAMA2026/`.
 
 ### Data TTB & Mapping Banner otomatis dari spreadsheet (Apps Script)
 Halaman **Teman Tumbuh (TTB)** dan **Mapping Banner** membaca spreadsheet TTB lewat `apps-script/dashboard-karakter.gs`
-(satu web app, dua data): `?data=ttb` → tab `Ringkasan` + `Timeline`; `?data=mapping` → tab `Kampanye_Lokasi`
-(atau `Lokasi Kampanye`), yang diisi menu **Pembaruan Data → Perbarui data lokasi kampanye** di spreadsheet.
+(satu web app, dua data): `?data=ttb` → tab `Ringkasan` + `Timeline`; `?data=mapping` → langsung dari file Tim Humas
+"Master Data Lokasi Kampanye", semua tab `Potensial Pemasangan Banner <kampus> <tahun>` (tahun dari nama tab = filter
+Tahun di halaman; tab tahun baru otomatis ikut). Bila file itu tidak bisa dibuka, dipakai tab `Kampanye_Lokasi` /
+`Lokasi Kampanye` (hasil menu **Pembaruan Data → Perbarui data lokasi kampanye**).
 Pemasangan (sekali, oleh pemilik proyek Apps Script spreadsheet):
 1. Buka spreadsheet TTB → **Ekstensi → Apps Script** → tombol **+ → Skrip** (file baru, mis. `Dashboard_TTB`),
    tempel isi `apps-script/dashboard-karakter.gs`, simpan. **Jangan menghapus kode lain** yang sudah ada di proyek itu.
@@ -101,8 +103,8 @@ Setelah itu cukup ubah data di spreadsheet (tab Kelompok/Pertemuan/Timeline, ata
 dashboard ikut berubah (jeda paling lama ±1 menit karena cache script). Bila script diubah, gunakan
 **Kelola deployment → Edit → Versi baru** agar URL tetap sama. Baris Ringkasan dikenali dari teks labelnya, jadi boleh
 digeser; indikator bernomor yang kolom TARGET-nya diisi otomatis tampil di kartu "Indikator vs target". Di Mapping Banner,
-jenis banner yang tidak ada barisnya untuk suatu lokasi ditampilkan "–" (tidak direncanakan). Bila spreadsheet tidak bisa
-dihubungi, halaman memakai data terakhir yang tersimpan di browser, lalu data cadangan (`TTB`, `MAPPING_FALLBACK`) di `karakter.js`.
+sel jenis banner yang kosong untuk suatu lokasi ditampilkan "–" (tidak direncanakan); kolom yang tidak dipakai sama sekali disembunyikan. Bila spreadsheet tidak bisa
+dihubungi, halaman memakai data terakhir yang tersimpan di browser, lalu data cadangan (`TTB`, `MAPPING_FALLBACK`) di `karakter.js`. Akun yang men-deploy harus punya akses ke file Tim Humas.
 
 ## Publikasi di GitHub Pages
 Workflow `.github/workflows/deploy.yml` otomatis build & deploy setiap push ke `main`.

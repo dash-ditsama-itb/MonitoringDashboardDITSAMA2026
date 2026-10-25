@@ -1,8 +1,9 @@
 /**
  * Data dashboard Pembinaan Karakter TPB (Pendidikan Persiapan) dari spreadsheet TTB, dikirim sebagai JSON:
  *   <URL /exec>?data=ttb      → halaman Teman Tumbuh (TTB): tab "Ringkasan" dan "Timeline"
- *   <URL /exec>?data=mapping  → halaman Mapping Banner: tab "Kampanye_Lokasi" / "Lokasi Kampanye"
- *                               (diisi menu Pembaruan Data → Perbarui data lokasi kampanye)
+ *   <URL /exec>?data=mapping  → halaman Mapping Banner: langsung dari file Tim Humas "Master Data Lokasi
+ *                               Kampanye", semua tab "Potensial Pemasangan Banner <kampus> <tahun>" (tahun dari
+ *                               nama tab). Bila file itu tidak bisa dibuka: tab "Kampanye_Lokasi" / "Lokasi Kampanye".
  *
  * Pasang di spreadsheet TTB: Ekstensi → Apps Script → tambah FILE BARU (tombol + → Skrip, mis. "Dashboard_TTB")
  * lalu tempel file ini; jangan menghapus kode lain yang sudah ada (mis. pembaruan dari file klaster).
@@ -148,13 +149,84 @@ function ttbIsoDate_(v, tz) {
 
 /* ---------- MAPPING BANNER (Kampanye Etika) ---------- */
 
-// tab hasil menu "Perbarui data lokasi kampanye"; nama kedua untuk tab yang sudah diganti namanya
+// File Tim Humas "Master Data Lokasi Kampanye". Link yang disimpan menu "Ganti link sumber kampanye"
+// (properti LINK_SUMBER_KAMPANYE di proyek ini) dipakai lebih dulu; ID di bawah sebagai cadangan.
+const MAP_SOURCE_ID = '1xbGXXFdCZlj8AeqUN1Dg1xG9wlx2KEdqNC09Zobvqi0';
+const MAP_TAB_PATTERN = /pemasangan banner/i; // tab matriks banner; tahun diambil dari nama tab (mis. "... JTN 2025")
+// cadangan: tab hasil menu "Perbarui data lokasi kampanye"; nama kedua untuk tab yang sudah diganti namanya
 const MAP_SHEETS = ['Kampanye_Lokasi', 'Lokasi Kampanye'];
 
 function buildMapping() {
+  let source;
+  try {
+    source = mapOpenSource_();
+  } catch (err) {
+    const out = mapFromSummaryTab_();
+    out.warning = 'File Tim Humas tidak bisa dibuka (' + (err && err.message || err) + '); memakai tab ' + out.sheet;
+    return out;
+  }
+  const items = [];
+  const tabs = [];
+  source.getSheets().forEach((sh) => {
+    const name = sh.getName();
+    const year = (name.match(/(20\d{2})/) || [])[1];
+    if (!MAP_TAB_PATTERN.test(name) || !year) return;
+    const parsed = mapParseMatrix_(sh.getDataRange().getValues());
+    parsed.rows.forEach((r) => items.push({
+      year: year, campus: parsed.campus, area: r.area, location: r.location, theme: r.theme, done: r.done, note: r.note,
+    }));
+    tabs.push(name + ' (' + parsed.rows.length + ')');
+  });
+  return { ok: true, updatedAt: new Date().toISOString(), sheet: source.getName(), tabs: tabs, items: items };
+}
+
+function mapOpenSource_() {
+  const link = PropertiesService.getDocumentProperties().getProperty('LINK_SUMBER_KAMPANYE') || MAP_SOURCE_ID;
+  const m = String(link).match(/\/d\/([a-zA-Z0-9_-]+)/);
+  return SpreadsheetApp.openById(m ? m[1] : String(link).trim());
+}
+
+// Satu tab matriks Tim Humas: baris 1 berisi judul (dan kolom CATATAN), baris 2 berisi nama kampus (kolom A)
+// dan jenis banner; baris tanpa centang dan tanpa catatan = judul area; kotak centang TRUE/FALSE = sudah/belum.
+// Jenis banner yang selnya kosong untuk suatu lokasi = tidak direncanakan (tidak dikirim).
+function mapParseMatrix_(values) {
+  const out = { campus: '', rows: [] };
+  if (values.length < 3) return out;
+  const hdr1 = values[0], hdr2 = values[1];
+  out.campus = String(hdr2[0]).trim();
+  const noteCol = hdr1.findIndex((h) => String(h).trim().toUpperCase() === 'CATATAN');
+  const end = noteCol < 0 ? hdr2.length : noteCol;
+  const themes = [];
+  for (let j = 1; j < end; j++) { const t = String(hdr2[j]).trim(); if (t) themes.push({ col: j, name: t }); }
+  let area = '';
+  for (let i = 2; i < values.length; i++) {
+    const row = values[i];
+    const location = String(row[0]).trim();
+    const filled = themes.some((t) => row[t.col] !== '' && row[t.col] !== null);
+    const note = noteCol < 0 ? '' : String(row[noteCol]).trim();
+    if (!location) continue; // baris kosong / centang tanpa nama lokasi
+    if (!filled && !note) { area = location; continue; }
+    themes.forEach((t) => {
+      const done = mapStatus_(row[t.col]);
+      if (done !== null) out.rows.push({ area: area, location: location, theme: t.name, done: done, note: note });
+    });
+  }
+  return out;
+}
+
+function mapStatus_(v) {
+  if (v === true || v === false) return v;
+  const t = String(v).trim().toLowerCase();
+  if (t === 'true' || t === 'sudah' || t === 'ya') return true;
+  if (t === 'false' || t === 'belum' || t === 'tidak') return false;
+  return null;
+}
+
+// cadangan: tab Kampanye_Lokasi / Lokasi Kampanye di spreadsheet ini
+function mapFromSummaryTab_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = MAP_SHEETS.map((n) => ss.getSheetByName(n)).find((sh) => sh && sh.getLastRow() > 1);
-  if (!sheet) throw new Error('Tab ' + MAP_SHEETS.join(' / ') + ' tidak ditemukan atau masih kosong');
+  if (!sheet) throw new Error('File Tim Humas tidak bisa dibuka dan tab ' + MAP_SHEETS.join(' / ') + ' tidak ditemukan');
   const rows = sheet.getDataRange().getValues();
   const head = rows[0].map((h) => String(h).trim().toLowerCase());
   const col = (name) => head.indexOf(name.toLowerCase());
@@ -185,5 +257,6 @@ function cobaLihatDataTtb() {
 
 function cobaLihatDataMapping() {
   const d = buildMapping();
-  Logger.log(d.items.length + ' baris dari tab ' + d.sheet + '; contoh: ' + JSON.stringify(d.items.slice(0, 3), null, 2));
+  Logger.log(d.items.length + ' baris dari ' + d.sheet + (d.tabs ? ' — tab: ' + d.tabs.join(', ') : '') +
+    (d.warning ? '\nPERINGATAN: ' + d.warning : '') + '\ncontoh: ' + JSON.stringify(d.items.slice(0, 3), null, 2));
 }
