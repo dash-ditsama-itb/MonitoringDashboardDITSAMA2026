@@ -514,7 +514,8 @@ function Mapping({ year, picker }) {
   const map = useMapping(year);
   const [campus, setCampus] = useState(null);
   const c = map.campuses.find((x) => x.key === campus) || map.campuses[0];
-  const themes = map.themes;
+  // hanya jenis banner yang dipakai di kampus & tahun ini (mis. 2025 hanya 4 jenis)
+  const themes = c ? map.themes.filter((t) => c.rooms.some((r) => t in r.st)) : [];
   const tone = (share) => (share < 0.35 ? "crit" : share < 0.6 ? "warn" : "ok");
   const byTheme = c ? themes.map((t) => {
     const planned = c.rooms.filter((r) => t in r.st);
@@ -526,11 +527,11 @@ function Mapping({ year, picker }) {
     <>
       <PageHead title={<>Mapping Banner <span className="title-prog">{year}</span></>} sub="Sebaran banner Kampanye Etika Mahasiswa per lokasi kampus">{picker}</PageHead>
       <div className="kr-status">
-        <SourceChip source={map.source} updatedAt={map.updatedAt} asOf={map.asOf} sheet="Lokasi Kampanye" />
+        <SourceChip source={map.source} updatedAt={map.updatedAt} asOf={map.asOf} sheet="Tim Humas" />
       </div>
-      {map.campuses.length > 1 && <Segmented label="Kampus" value={c.key} onChange={setCampus} options={map.campuses.map((x) => [x.key, x.label])} />}
+      {c && <Segmented label="Kampus" value={c.key} onChange={setCampus} options={map.campuses.map((x) => [x.key, x.label])} />}
       {!c ? (
-        <section className="card"><EmptyState icon="pin" title={`Belum ada data Mapping Banner ${year}`}>Data diambil dari tab Lokasi Kampanye di spreadsheet TTB (menu Pembaruan Data → Perbarui data lokasi kampanye).</EmptyState></section>
+        <section className="card"><EmptyState icon="pin" title={`Belum ada data Mapping Banner ${year}`}>Data diambil dari tab "Potensial Pemasangan Banner … {year}" di file Tim Humas (Master Data Lokasi Kampanye).</EmptyState></section>
       ) : (
         <>
           <div className="kpi-row">

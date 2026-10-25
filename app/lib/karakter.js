@@ -114,11 +114,11 @@ export const CAMPAIGN_BOOK = {
 
 // tema banner Kampanye Etika (urutan kolom di Mapping Banner); Jenis_Materi di sheet dicocokkan tanpa beda huruf besar/kecil
 export const BANNER_THEMES = ["5S", "Etika Sopan Santun", "Etika Bersosmed", "Etika Berpenampilan", "Etika Menghubungi Dosen", "Etika Seksualitas Sehat", "Etika Adab Pergaulan"];
-// Mapping Banner cadangan = isi tab "Lokasi Kampanye" spreadsheet TTB per 24 Okt 2026, dipakai selama
-// KARAKTER_API_URL kosong / tidak bisa dihubungi. Format ringkas per area:
+// Mapping Banner cadangan = isi file Tim Humas "Master Data Lokasi Kampanye" per 25 Okt 2026 (tab Ganesha 2026,
+// JTN 2026, JTN 2025), dipakai selama KARAKTER_API_URL kosong / tidak bisa dihubungi. Format ringkas per area:
 // [tahun, kampus, area, [[lokasi, status per tema BANNER_THEMES (S = sudah, B = belum, - = tidak direncanakan), catatan?]]]
 export const MAPPING_FALLBACK = {
-  asOf: "2026-10-24",
+  asOf: "2026-10-25",
   areas: [
     ["2026", "ITB Kampus Ganesha", "AREA KUMPUL-KUMPUL (BELAJAR DSB.)", [["Teras FTMD", "BB-SBBS"], ["Ruang Belajar Bersama (Bagian Utara ITB Ganesha)", "BB-BBBB", "belum ada sama sekali"], ["CWS Labtek V FTI", "BB-BBBB"], ["Area Belajar 24 Jam CC Timur", "BB-BBBB"]]],
     ["2026", "ITB Kampus Ganesha", "Area Labtek Biru (Labtek X dan XI)", [["Area Sekre Himpunan", "BB-BBBB"], ["Area Kantin Labtek Biru", "BB-BBBB"], ["Kantin-Kantin", "B--BB--"], ["Kantin Labtek V", "BB-BBBB"], ["Kantin Dalaraos", "BB-BBBB"], ["Kantin Perpustakaan Pusat", "B--BB--"], ["Kantin CC Barat", "BB-BBBB"], ["Kantin CC Timur", "B--BB--"], ["Kantin GKU Barat", "BB-BSBS"], ["Kantin GKU Timiur", "BB-BBBB"]]],
@@ -141,6 +141,22 @@ export const MAPPING_FALLBACK = {
     ["2026", "DEMK-Jatinangor", "Labtek IB (FTSL)", [["Co-Working Space FTSL (IL & SA)", "SBBSBSB"]]],
     ["2026", "DEMK-Jatinangor", "Labtek IIA dan IIB (FTI-J: TB & PG)", [["Area Selasar Bersama FTI Lantai I", "SSBSBBB"]]],
     ["2026", "DEMK-Jatinangor", "Gedung B (SBM) (Kurang Ramai)", [["Gedung B Lantai 1", "SBSSSSB"], ["Gedung B Lantai 2", "BBSSSSB"], ["Gedung FTI Atas", "SBBSSSB"], ["Gedung FTI Bawah", "BBBSBSB"]]],
+    ["2025", "DEMK-Jatinangor", "GEDUNG A (KULIAH)", [["Gedung A Lantai 1", "---SBBB"], ["Gedung A Lantai 2", "---BSBB"]]],
+    ["2025", "DEMK-Jatinangor", "GEDUNG D (KULIAH)", [["Gedung D Lantai 1", "---SBBB"], ["Gedung D Lantai 2", "---BBBB"]]],
+    ["2025", "DEMK-Jatinangor", "GEDUNG E (KULIAH)", [["Gedung E Lantai 1", "---BSBB"], ["Gedung E Lantai 2", "---BBBB"]]],
+    ["2025", "DEMK-Jatinangor", "GEDUNG C (LFD + Studio NVD DKV)", [["Gedung C Lantai 1 LFD", "---SBBB"]]],
+    ["2025", "DEMK-Jatinangor", "GEDUNG UTAMA", [["Lantai 1", "---BBBB"], ["Lantai 3 Ruang Perkuliahan + Auditorium", "---BBBB"]]],
+    ["2025", "DEMK-Jatinangor", "GKU 1 (KULIAH)", [["Selasar GKU 1 Lantai 1", "---SSBB"], ["TGCL (GKU 1 Lantai 2)", "---BBBB"], ["Selasar GKU 1 Lantai 2", "---BBBB"], ["GKU 1 Lantai 3", "---BBBB"], ["GKU 1 Lantai 4", "---BBBB"]]],
+    ["2025", "DEMK-Jatinangor", "GKU 2 (KULIAH)", [["Kantin GKU 2 Lantai 1", "---BBBB"], ["GKU 2 Lantai 2", "---BBBB"], ["GKU 2 Lantai 3 (Auditorium)", "---BBBB"]]],
+    ["2025", "DEMK-Jatinangor", "GKU 3 (KULIAH)", [["Longue GKU 3 Lantai 1", "---BBBB"], ["Longue GKU 3 Lantai 2", "---BBBB"], ["Longue GKU 3 Lantai 3", "---BBBB"]]],
+    ["2025", "DEMK-Jatinangor", "Gedung Serba Guna (GSG) FSRD", [["Area Selasar GSG FSRD + Lapangan Multifungsi", "---BBBB"]]],
+    ["2025", "DEMK-Jatinangor", "Asrama ITB Jatinangor", [["Kantin Asrama TB1 + Co- Working Space Luar", "---BBBB"], ["Kantin Asrama TB2 + Co- Working Space Luar-Dalam", "---BBBB"], ["Kantin Asrama TB3 + Co- Working Space Luar-Dalam", "---BBBB"], ["Co- Working Space Luar TB4", "---BBBB"], ["Co- Working Space Dalam TB5", "---BBBB"]]],
+    ["2025", "DEMK-Jatinangor", "Mushola Al-Wasath", [["Lorong Al-Wasath depan Kantin dan Sekre MIJ", "---SBBB"]]],
+    ["2025", "DEMK-Jatinangor", "KOICA", [["Co-Working Space KOICA depan Perpustakaan Digital", "---BBBB"], ["Kantin KOICA", "---BBBB"]]],
+    ["2025", "DEMK-Jatinangor", "Labtek IA (SITH dan LFD dan LKD)", [["Area LFD", "---BBBB"], ["Area LKD", "---BBBB"], ["Co-Working Space SITH", "---BBBB"], ["Lantai Lab Gamtek", "---BBBB"]]],
+    ["2025", "DEMK-Jatinangor", "Labtek IB (FTSL)", [["Co-Working Space FTSL (IL & SA)", "---BBBB"]]],
+    ["2025", "DEMK-Jatinangor", "Labtek IIA dan IIB (FTI-J: TB & PG)", [["Area Selasar Bersama FTI Lantai I", "---BBBB"]]],
+    ["2025", "DEMK-Jatinangor", "Gedung B (SBM) (Kurang Ramai)", [["Gedung B Lantai 1", "---BBBB"]]],
   ],
 };
 // diubah ke bentuk baris yang sama dengan JSON Apps Script (?data=mapping)
