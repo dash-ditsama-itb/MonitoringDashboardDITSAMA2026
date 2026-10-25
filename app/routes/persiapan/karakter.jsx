@@ -230,9 +230,9 @@ function Kampanye({ year, picker }) {
       <section className="card">
         <div className="card-head"><div><h2 className="card-title">Katalog poster & banner</h2><div className="card-sub">Setiap tema berisi poster dan banner-nya · klik untuk membuka</div></div></div>
         <div className="kr-posters">
-          {CAMPAIGN_POSTERS.map((p, i) => (
-            <a key={p.id} className={"kr-poster t" + (i % 6)} href={driveFolder(p.id)} target="_blank" rel="noreferrer">
-              <span className="kr-poster-img">{p.title}</span>
+          {CAMPAIGN_POSTERS.map((p) => (
+            <a key={p.id} className="kr-poster" href={driveFolder(p.id)} target="_blank" rel="noreferrer">
+              <img className="kr-poster-img" src={import.meta.env.BASE_URL + p.img} alt={"Poster " + p.theme} loading="lazy" />
               <span className="kr-poster-body"><b>{p.theme}</b><span className="kr-go">Lihat poster & banner<Icon name="external" size={14} /></span></span>
             </a>
           ))}
