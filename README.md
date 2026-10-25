@@ -81,8 +81,11 @@ Buka `http://localhost:5173/MonitoringDashboardDITSAMA2026/`.
 - Menu **Pembinaan Karakter TPB** (paling bawah): beranda dengan slideshow video, Teman Tumbuh Bersama TPB ITB,
   Kampanye Etika Mahasiswa + Mapping Banner, Diskusi Interaktif, dan Dokumentasi Kegiatan. Datanya sementara di
   `app/lib/karakter.js` (angka sheet Ringkasan TTB, link video/poster Google Drive, mapping banner Jatinangor);
-  nanti diganti data spreadsheet lewat Apps Script. Video & thumbnail diambil dari Google Drive tanpa Referer
-  (Drive membalas 429 untuk permintaan dari situs lain).
+  nanti diganti data spreadsheet lewat Apps Script. Video slideshow berputar otomatis lewat pemutar Google Drive
+  dan berlanjut ke video berikutnya setelah durasinya habis (`dur` di `CAMPAIGN_VIDEOS`; Drive menolak file video
+  diputar langsung lewat `<video>` dari situs lain). Thumbnail Drive
+  dimuat tanpa Referer (Drive membalas 429 untuk permintaan dari situs lain). Buku panduan tampil sebagai sampul
+  yang dibuka menjadi dua halaman (sampul + sinopsis, `public/assets/panduan-tumbuh-*.jpg`).
 
 ## Publikasi di GitHub Pages
 Workflow `.github/workflows/deploy.yml` otomatis build & deploy setiap push ke `main`.

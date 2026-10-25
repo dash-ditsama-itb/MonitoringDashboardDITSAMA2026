@@ -7,7 +7,8 @@ export const KARAKTER_YEARS = ["2025", "2026"];
 
 // Google Drive: thumbnail & pemutar untuk file, tautan untuk folder
 export const driveThumb = (id, w = 640) => `https://drive.google.com/thumbnail?id=${id}&sz=w${w}`;
-export const drivePreview = (id) => `https://drive.google.com/file/d/${id}/preview`;
+// pemutar video Google Drive yang langsung berputar (Drive menolak file video diputar langsung dari situs lain)
+export const drivePlayer = (id) => `https://drive.google.com/file/d/${id}/preview?autoplay=1`;
 export const driveFile = (id) => `https://drive.google.com/file/d/${id}/view`;
 export const driveFolder = (id) => `https://drive.google.com/drive/folders/${id}`;
 
@@ -23,8 +24,8 @@ export const KARAKTER_PROGRAMS = [
     chips: ["523 kelompok", "521 pementor", "54 dosen pembina"] },
   { key: "kampanye", no: "2", icon: "star", tone: "orange", title: "Kampanye Etika Mahasiswa", short: "Kampanye Etika",
     desc: "Poster, 9 video karya mahasiswa, Buku Panduan Tumbuh di ITB, dan banner etika di kampus Ganesha dan Jatinangor.",
-    chips: ["Poster & banner", "9 video", "E-book", "Mapping banner"] },
-  { key: "diskusi", no: "3", icon: "message", tone: "green", title: "Diskusi Interaktif (2025)", short: "Diskusi Interaktif",
+    chips: ["Poster & banner", "9 video", "Buku panduan", "Mapping banner"] },
+  { key: "diskusi", no: "3", icon: "message", tone: "green", title: "Diskusi Interaktif", short: "Diskusi Interaktif",
     desc: "Diskusi bersama mahasiswa TPB tentang etika dan kehidupan kampus, lengkap dengan ringkasan setiap sesi.",
     chips: ["Ringkasan sesi"] },
 ];
@@ -42,13 +43,6 @@ export const TTB = {
     studentAttendance: 51.7,
     mentorAttendance: 100,
     groupsDone: 0, // kelompok dengan pertemuan terlaksana ≥ target
-    checks: [
-      ["ID_Kelompok di Pertemuan yang tidak ada di Kelompok", 0, "Perbaiki penulisan ID atau tambahkan kelompok di tab Kelompok"],
-      ["ID_Kelompok ganda di tab Kelompok", 0, "ID harus unik"],
-      ["Kelompok yang jumlah baris pertemuannya tidak sama dengan target", 0, "Satu baris per pertemuan (1 s.d. target)"],
-      ["Pertemuan Terlaksana tanpa Hadir_Mahasiswa", 0, "Isi jumlah hadir"],
-      ["Hadir_Mahasiswa melebihi jumlah mahasiswa kelompok", 1, "Periksa angka hadir atau jumlah mahasiswa"],
-    ],
   },
 };
 export const TTB_STAGES = [
@@ -60,13 +54,14 @@ export const TTB_STAGES = [
 ];
 
 // 2. Kampanye Etika Mahasiswa — video karya mahasiswa (judul dari nama file di Drive)
+// dur = durasi video (detik), untuk pindah otomatis ke video berikutnya
 export const CAMPAIGN_VIDEOS = [
-  { id: "1mAldPuq-S_9I5cQrpp4ytvtBfSjsvrBg", title: "Ketahanan Sosial dan Budaya dalam Perspektif Perta…", by: "Video karya mahasiswa TPB" },
-  { id: "1yMPHJfuaDA2i3fsQ6AvcbHkDpnb8lrUo", title: "Kejujuran Akademik", by: "Karya Syakira Adjania Salim" },
-  { id: "1fEGpjp5PLFA8o9mPf9Rgon1GeoR3K0ZX", title: "Keaktifan dan Tanggung Jawab", by: "Karya Muhammad Fatih" },
-  { id: "12_TqthEf1UoMCoNaj4DMfodf5RHSYIxS", title: "Etika Penggunaan AI dan Teknologi Digital", by: "Karya Na…" },
-  { id: "1P0LKRXsixdWVjiilVug3cO1E-k3PhPp_", title: "Etika Organisasi dan Kepemimpinan", by: "Karya Muhammad H…" },
-  { id: "1S2-0yLKIVwObQGVEyM6wQiWF_daPS73j", title: "Etika Menjaga Fasilitas Kampus", by: "Karya Muhammad Hilm…" },
+  { id: "1mAldPuq-S_9I5cQrpp4ytvtBfSjsvrBg", dur: 71, title: "Ketahanan Sosial dan Budaya dalam Perspektif Perta…", by: "Video karya mahasiswa TPB" },
+  { id: "1yMPHJfuaDA2i3fsQ6AvcbHkDpnb8lrUo", dur: 89, title: "Kejujuran Akademik", by: "Karya Syakira Adjania Salim" },
+  { id: "1fEGpjp5PLFA8o9mPf9Rgon1GeoR3K0ZX", dur: 183, title: "Keaktifan dan Tanggung Jawab", by: "Karya Muhammad Fatih" },
+  { id: "12_TqthEf1UoMCoNaj4DMfodf5RHSYIxS", dur: 170, title: "Etika Penggunaan AI dan Teknologi Digital", by: "Karya Na…" },
+  { id: "1P0LKRXsixdWVjiilVug3cO1E-k3PhPp_", dur: 70, title: "Etika Organisasi dan Kepemimpinan", by: "Karya Muhammad H…" },
+  { id: "1S2-0yLKIVwObQGVEyM6wQiWF_daPS73j", dur: 73, title: "Etika Menjaga Fasilitas Kampus", by: "Karya Muhammad Hilm…" },
 ];
 export const CAMPAIGN_VIDEO_TOTAL = 9;
 // tahun data kampanye (video, poster, e-book, mapping banner)
@@ -81,11 +76,12 @@ export const CAMPAIGN_POSTERS = [
   { id: "1s2bQB1TGVuyg38bcQZcPtPvQUOwgQwAc", title: "Seksualitas", theme: "Etika Seksualitas Sehat" },
   { id: "1mK8totSkPGgK7N_VyjRrW9w_Tg5IGf_Z", title: "5S", theme: "5S" },
 ];
-export const CAMPAIGN_EBOOK = {
+// buku: sampul depan + sampul belakang (sinopsis), dibuka seperti buku dua halaman
+export const CAMPAIGN_BOOK = {
   title: "Buku Panduan Tumbuh di ITB",
-  cover: "assets/panduan-tumbuh-di-itb.png",
+  cover: "assets/panduan-tumbuh-cover.jpg",
+  back: "assets/panduan-tumbuh-sinopsis.jpg",
   desc: "Panduan untuk tumbuh, bukan sekadar bertahan, selama menjalani Tahap Persiapan Bersama di ITB.",
-  url: "", // link e-book menyusul
 };
 
 // Mapping banner per lokasi: urutan tema = urutan karakter "1"/"0" (1 = sudah terpasang)
@@ -168,6 +164,6 @@ export const MAPPING_CAMPUSES = [
   { key: "ganesha", label: "Kampus Ganesha", data: [] },
 ];
 
-// 3. Diskusi Interaktif & Dokumentasi Kegiatan: menunggu tab Diskusi dan Dokumentasi di spreadsheet
+// 3. Diskusi Interaktif (tanpa tahun) & Dokumentasi Kegiatan: menunggu tab Diskusi dan Dokumentasi di spreadsheet
 export const DISCUSSIONS = [];
 export const DOCUMENTATION = [];

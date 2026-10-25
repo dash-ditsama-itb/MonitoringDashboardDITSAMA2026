@@ -1,16 +1,16 @@
 // Pembinaan Karakter TPB (dashboard Pendidikan Persiapan): beranda, 3 program, Mapping Banner, Dokumentasi.
 // /pendidikan-persiapan/karakter[/ttb|kampanye|mapping|diskusi|dokumentasi]
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link, Navigate, useParams } from "react-router";
 import { Icon } from "../../components/Icon.jsx";
 import { Bar, EmptyState, Kpi, PageHead, Segmented } from "../../components/ui.jsx";
 import {
-  BANNER_THEMES, CAMPAIGN_EBOOK, CAMPAIGN_YEAR, CAMPAIGN_POSTERS, CAMPAIGN_VIDEO_TOTAL, CAMPAIGN_VIDEOS, DISCUSSIONS, DOCUMENTATION,
+  BANNER_THEMES, CAMPAIGN_BOOK, CAMPAIGN_YEAR, CAMPAIGN_POSTERS, CAMPAIGN_VIDEO_TOTAL, CAMPAIGN_VIDEOS, DISCUSSIONS, DOCUMENTATION,
   KARAKTER_ABOUT, KARAKTER_BASE, KARAKTER_PROGRAMS, KARAKTER_YEARS, MAPPING_CAMPUSES, TTB, TTB_STAGES,
-  driveFolder, drivePreview, driveThumb,
+  driveFolder, driveThumb, drivePlayer,
 } from "../../lib/karakter.js";
-import { canManageReports, fmtNum } from "../../lib/format.js";
-import { useAuthStore } from "../../stores/auth.js";
+import { fmtNum } from "../../lib/format.js";
 import karakterCss from "../../styles/karakter.css?url";
 
 export function links() {
@@ -26,7 +26,7 @@ const SECTIONS = {
   ttb: { title: "Teman Tumbuh Bersama TPB ITB", page: Ttb },
   kampanye: { title: "Kampanye Etika Mahasiswa", page: Kampanye },
   mapping: { title: "Mapping Banner", parent: "kampanye", page: Mapping },
-  diskusi: { title: "Diskusi Interaktif", page: Diskusi, year: "2025" },
+  diskusi: { title: "Diskusi Interaktif", page: Diskusi, noYear: true },
   dokumentasi: { title: "Dokumentasi Kegiatan", page: Dokumentasi },
 };
 const pct = (v) => Number(v).toLocaleString("id-ID", { maximumFractionDigits: 1 }) + "%";
@@ -40,7 +40,8 @@ export default function Karakter() {
   useEffect(() => setYear(defaultYear), [section, defaultYear]);
   if (!info) return <Navigate to={KARAKTER_BASE} replace />;
   const Page = info.page;
-  const picker = <Segmented label="Tahun" value={year} onChange={setYear} options={KARAKTER_YEARS.map((y) => [y, "Tahun " + y])} />;
+  // Diskusi Interaktif tanpa pilihan tahun
+  const picker = info.noYear ? null : <Segmented label="Tahun" value={year} onChange={setYear} options={KARAKTER_YEARS.map((y) => [y, "Tahun " + y])} />;
   return (
     <div className="page kr">
       <nav className="kr-crumb" aria-label="Lokasi halaman">
@@ -62,43 +63,46 @@ function DriveImg({ id, w, lazy }) {
   return <img src={driveThumb(id, w)} alt="" referrerPolicy="no-referrer" loading={lazy ? "lazy" : undefined} onError={() => setBad(true)} />;
 }
 
+// Video diputar otomatis lewat pemutar Google Drive (Drive menolak <video> langsung dari situs lain),
+// lalu lanjut ke video berikutnya setelah durasinya habis dan kembali ke awal.
+// Klik thumbnail / panah tetap bisa; "Berhenti di video ini" mematikan perpindahan otomatis.
+const LOAD_SLACK = 4; // detik tambahan untuk memuat pemutar Drive
 function Slideshow({ items, label }) {
   const [at, setAt] = useState(0);
-  const [playing, setPlaying] = useState(false);
+  const [auto, setAuto] = useState(true);
+  const [loaded, setLoaded] = useState(false);
   const n = items.length;
-  // berganti otomatis sampai pengguna memutar video
+  const i = n ? at % n : 0;
+  const it = items[i];
+  const pick = (k) => setAt((k + n) % n);
+  useEffect(() => setLoaded(false), [it?.id]);
   useEffect(() => {
-    if (playing || n < 2) return undefined;
-    const t = setInterval(() => setAt((v) => (v + 1) % n), 6000);
-    return () => clearInterval(t);
-  }, [playing, n]);
+    if (!auto || !loaded || n < 2) return undefined;
+    const t = setTimeout(() => setAt((v) => (v + 1) % n), ((it.dur || 90) + LOAD_SLACK) * 1000);
+    return () => clearTimeout(t);
+  }, [auto, loaded, n, it]);
   if (!n) return null;
-  const it = items[at % n];
-  const pick = (k) => { setAt((k + n) % n); setPlaying(false); };
   return (
     <section className="kr-show" aria-label={label}>
       <div className="kr-stage">
-        {playing ? (
-          <iframe src={drivePreview(it.id)} title={it.title} allow="autoplay; fullscreen" allowFullScreen referrerPolicy="no-referrer" />
-        ) : (
-          <>
-            <DriveImg key={it.id} id={it.id} w={1280} />
-            <button type="button" className="kr-play" onClick={() => setPlaying(true)} aria-label={"Putar video " + it.title}>
-              <span aria-hidden="true" />
-            </button>
-            <div className="kr-cap"><b>{it.title}</b>{it.by && <span>{it.by}</span>}</div>
-          </>
-        )}
-        <span className="kr-badge">{label}</span>
-        <span className="kr-count">{(at % n) + 1} / {n}</span>
+        {/* thumbnail sampai pemutar Drive selesai dimuat */}
+        {!loaded && <DriveImg key={"t" + it.id} id={it.id} w={1280} />}
+        <iframe key={it.id} src={drivePlayer(it.id)} title={it.title} allow="autoplay; fullscreen" allowFullScreen onLoad={() => setLoaded(true)} />
         {n > 1 && <>
-          <button type="button" className="kr-arrow l" onClick={() => pick(at - 1)} aria-label="Sebelumnya"><Icon name="left" size={18} /></button>
-          <button type="button" className="kr-arrow r" onClick={() => pick(at + 1)} aria-label="Berikutnya"><Icon name="right" size={18} /></button>
+          <button type="button" className="kr-arrow l" onClick={() => pick(i - 1)} aria-label="Sebelumnya"><Icon name="left" size={18} /></button>
+          <button type="button" className="kr-arrow r" onClick={() => pick(i + 1)} aria-label="Berikutnya"><Icon name="right" size={18} /></button>
         </>}
+      </div>
+      <div className="kr-cap">
+        <div><span className="kr-badge">{label}</span><b>{it.title}</b>{it.by && <span>{it.by}</span>}</div>
+        <div className="kr-ctrl">
+          <span className="kr-count">{i + 1} / {n}</span>
+          {n > 1 && <button type="button" onClick={() => setAuto(!auto)} aria-pressed={!auto}>{auto ? "❚❚ Berhenti di video ini" : "▶ Putar berurutan"}</button>}
+        </div>
       </div>
       <div className="kr-thumbs">
         {items.map((v, k) => (
-          <button key={v.id} type="button" className={"kr-thumb" + (k === at % n ? " on" : "")} onClick={() => pick(k)} aria-pressed={k === at % n}>
+          <button key={v.id} type="button" className={"kr-thumb" + (k === i ? " on" : "")} onClick={() => pick(k)} aria-pressed={k === i}>
             <DriveImg id={v.id} w={400} lazy />
             <span>{v.title}</span>
           </button>
@@ -118,7 +122,7 @@ function Beranda({ year, picker }) {
         sub="Program pembinaan karakter mahasiswa Tahap Persiapan Bersama (TPB) ITB">{picker}</PageHead>
       <Slideshow items={highlights} label="Sorotan kegiatan" />
       <div className="kr-row">
-        <span className="kr-muted">Klik gambar di atas untuk memutar, atau biarkan berganti otomatis.</span>
+        <span className="kr-muted">Video berputar otomatis dan berlanjut ke video berikutnya · klik gambar untuk memilih.</span>
         <Link className="btn btn-primary" to={`${KARAKTER_BASE}/dokumentasi`}><Icon name="folder" size={16} />Lihat semua Dokumentasi Kegiatan</Link>
       </div>
       <section className="card">
@@ -150,7 +154,6 @@ function Ring({ value, label, hint, tone }) {
 }
 
 function Ttb({ year, picker }) {
-  const session = useAuthStore((s) => s.session);
   const d = TTB[year];
   const head = <PageHead title={<>Teman Tumbuh Bersama TPB ITB <span className="title-prog">{year}</span></>}
     sub="Mentor ke mentee, dosen pembina ke pementor · sekitar 1 semester">{picker}</PageHead>;
@@ -159,7 +162,6 @@ function Ttb({ year, picker }) {
   const held = Math.round((totalMeetings * d.realization) / 100);
   const avgHeld = (d.targetMeetings * d.realization) / 100; // rata-rata pertemuan per kelompok
   const stage = d.groupsDone >= d.groups ? 3 : 2;
-  const problems = d.checks.filter(([, n]) => n > 0).length;
   return (
     <>
       {head}
@@ -203,18 +205,6 @@ function Ttb({ year, picker }) {
         </div>
         <p className="kr-muted kr-small">Hijau = rata-rata pertemuan yang sudah terlaksana per kelompok.</p>
       </section>
-      {canManageReports(session) && (
-        <section className="card">
-          <div className="card-head"><div><h2 className="card-title">Pemeriksaan data</h2>
-            <div className="card-sub">Untuk tim yang memperbarui spreadsheet · {problems ? `${problems} pemeriksaan perlu dicek` : "semua aman"}</div></div></div>
-          <div className="tbl-scroll"><table className="tbl compact">
-            <thead><tr><th>Pemeriksaan</th><th>Masalah</th><th>Tindakan</th></tr></thead>
-            <tbody>{d.checks.map(([t, n, a]) => (
-              <tr key={t}><td>{t}</td><td className={n ? "kr-bad" : "kr-ok"}>{n ? `${n} masalah` : "Aman"}</td><td className="kr-muted">{a}</td></tr>
-            ))}</tbody>
-          </table></div>
-        </section>
-      )}
     </>
   );
 }
@@ -228,6 +218,7 @@ const mappingStats = (buildings) => {
 
 function Kampanye({ year, picker }) {
   const jtn = useMemo(() => mappingStats(MAPPING_CAMPUSES[0].data), []);
+  const [book, setBook] = useState(false);
   const head = <PageHead title={<>Kampanye Etika Mahasiswa <span className="title-prog">{year}</span></>}
     sub="Video karya mahasiswa, poster & banner, buku panduan, dan sebaran banner di kampus">{picker}</PageHead>;
   if (year !== CAMPAIGN_YEAR) return <>{head}<section className="card"><EmptyState icon="star" title={`Belum ada data Kampanye Etika Mahasiswa ${year}`} /></section></>;
@@ -249,14 +240,14 @@ function Kampanye({ year, picker }) {
       </section>
       <div className="grid g-2">
         <section className="card">
-          <div className="card-head"><div><h2 className="card-title">{CAMPAIGN_EBOOK.title}</h2><div className="card-sub">E-book · Direktorat Persiapan Bersama</div></div></div>
+          <div className="card-head"><div><h2 className="card-title">{CAMPAIGN_BOOK.title}</h2><div className="card-sub">Buku panduan · Direktorat Persiapan Bersama</div></div></div>
           <div className="kr-ebook">
-            <img src={import.meta.env.BASE_URL + CAMPAIGN_EBOOK.cover} alt={"Sampul " + CAMPAIGN_EBOOK.title} />
+            <button type="button" className="kr-cover" onClick={() => setBook(true)} aria-label={"Buka " + CAMPAIGN_BOOK.title}>
+              <img src={import.meta.env.BASE_URL + CAMPAIGN_BOOK.cover} alt={"Sampul " + CAMPAIGN_BOOK.title} />
+            </button>
             <div>
-              <p className="kr-about">{CAMPAIGN_EBOOK.desc}</p>
-              {CAMPAIGN_EBOOK.url
-                ? <a className="btn btn-primary" href={CAMPAIGN_EBOOK.url} target="_blank" rel="noreferrer"><Icon name="book" size={16} />Baca e-book</a>
-                : <span className="kr-muted">Link e-book menyusul.</span>}
+              <p className="kr-about">{CAMPAIGN_BOOK.desc}</p>
+              <button type="button" className="btn btn-primary" onClick={() => setBook(true)}><Icon name="book" size={16} />Buka buku</button>
             </div>
           </div>
         </section>
@@ -269,7 +260,51 @@ function Kampanye({ year, picker }) {
           <Link className="btn" to={`${KARAKTER_BASE}/mapping`}><Icon name="pin" size={16} />Buka dashboard mapping</Link>
         </section>
       </div>
+      {book && <BookViewer book={CAMPAIGN_BOOK} onClose={() => setBook(false)} />}
     </>
+  );
+}
+
+// Buku dua halaman: sampul depan bisa dibalik seperti membuka buku, menampilkan sampul (kiri) dan sinopsis (kanan).
+function BookViewer({ book, onClose }) {
+  const [open, setOpen] = useState(false);
+  const close = useRef(null);
+  const base = import.meta.env.BASE_URL;
+  useEffect(() => {
+    close.current?.focus();
+    // buka sampul sesaat setelah tampil, seperti membuka buku
+    const t = setTimeout(() => setOpen(true), 350);
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowRight") setOpen(true);
+      if (e.key === "ArrowLeft") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => { clearTimeout(t); window.removeEventListener("keydown", onKey); };
+  }, [onClose]);
+  // portal ke <body> agar latar gelap menutupi menu samping juga
+  return createPortal(
+    <div className="kr-modal" role="dialog" aria-modal="true" aria-label={book.title} onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="kr-modal-box">
+        <div className="kr-modal-head">
+          <b>{book.title}</b>
+          <button ref={close} type="button" className="kr-close" onClick={onClose} aria-label="Tutup"><Icon name="x" size={18} /></button>
+        </div>
+        <div className={"kr-book" + (open ? " open" : "")}>
+          <div className="kr-page right"><img src={base + book.back} alt={"Sinopsis " + book.title} /></div>
+          <button type="button" className="kr-leaf" onClick={() => setOpen(!open)} aria-label={open ? "Tutup sampul" : "Buka sampul"}>
+            <span className="kr-face front"><img src={base + book.cover} alt={"Sampul " + book.title} /></span>
+            <span className="kr-face back"><img src={base + book.cover} alt="" /></span>
+          </button>
+        </div>
+        <div className="kr-book-nav">
+          <button type="button" className="btn btn-sm" onClick={() => setOpen(false)} disabled={!open}><Icon name="left" size={15} />Sampul</button>
+          <span className="kr-muted">{open ? "Halaman 1–2 dari 2" : "Sampul"} · klik buku untuk membalik</span>
+          <button type="button" className="btn btn-sm" onClick={() => setOpen(true)} disabled={open}>Buka<Icon name="right" size={15} /></button>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -337,14 +372,14 @@ function Mapping({ year, picker }) {
 }
 
 /* ---------------- 3. Diskusi Interaktif & Dokumentasi ---------------- */
-function Diskusi({ year, picker }) {
-  const rows = DISCUSSIONS.filter((d) => String(d.year) === year);
+function Diskusi() {
+  const rows = DISCUSSIONS;
   return (
     <>
-      <PageHead title={<>Diskusi Interaktif <span className="title-prog">{year}</span></>} sub="Sesi diskusi bersama mahasiswa TPB beserta ringkasannya">{picker}</PageHead>
+      <PageHead title="Diskusi Interaktif" sub="Sesi diskusi bersama mahasiswa TPB beserta ringkasannya" />
       <section className="card">
         {!rows.length ? (
-          <EmptyState icon="message" title={`Belum ada data Diskusi Interaktif ${year}`}>Sesi, narasumber, jumlah peserta, dan ringkasan diambil dari sheet Diskusi.</EmptyState>
+          <EmptyState icon="message" title="Belum ada data Diskusi Interaktif">Sesi, narasumber, jumlah peserta, dan ringkasan diambil dari sheet Diskusi.</EmptyState>
         ) : rows.map((d) => (
           <article key={d.title + d.date} className="kr-session"><b>{d.title}</b><span className="kr-muted">{d.date} · {d.speaker}</span><p>{d.summary}</p></article>
         ))}
