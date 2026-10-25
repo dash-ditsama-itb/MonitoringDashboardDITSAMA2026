@@ -228,13 +228,10 @@ function Kampanye({ year, picker }) {
       <Slideshow items={CAMPAIGN_VIDEOS} label="Video karya mahasiswa" />
       <div className="kr-row"><span className="kr-muted">{CAMPAIGN_VIDEOS.length} video karya mahasiswa · diputar langsung dari Google Drive</span></div>
       <section className="card">
-        <div className="card-head"><div><h2 className="card-title">Katalog poster & banner</h2><div className="card-sub">Setiap tema berisi poster dan banner-nya · klik untuk membuka</div></div></div>
+        <div className="card-head"><div><h2 className="card-title">Katalog poster & banner</h2><div className="card-sub">Klik gambar untuk membalik poster ⇄ banner · link Drive di bawah tiap tema</div></div></div>
         <div className="kr-posters">
           {CAMPAIGN_POSTERS.map((p) => (
-            <a key={p.id} className="kr-poster" href={driveFolder(p.id)} target="_blank" rel="noreferrer">
-              <img className="kr-poster-img" src={import.meta.env.BASE_URL + p.img} alt={"Poster " + p.theme} loading="lazy" />
-              <span className="kr-poster-body"><b>{p.theme}</b><span className="kr-go">Lihat poster & banner<Icon name="external" size={14} /></span></span>
-            </a>
+            <PosterCard key={p.id} poster={p} />
           ))}
         </div>
       </section>
@@ -262,6 +259,28 @@ function Kampanye({ year, picker }) {
       </div>
       {book && <BookViewer book={CAMPAIGN_BOOK} onClose={() => setBook(false)} />}
     </>
+  );
+}
+
+// Kartu poster: klik gambar untuk membalik ke banner (dan kembali); link folder Drive tetap di bawah.
+function PosterCard({ poster }) {
+  const [back, setBack] = useState(false);
+  const base = import.meta.env.BASE_URL;
+  return (
+    <div className="kr-poster">
+      <button type="button" className={"kr-flip" + (back ? " back" : "")} onClick={() => setBack(!back)} aria-pressed={back}
+        aria-label={(back ? "Tampilkan poster " : "Tampilkan banner ") + poster.theme}>
+        <span className="kr-flip-in">
+          <img className="kr-flip-face" src={base + poster.img} alt={"Poster " + poster.theme} loading="lazy" />
+          <span className="kr-flip-face kr-flip-back"><img src={base + poster.banner} alt={"Banner " + poster.theme} loading="lazy" /></span>
+        </span>
+        <span className="kr-flip-tag">{back ? "Banner" : "Poster"} ⇄</span>
+      </button>
+      <span className="kr-poster-body">
+        <b>{poster.theme}</b>
+        <a className="kr-go" href={driveFolder(poster.id)} target="_blank" rel="noreferrer">Lihat poster & banner<Icon name="external" size={14} /></a>
+      </span>
+    </div>
   );
 }
 
