@@ -69,14 +69,14 @@ export const CAMPAIGN_VIDEOS = [
 // tahun data kampanye (video, poster, e-book, mapping banner)
 export const CAMPAIGN_YEAR = "2026";
 
-// folder Drive per tema, masing-masing berisi poster dan banner-nya; img = halaman depan file POSTER di folder itu
+// folder Drive per tema, masing-masing berisi poster dan banner-nya; img/banner = halaman depan file POSTER/BANNER di folder itu
 export const CAMPAIGN_POSTERS = [
-  { id: "1Nx8kHG6Ss6V8YsDbkrbMKcdtgEho6lvB", title: "Sopan Santun", img: "assets/poster/sopan-santun.jpg", theme: "Etika Sopan Santun" },
-  { id: "1OIchNvPq64bB8s127kSYHp5zigjdv4AO", title: "Bersosmed", img: "assets/poster/bersosmed.jpg", theme: "Etika Bersosmed" },
-  { id: "1z8p2qoAG2hKtrNXpbZkU_GXtfargFJ2e", title: "Berpenampilan", img: "assets/poster/berpenampilan.jpg", theme: "Etika Berpenampilan" },
-  { id: "1uP_lQWfyIPpiyfZ2FZ69yLvd1_cAFTop", title: "Menghubungi Dosen", img: "assets/poster/menghubungi-dosen.jpg", theme: "Etika Menghubungi Dosen" },
-  { id: "1s2bQB1TGVuyg38bcQZcPtPvQUOwgQwAc", title: "Seksualitas", img: "assets/poster/seksualitas.jpg", theme: "Etika Seksualitas Sehat" },
-  { id: "1mK8totSkPGgK7N_VyjRrW9w_Tg5IGf_Z", title: "5S", img: "assets/poster/5s.jpg", theme: "5S" },
+  { id: "1Nx8kHG6Ss6V8YsDbkrbMKcdtgEho6lvB", title: "Sopan Santun", img: "assets/poster/sopan-santun.jpg", banner: "assets/banner/sopan-santun.jpg", theme: "Etika Sopan Santun" },
+  { id: "1OIchNvPq64bB8s127kSYHp5zigjdv4AO", title: "Bersosmed", img: "assets/poster/bersosmed.jpg", banner: "assets/banner/bersosmed.jpg", theme: "Etika Bersosmed" },
+  { id: "1z8p2qoAG2hKtrNXpbZkU_GXtfargFJ2e", title: "Berpenampilan", img: "assets/poster/berpenampilan.jpg", banner: "assets/banner/berpenampilan.jpg", theme: "Etika Berpenampilan" },
+  { id: "1uP_lQWfyIPpiyfZ2FZ69yLvd1_cAFTop", title: "Menghubungi Dosen", img: "assets/poster/menghubungi-dosen.jpg", banner: "assets/banner/menghubungi-dosen.jpg", theme: "Etika Menghubungi Dosen" },
+  { id: "1s2bQB1TGVuyg38bcQZcPtPvQUOwgQwAc", title: "Seksualitas", img: "assets/poster/seksualitas.jpg", banner: "assets/banner/seksualitas.jpg", theme: "Etika Seksualitas Sehat" },
+  { id: "1mK8totSkPGgK7N_VyjRrW9w_Tg5IGf_Z", title: "5S", img: "assets/poster/5s.jpg", banner: "assets/banner/5s.jpg", theme: "5S" },
 ];
 // buku: sampul depan + sampul belakang (sinopsis), dibuka seperti buku dua halaman
 export const CAMPAIGN_BOOK = {
