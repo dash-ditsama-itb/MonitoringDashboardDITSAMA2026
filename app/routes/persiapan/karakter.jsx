@@ -219,6 +219,7 @@ const mappingStats = (buildings) => {
 function Kampanye({ year, picker }) {
   const jtn = useMemo(() => mappingStats(MAPPING_CAMPUSES[0].data), []);
   const [book, setBook] = useState(false);
+  const [poster, setPoster] = useState(null); // indeks poster yang dibuka besar
   const head = <PageHead title={<>Kampanye Etika Mahasiswa <span className="title-prog">{year}</span></>}
     sub="Video karya mahasiswa, poster & banner, buku panduan, dan sebaran banner di kampus">{picker}</PageHead>;
   if (year !== CAMPAIGN_YEAR) return <>{head}<section className="card"><EmptyState icon="star" title={`Belum ada data Kampanye Etika Mahasiswa ${year}`} /></section></>;
@@ -228,10 +229,10 @@ function Kampanye({ year, picker }) {
       <Slideshow items={CAMPAIGN_VIDEOS} label="Video karya mahasiswa" />
       <div className="kr-row"><span className="kr-muted">{CAMPAIGN_VIDEOS.length} video karya mahasiswa · diputar langsung dari Google Drive</span></div>
       <section className="card">
-        <div className="card-head"><div><h2 className="card-title">Katalog poster & banner</h2><div className="card-sub">Klik gambar untuk membalik poster ⇄ banner · link Drive di bawah tiap tema</div></div></div>
+        <div className="card-head"><div><h2 className="card-title">Katalog poster & banner</h2><div className="card-sub">Klik gambar untuk memperbesar dan membalik poster ⇄ banner · link Drive di bawah tiap tema</div></div></div>
         <div className="kr-posters">
-          {CAMPAIGN_POSTERS.map((p) => (
-            <PosterCard key={p.id} poster={p} />
+          {CAMPAIGN_POSTERS.map((p, i) => (
+            <PosterCard key={p.id} poster={p} onOpen={() => setPoster(i)} />
           ))}
         </div>
       </section>
@@ -258,29 +259,66 @@ function Kampanye({ year, picker }) {
         </section>
       </div>
       {book && <BookViewer book={CAMPAIGN_BOOK} onClose={() => setBook(false)} />}
+      {poster !== null && <PosterViewer posters={CAMPAIGN_POSTERS} at={poster} onPick={setPoster} onClose={() => setPoster(null)} />}
     </>
   );
 }
 
-// Kartu poster: klik gambar untuk membalik ke banner (dan kembali); link folder Drive tetap di bawah.
-function PosterCard({ poster }) {
-  const [back, setBack] = useState(false);
-  const base = import.meta.env.BASE_URL;
+// Kartu poster: klik gambar untuk membuka besar (lalu bisa dibalik ke banner); link folder Drive tetap di bawah.
+function PosterCard({ poster, onOpen }) {
   return (
     <div className="kr-poster">
-      <button type="button" className={"kr-flip" + (back ? " back" : "")} onClick={() => setBack(!back)} aria-pressed={back}
-        aria-label={(back ? "Tampilkan poster " : "Tampilkan banner ") + poster.theme}>
-        <span className="kr-flip-in">
-          <img className="kr-flip-face" src={base + poster.img} alt={"Poster " + poster.theme} loading="lazy" />
-          <span className="kr-flip-face kr-flip-back"><img src={base + poster.banner} alt={"Banner " + poster.theme} loading="lazy" /></span>
-        </span>
-        <span className="kr-flip-tag">{back ? "Banner" : "Poster"} ⇄</span>
+      <button type="button" className="kr-poster-open" onClick={onOpen} aria-label={"Perbesar poster " + poster.theme}>
+        <img src={import.meta.env.BASE_URL + poster.img} alt={"Poster " + poster.theme} loading="lazy" />
+        <span className="kr-flip-tag"><Icon name="expand" size={12} />Perbesar</span>
       </button>
       <span className="kr-poster-body">
         <b>{poster.theme}</b>
         <a className="kr-go" href={driveFolder(poster.id)} target="_blank" rel="noreferrer">Lihat poster & banner<Icon name="external" size={14} /></a>
       </span>
     </div>
+  );
+}
+
+// Poster besar: klik gambar (atau panah kiri/kanan) untuk membalik poster ⇄ banner; tombol bawah pindah tema.
+function PosterViewer({ posters, at, onPick, onClose }) {
+  const [back, setBack] = useState(false);
+  const close = useRef(null);
+  const p = posters[at];
+  const n = posters.length;
+  const base = import.meta.env.BASE_URL;
+  useEffect(() => { close.current?.focus(); }, []);
+  useEffect(() => setBack(false), [at]);
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowRight" || e.key === "ArrowLeft") setBack((v) => !v);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return createPortal(
+    <div className="kr-modal" role="dialog" aria-modal="true" aria-label={p.theme} onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="kr-modal-box kr-pv-box">
+        <div className="kr-modal-head">
+          <b>{p.theme} · {back ? "Banner" : "Poster"}</b>
+          <button ref={close} type="button" className="kr-close" onClick={onClose} aria-label="Tutup"><Icon name="x" size={18} /></button>
+        </div>
+        <button type="button" className={"kr-pv" + (back ? " back" : "")} onClick={() => setBack(!back)} aria-label={back ? "Balik ke poster" : "Balik ke banner"}>
+          <span className="kr-flip-in">
+            <span className="kr-flip-face"><img src={base + p.img} alt={"Poster " + p.theme} /></span>
+            <span className="kr-flip-face kr-flip-back"><img src={base + p.banner} alt={"Banner " + p.theme} /></span>
+          </span>
+        </button>
+        <div className="kr-book-nav">
+          <button type="button" className="btn btn-sm" onClick={() => onPick((at - 1 + n) % n)}><Icon name="left" size={15} />Tema sebelumnya</button>
+          <button type="button" className="btn btn-sm btn-primary" onClick={() => setBack(!back)}>{back ? "Lihat poster" : "Lihat banner"}</button>
+          <a className="btn btn-sm" href={driveFolder(p.id)} target="_blank" rel="noreferrer">Buka di Drive<Icon name="external" size={14} /></a>
+          <button type="button" className="btn btn-sm" onClick={() => onPick((at + 1) % n)}>Tema berikutnya<Icon name="right" size={15} /></button>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
