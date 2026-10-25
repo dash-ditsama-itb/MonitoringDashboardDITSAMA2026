@@ -6,7 +6,7 @@ import { Link, Navigate, useParams } from "react-router";
 import { Icon } from "../../components/Icon.jsx";
 import { Bar, EmptyState, Kpi, PageHead, Segmented } from "../../components/ui.jsx";
 import {
-  BANNER_THEMES, CAMPAIGN_BOOK, CAMPAIGN_YEAR, CAMPAIGN_POSTERS, CAMPAIGN_VIDEO_TOTAL, CAMPAIGN_VIDEOS, DISCUSSIONS, DOCUMENTATION,
+  BANNER_THEMES, CAMPAIGN_BOOK, CAMPAIGN_YEAR, CAMPAIGN_POSTERS, CAMPAIGN_VIDEOS, DISCUSSIONS, DOCUMENTATION,
   KARAKTER_ABOUT, KARAKTER_BASE, KARAKTER_PROGRAMS, KARAKTER_YEARS, MAPPING_CAMPUSES, TTB, TTB_STAGES,
   driveFolder, driveThumb, drivePlayer,
 } from "../../lib/karakter.js";
@@ -226,7 +226,7 @@ function Kampanye({ year, picker }) {
     <>
       {head}
       <Slideshow items={CAMPAIGN_VIDEOS} label="Video karya mahasiswa" />
-      <div className="kr-row"><span className="kr-muted">{CAMPAIGN_VIDEOS.length} dari {CAMPAIGN_VIDEO_TOTAL} video karya mahasiswa · diputar langsung dari Google Drive</span></div>
+      <div className="kr-row"><span className="kr-muted">{CAMPAIGN_VIDEOS.length} video karya mahasiswa · diputar langsung dari Google Drive</span></div>
       <section className="card">
         <div className="card-head"><div><h2 className="card-title">Katalog poster & banner</h2><div className="card-sub">Setiap tema berisi poster dan banner-nya · klik untuk membuka</div></div></div>
         <div className="kr-posters">
