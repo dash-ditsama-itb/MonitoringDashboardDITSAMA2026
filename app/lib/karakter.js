@@ -34,7 +34,7 @@ export const KARAKTER_PROGRAMS = [
 // URL web app Apps Script di spreadsheet TTB (apps-script/dashboard-karakter.gs): ?data=ttb dan ?data=mapping.
 // Selama kosong / tidak bisa dihubungi, halaman memakai data terakhir yang tersimpan di browser, lalu data cadangan
 // (TTB dan MAPPING_FALLBACK) di file ini.
-export const KARAKTER_API_URL = "";
+export const KARAKTER_API_URL = "https://script.google.com/macros/s/AKfycbzeSV0Vv8NWKI_lLZOAScRzhl10aMzPOlGQHCctOu1XrgGhY0qR965drfbI1OjDiFSLWQ/exec";
 export const TTB_LIVE_YEAR = "2026";
 // angka cadangan = isi sheet Ringkasan & Timeline per 25 Okt 2026 (bentuknya sama dengan JSON Apps Script)
 export const TTB = {
@@ -164,6 +164,74 @@ export const mappingFallbackItems = () => MAPPING_FALLBACK.areas.flatMap(([year,
   rooms.flatMap(([location, st, note = ""]) => [...st].flatMap((s, i) =>
     s === "-" ? [] : [{ year, campus, area, location, theme: BANNER_THEMES[i], done: s === "S", note }])));
 
-// 3. Diskusi Interaktif (tanpa tahun) & Dokumentasi Kegiatan: menunggu tab Diskusi dan Dokumentasi di spreadsheet
+// 3. Diskusi Interaktif (tanpa tahun): menunggu tab Diskusi di spreadsheet
 export const DISCUSSIONS = [];
-export const DOCUMENTATION = [];
+
+// Dokumentasi Kegiatan: folder DOKUMENTASI di Google Drive, satu folder per kegiatan (id = folder yang dibagikan tim).
+// program = filter di halaman (ttb / kampanye / diskusi); dur = durasi video (detik) untuk slideshow Sorotan kegiatan.
+export const DOCUMENTATION_FOLDER = "1UtSQossL1YNyFP_Y-NCOwz2injO3yhJh";
+export const DOCUMENTATION = [
+  {
+    id: "15pOPyUndgDcRACPAzzUa87owfe8lLh_X", title: "Pelatihan Pementor TTB TPB ITB bersama Paragon", date: "2026-09-21", program: "ttb",
+    videos: [],
+    photos: [
+      "10GtxcC30-UTbTqB4e1tjfwQA1Nx4pXa9", "166rMQ30uL0zuaD74Yg1lOgBTSYpa4BTT", "1An4PvLlusXD1K9qqcy4InJzUXpZXlRtq",
+      "1e3KG5N2co0Q3mq3hFi0HZhVak3vK_HLQ", "16hepvvTMK2AaiCJCewhP-WL_o4xFdUG4", "1KM1RFtTbXrEvz5QqCLy_ydZLa8wsGPDN",
+      "1FPscaITFhhjzxGSCOgR20SaT3vU_Ju7E", "1jijUao7PDpgjWEBJi3deClm7CM4W7VSi", "1Uvg-IizeJRoaD0lAXvw5287-PypTV9Vy",
+      "179-JATLomDJOkF-5ZLskzeBL-ZcYn0We", "10BNFoG-ka1EKwrZDb3Xixbbg1eKfhByZ", "1UZdcPKrL_gGkEEMzG8yAshtB_Z-IVjbC",
+      "1ouNG_TD6wwH2-lByNu2bvy7v_TE1Mwyo", "1vTC4xJvhtjpND41Pdiyyc8_OLDT2328q", "1o3qD-anjNPGDuST-dZ3z-EizMtoJOjt7",
+      "1Hh9vQvqp2KjHCQFHQ-ztfJz3LhRfHgQ5", "1VxVeabu07HkAFT0qe7DLonqyvqZVt9H8", "1CyqVdcU3uc1gyqMOaKUYnX1ydQXXnxvO",
+      "1kITIy5vvjl-U3ZM85vqo0gZDCvziwUhH", "1vlHy2LTY_f-110FWbp9Y1uoypF0ajg2i", "1yhyhIXxFo-f5h84iui89gFUFzdzpX_yR",
+      "1Si-aea3SvxhxAKD8Jkc-Wois-LRfKjS3", "18jVBIYauii7AIKqaIqW2LvQRRQmEZ2-J", "1WkvYKz77N1alDWZl9S8UDTzoj4gBXOv3",
+      "1Vcq30j5Y0RFLOkFW3CQZ0NBIn9s4usm7", "1TfPz1Q-7-TtLJZupvfvFVfFmCa4CNWFW", "1bXZu7KI-P5wYIn41ETb7_QqdUa0UfAZK",
+      "1kumKnoNHYpGckqbxSwf1_O58lwX4wKxk", "11ozhfbi3kglY5A7eQLMFq3xmMi8nzC28", "1lWWNrhvp8y8B960MVqLJSifWALObhPZM",
+      "1m1yB4NRLKcJPOtQyHjOFr02Br3kXYAS-", "1L39XpQJVLgQ5GBzno_DsW792Gjay24Wv", "1S-3U5uVHA5PniZVJtg6YtIXzIDXaKSwV",
+    ],
+  },
+  {
+    id: "18Idm4KCu7meDUZBHy-uJozfh865JlNZ2", title: "Pembagian Buku Tumbuh di ITB", date: "2025-09-10", program: "kampanye",
+    videos: [{ id: "1gq9TKGbHK0Gky5tQwOJICr7x0NPfVDJN", dur: 5 }],
+    photos: [
+      "1tLKZ5siP6KsFUv_hGtbn2UC6DUPRlbqK", "1RoqZf7DvddY1KjsvU3F_dK7Rd_xdy9xN", "1rfzoAAORIf-rJ0YFtRcpXtvvJ4ZeDK6W",
+      "1nCjlGCT204VcJrkXLlqd9h7SpYyFtVlN", "1COJn9aWJ9h3Poea8X2dNRRdv1zv0sB7v", "1qTFPxlouDwUl2ibgJpq7sKxYy_Dqjque",
+      "1ZqBgQM5lfT2c-lsFrTfkPWGbo2Y7sdUY", "1ERvY2S7yDt-CJlzJC4-j1yRJcmDPwVo-", "1a2Asrz8vUXHa9imL54g7zJ7nPqoltVtk",
+      "1JyZ7it6h4hxz9rIGcwA1tUfPFA0GsHGa", "1as2QRgYaV-k7w82ogODHMc6QLRZaowTW", "1ZPhwjXAy8HFnkrMvPrm6b_VvU6BOvNOq",
+      "1XrqgTDTGKhLy9TKq3DQeuXzTI6fKA91s", "1YzeA8KZMeUiF5jI6hqtKFjUKCOE5Thci", "1l-CNJ9Jwy1mKPTziMk-_47a1FNs1byb0",
+      "1o-nYu5dLwjsUVZck_UvjT9G2ZRrS6N67",
+    ],
+  },
+  {
+    id: "1bDIEFnvVlVZQ3ZT6DTEXEJ_PnaLY54bA", title: "Pembekalan Mentoring", date: "2025-08-22", program: "ttb",
+    videos: [{ id: "1qZbBjmqCKzD5lnTE0xKigr6o6xAg0qM8", dur: 19 }, { id: "1YhMDKC6sYetxRq50BZMnh5MdrZJTeRbd", dur: 4 }, { id: "1poSCq934HsPKxHnEeiHfk48ZbKMUaHv2", dur: 11 }, { id: "1mj3pzER6tfDELlKDKi4siD4UY839QpmY", dur: 32 }, { id: "1JFOQg8YziuRHfXFOKTaXGAQMsfTLoVgI", dur: 30 }, { id: "1sq9W_MPc-j3e9j3gasiI-4CThNh9WBxq", dur: 12 }],
+    photos: [
+      "1Fvx5H2BoOr_Veh0qBx6Ni7zoXBLvkJlr", "1uKpU9pk5KVztdC8xSG3hWfUjn9IcXlxj", "1uCwzPTGRBFd0oc1z0XpO3rQdS-wRs7FJ",
+      "13B_C9iqRgh-S_IUkBbvZonhq86QGJgO5", "1X1vcdOaPzIZr3GPNAucTA2TRV-IBodP9", "1S8hBqx04URQ1uqtkaQMYB6trIV37D4Nm",
+      "12YZ2lCtsJ0EY3Ng555F4PJOTeOVstFKC", "1aQJ-onIwHvsKphmpoID1LrsNVCmKdA7O", "1uFLC_oUu2326ZIl6DhPBbBOA2o7TykIx",
+      "1qhR2zyNEgzLn8jYknzTl8-4UBRzvx-Kk", "1Zzg7QKfud_tAWzhFbJxouyzfs_AIHyNo", "1vGp-4lMHRGXRW5j5lI2Ln0ReWl2rZtxx",
+      "1y17gHmq9rKENQFgrHffNHc0AdHO8V9EW", "1PBExrQ7vYnjeuRsNigIBun_43O4HIs3R", "1x5LkABUHhJBYBi5zLm_w-ru8gji5RFV6",
+      "1r2GfexJXw0rhHsydc-fEFll-n9x1jsjr", "1ZO8qgmITbOcsRiut2t3sx3gga_CkrkOb", "1aiVbRfu3Gln6sGZ48f6tIFFN_YAai61V",
+      "1jAeUJAhh8zKniBdLjBC0DTYuRpzB71ee", "1jTWWFwZ-AXNDFHK7OZWgZVvbf5sT7uC-", "1jr7EDj5Y1xWpBwOSu9vRJgNScFcSzIjQ",
+      "1BKvJYXWYdyZeB8gIREAwQMmC30-orjFH", "1k0NxWur4paCDjZHTg1zie6CuYiBCjbMg", "1xEBhq82xUTxBginGrNPEaiLVohAQ3G9K",
+      "1QfKeFfhZFfkVGvobwK_uCOhLU8267yL2", "1sygqW-g_The8Mr9Zm27TS7mysCi1Kcc6", "1_2l-6UlLDALCyyAG4ugaQAz4sYEaN7AW",
+      "1iBxoJ9gEib-Z3m0xPyyFtIi2dd_8MO6T", "1RK5Mjznn-GzQTOPTtoruM0lkH51-ANL2", "1bI66h8r0Z58uO78X4oxYoTqQhnWro8QR",
+      "1sM9c8J5eIlU-vw_G_9oKQSDPSKRIOyCm", "1CPbiXVQBtqo6JlkjzPwsfIyhcXwOwo8i", "1XV7YILXwbGlpTo2zz8agS-AAQRbuU-B5",
+      "1NGjAoEVTad14YZKEcFd_un_1VxhU75S1", "11jcQqoV-p2_V6gf0oN0m2b0ZxTETv3vj", "1sqK7DSZMq16CfA5pRcAVou0DoUA4JLyF",
+      "1kAFxcOCwZBsLjJcF31pB-Aan1jri12Qo", "161n8TbqTNMFkbgbOsUZ0Dxl-ArEI1Jpn", "1Gg5zrh4GkDWoIyMgjwLZ4ARXTIrKqk4Y",
+      "1QC4lFuQNbpZb9d_EAraAVLVG7gCknTqL", "1ME0s1Vl0OOnIfssLMZuAQ-tuMJWioEBq", "1snmtcvidK-dHNtItCV49G3NeCUZ8gagD",
+      "1wky9oe2uZb2JjGrPGnPYqJHhMyxpCtfE", "1WzV8-wGzWW3fJGG0-r0RDu0NOuQtvRlw", "1PhWbUUeaHqvxU6sj53SM-cpogaat61Ba",
+      "1zBpvoprH4SSSrjxJH7r0CJzVeCfrnWGy", "1eieodXSptVt79umI1OJEPrwbzwxS-AgF", "15XRUbrlGKmKaysB9mrk8aSoAvqdE7Odd",
+      "1nKXNxSFK502SSAtZTQDhWgKQqbx05T71", "1XYfmnYB3NIwnyQjffwIcVjB5_bcZfkxv", "1OvhgfLcMwddeIj3_9tTmO1HdR99l8qaR",
+      "1isvWqnNbLvKrQVrRUMuXwUVMEx425wuA", "1YbVTdezazhUqiZt-rj5GOT4ywDt3y2Eg", "1zHnaX8tBXRqJLHvBXtldpMA0L0B96zSk",
+      "1UzLt68ek-3iKcfqvMu8CYyWPGgHiX-uA", "1TvVP9J2aA87dS4p2wNYKTMLy67gBRk43", "1PGVjAV48m3_3AVVwc2fPdnsvjIWHh9Se",
+      "1dtDE3VQslESYjoEcaoyMAxw1oxCf1a0G", "1yiS_XUkeV9lRiQn9PXpx4xn7CqxlC0OP", "1ndToDFYBcKkP3HFHXw814tgBWBEMj7c3",
+      "1rmmH3Z4OwjSrlt4r0uMmvR-07GmT2Ys_", "1Fa84R7QhDMBeuA-k9Ik1B5Loiz587Lme", "1FpqYYSdSv1nD7Pc4GMjAYU5ObMuhG6Ho",
+      "1KA_bgTO8O4bBi4m4hRFYZ7JDZ3H_XqaI", "17_B0KkCSIEu3Dr26YurIaagAUTXBm2G7", "1EI0ONoUH7tngvoI6AP5fEnrcLiQ03jRW",
+      "1QRZ_-QRaOi9NOXkN3BninJ0kmZ8TaUD6", "1yedyUcI4L5NcJQGApkXc9-pZUTlSfqFN", "1J9c3DUiF_1RY1vvM1q_V_5z0bP9AyODu",
+      "1hs_fFagt83AsijsKqJ0otDraCfa_hXqV", "1Udo_gqehqM9aDzsrgcaK6B5rVi_0yaX7", "1ehXlG4N_aWQZiyhiHpKyzAnbmC3y2sj4",
+      "1aDUq33vxifX00mIFTwj3bc4vOxc1mddo", "1loC2np1i3ng_qHlMMTRKs_V_zwCR7L2i", "1Ni5s1WjL8qNI8uDaW-qZuFE-6a5xPyXV",
+      "1857hike1lNXG-ThVgY8cWQERZX4GP5ho", "1XDYuKAzMMWFcxjnwjpFTfBX_yK70zNBg", "1KLlkyUZzBdOJ5FTouVY_8YxT_0cUbkAm",
+      "1adGbBFl-HMK6KtNrTHCXMSeEu56C5APN", "1414kfu7IBDGPQAuC6z_Og_1q_t5gmH6X", "1ijd5LbpTPD_7y8ZyAhjV91iUBhq-RhDx",
+      "1nbuCaIpZlbetalchimy_RforLiwwL7rV", "1WsqtPQRsMVRZCqv7XGyXxFIJMJmIknzC", "11UziKYsC5E2LUTtHfBpWMBdObGYhZdVx",
+    ],
+  },
+];
