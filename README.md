@@ -79,8 +79,8 @@ Buka `http://localhost:5173/MonitoringDashboardDITSAMA2026/`.
   link-nya (Power BI juga menyediakan tombol bagikan). Untuk data sensitif, gunakan Power BI Embedded.
 - Semua jabatan bisa melihat laporan; menu Kelola laporan nonaktif untuk selain Admin & Kasubdit.
 - Menu **Pembinaan Karakter TPB** (paling bawah): beranda dengan slideshow video, Teman Tumbuh Bersama TPB ITB,
-  Kampanye Etika Mahasiswa + Mapping Banner, Diskusi Interaktif, dan Dokumentasi Kegiatan. Link video/poster/buku ada di
-  `app/lib/karakter.js`; angka TTB dan Mapping Banner diambil dari spreadsheet lewat Apps Script (lihat di bawah). Video slideshow berputar otomatis lewat pemutar Google Drive
+  Kampanye Etika Mahasiswa + Mapping Banner, Diskusi Interaktif, dan Dokumentasi Kegiatan. Link video/poster/buku dan daftar foto/video
+  Dokumentasi Kegiatan (folder DOKUMENTASI di Google Drive, satu folder per kegiatan) ada di `app/lib/karakter.js`; angka TTB dan Mapping Banner diambil dari spreadsheet lewat Apps Script (lihat di bawah). Video slideshow berputar otomatis lewat pemutar Google Drive
   dan berlanjut ke video berikutnya setelah durasinya habis (`dur` di `CAMPAIGN_VIDEOS`; Drive menolak file video
   diputar langsung lewat `<video>` dari situs lain). Thumbnail Drive
   dimuat tanpa Referer (Drive membalas 429 untuk permintaan dari situs lain). Buku panduan tampil sebagai sampul
@@ -97,7 +97,7 @@ Pemasangan (sekali, oleh pemilik proyek Apps Script spreadsheet):
    tempel isi `apps-script/dashboard-karakter.gs`, simpan. **Jangan menghapus kode lain** yang sudah ada di proyek itu.
 2. (Opsional) jalankan `cobaLihatDataTtb` dan `cobaLihatDataMapping` → izinkan akses → cek Log eksekusi.
 3. **Terapkan → Deployment baru** → jenis **Aplikasi web**; Jalankan sebagai: **Saya**; Yang memiliki akses: **Siapa saja** → Terapkan.
-4. Salin URL yang berakhiran `/exec`, isi ke `KARAKTER_API_URL` di `app/lib/karakter.js`, lalu push.
+4. Salin URL yang berakhiran `/exec`, isi ke `KARAKTER_API_URL` di `app/lib/karakter.js`, lalu push (sudah terpasang sejak 25 Okt 2026).
 
 Setelah itu cukup ubah data di spreadsheet (tab Kelompok/Pertemuan/Timeline, atau jalankan menu lokasi kampanye);
 dashboard ikut berubah (jeda paling lama ±1 menit karena cache script). Bila script diubah, gunakan

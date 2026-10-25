@@ -6,9 +6,9 @@ import { Link, Navigate, useParams } from "react-router";
 import { Icon } from "../../components/Icon.jsx";
 import { Bar, EmptyState, Kpi, PageHead, Segmented } from "../../components/ui.jsx";
 import {
-  BANNER_THEMES, CAMPAIGN_BOOK, CAMPAIGN_YEAR, CAMPAIGN_POSTERS, CAMPAIGN_VIDEOS, DISCUSSIONS, DOCUMENTATION,
+  BANNER_THEMES, CAMPAIGN_BOOK, CAMPAIGN_YEAR, CAMPAIGN_POSTERS, CAMPAIGN_VIDEOS, DISCUSSIONS, DOCUMENTATION, DOCUMENTATION_FOLDER,
   KARAKTER_ABOUT, KARAKTER_BASE, KARAKTER_API_URL, KARAKTER_PROGRAMS, KARAKTER_YEARS, MAPPING_FALLBACK, TTB, TTB_LIVE_YEAR, mappingFallbackItems,
-  driveFolder, driveThumb, drivePlayer,
+  driveFile, driveFolder, driveThumb, drivePlayer,
 } from "../../lib/karakter.js";
 import { fmtNum } from "../../lib/format.js";
 import karakterCss from "../../styles/karakter.css?url";
@@ -113,9 +113,15 @@ function Slideshow({ items, label }) {
 }
 
 /* ---------------- beranda ---------------- */
+// sorotan kegiatan: video Dokumentasi Kegiatan (kegiatan terbaru dulu), lalu video karya mahasiswa Kampanye Etika
+const HIGHLIGHTS = [
+  ...[...DOCUMENTATION].sort((a, b) => b.date.localeCompare(a.date)).flatMap((d) => d.videos.map((v) => ({
+    id: v.id, dur: v.dur, title: d.title, by: "Dokumentasi · " + new Date(d.date + "T00:00:00").toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
+  }))),
+  ...CAMPAIGN_VIDEOS,
+];
 function Beranda({ year, picker }) {
-  // sementara slideshow memakai video kampanye; nanti foto/video dari tab Dokumentasi
-  const highlights = DOCUMENTATION.length ? DOCUMENTATION : CAMPAIGN_VIDEOS;
+  const highlights = HIGHLIGHTS;
   return (
     <>
       <PageHead title={<>Pembinaan Karakter TPB <span className="title-prog">{year}</span></>}
@@ -602,20 +608,106 @@ function Diskusi() {
   );
 }
 
+const DOC_SHOWN = 12; // foto/video per kegiatan sebelum "Tampilkan semua"
+const docMedia = (d) => [...d.videos.map((v) => ({ ...v, video: true })), ...d.photos.map((id) => ({ id }))];
+
 function Dokumentasi({ year, picker }) {
-  const rows = DOCUMENTATION.filter((d) => String(d.year) === year);
+  const [program, setProgram] = useState("all");
+  const [open, setOpen] = useState({}); // kegiatan yang galerinya dibuka penuh
+  const [view, setView] = useState(null); // { doc, at } untuk tampilan besar
+  const ofYear = DOCUMENTATION.filter((d) => d.date.startsWith(year)).sort((a, b) => b.date.localeCompare(a.date));
+  const rows = ofYear.filter((d) => program === "all" || d.program === program);
+  const count = (key) => rows.reduce((n, d) => n + d[key].length, 0);
+  const programs = [["all", "Semua"], ...KARAKTER_PROGRAMS.map((p) => [p.key, p.short.replace(/ \(.*\)$/, "")])];
   return (
     <>
       <PageHead title={<>Dokumentasi Kegiatan <span className="title-prog">{year}</span></>} sub="Foto dan video seluruh kegiatan Pembinaan Karakter TPB">{picker}</PageHead>
-      <section className="card">
-        {!rows.length ? (
-          <EmptyState icon="folder" title={`Belum ada dokumentasi ${year}`}>Foto dan video diambil dari sheet Dokumentasi (link Google Drive).</EmptyState>
-        ) : (
-          <div className="kr-gallery">{rows.map((d) => (
-            <a key={d.id} href={driveFolder(d.id)} target="_blank" rel="noreferrer"><DriveImg id={d.id} w={480} lazy /><b>{d.title}</b></a>
-          ))}</div>
-        )}
-      </section>
+      <div className="kr-row">
+        <Segmented label="Program" value={program} onChange={setProgram} options={programs} />
+        <a className="btn" href={driveFolder(DOCUMENTATION_FOLDER)} target="_blank" rel="noreferrer"><Icon name="folder" size={16} />Buka folder Google Drive</a>
+      </div>
+      {!rows.length ? (
+        <section className="card"><EmptyState icon="folder" title={`Belum ada dokumentasi ${year}`}>Foto dan video diambil dari folder DOKUMENTASI di Google Drive.</EmptyState></section>
+      ) : <>
+        <div className="kpi-row kr-three">
+          <Kpi icon="calendar" label="Kegiatan" value={rows.length} hint={rows.map((d) => d.title).join(" · ")} />
+          <Kpi icon="eye" label="Foto" value={fmtNum(count("photos"))} />
+          <Kpi icon="star" label="Video" value={fmtNum(count("videos"))} />
+        </div>
+        {rows.map((d) => {
+          const media = docMedia(d);
+          const shown = open[d.id] ? media : media.slice(0, DOC_SHOWN);
+          const prog = KARAKTER_PROGRAMS.find((p) => p.key === d.program);
+          return (
+            <section key={d.id} className="card">
+              <div className="card-head">
+                <div><h2 className="card-title">{d.title}</h2>
+                  <div className="card-sub">{fmtDate(d.date, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+                    {prog && " · " + prog.short} · {d.photos.length} foto{d.videos.length ? ` · ${d.videos.length} video` : ""}</div></div>
+                <a className="btn btn-sm" href={driveFolder(d.id)} target="_blank" rel="noreferrer"><Icon name="external" size={14} />Folder Drive</a>
+              </div>
+              <div className="kr-gallery">
+                {shown.map((m, i) => (
+                  <button key={m.id} type="button" className={"kr-tile" + (m.video ? " video" : "")} onClick={() => setView({ doc: d, at: i })}
+                    aria-label={(m.video ? "Putar video " : "Lihat foto ") + (i + 1) + " " + d.title}>
+                    <DriveImg id={m.id} w={480} lazy />
+                    {m.video && <span className="kr-tile-play"><Icon name="right" size={18} /><small>{m.dur} dtk</small></span>}
+                  </button>
+                ))}
+              </div>
+              {media.length > DOC_SHOWN && (
+                <button type="button" className="btn btn-sm kr-more" onClick={() => setOpen({ ...open, [d.id]: !open[d.id] })}>
+                  {open[d.id] ? "Tampilkan lebih sedikit" : `Tampilkan semua (${media.length})`}
+                </button>
+              )}
+            </section>
+          );
+        })}
+      </>}
+      {view && <MediaViewer doc={view.doc} at={view.at} onStep={(k) => setView((v) => ({ ...v, at: v.at + k }))} onClose={() => setView(null)} />}
     </>
+  );
+}
+
+// Foto / video dokumentasi ukuran besar: panah kiri/kanan untuk berpindah, Esc untuk menutup.
+function MediaViewer({ doc, at: raw, onStep, onClose }) {
+  const media = docMedia(doc);
+  const n = media.length;
+  const at = ((raw % n) + n) % n;
+  const m = media[at];
+  const close = useRef(null);
+  useEffect(() => { close.current?.focus(); }, []);
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowRight") onStep(1);
+      if (e.key === "ArrowLeft") onStep(-1);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onStep, onClose]);
+  return createPortal(
+    <div className="kr-modal" role="dialog" aria-modal="true" aria-label={doc.title} onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="kr-modal-box kr-media-box">
+        <div className="kr-modal-head">
+          <b>{doc.title} · {at + 1} / {n}</b>
+          <button ref={close} type="button" className="kr-close" onClick={onClose} aria-label="Tutup"><Icon name="x" size={18} /></button>
+        </div>
+        <div className="kr-media">
+          {m.video
+            ? <iframe key={m.id} src={drivePlayer(m.id)} title={doc.title} allow="autoplay; fullscreen" allowFullScreen />
+            : <img key={m.id} src={driveThumb(m.id, 1600)} alt={`${doc.title} (${at + 1})`} referrerPolicy="no-referrer" />}
+          {n > 1 && <>
+            <button type="button" className="kr-arrow l" onClick={() => onStep(-1)} aria-label="Sebelumnya"><Icon name="left" size={18} /></button>
+            <button type="button" className="kr-arrow r" onClick={() => onStep(1)} aria-label="Berikutnya"><Icon name="right" size={18} /></button>
+          </>}
+        </div>
+        <div className="kr-book-nav">
+          <span className="kr-muted">{fmtDate(doc.date, { day: "numeric", month: "long", year: "numeric" })} · {m.video ? "video" : "foto"}</span>
+          <a className="btn btn-sm" href={driveFile(m.id)} target="_blank" rel="noreferrer">Buka di Drive<Icon name="external" size={14} /></a>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
