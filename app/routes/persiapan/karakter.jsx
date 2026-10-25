@@ -7,7 +7,7 @@ import { Icon } from "../../components/Icon.jsx";
 import { Bar, EmptyState, Kpi, PageHead, Segmented } from "../../components/ui.jsx";
 import {
   BANNER_THEMES, CAMPAIGN_BOOK, CAMPAIGN_YEAR, CAMPAIGN_POSTERS, CAMPAIGN_VIDEOS, DISCUSSIONS, DOCUMENTATION,
-  KARAKTER_ABOUT, KARAKTER_BASE, KARAKTER_PROGRAMS, KARAKTER_YEARS, MAPPING_CAMPUSES, TTB, TTB_API_URL, TTB_LIVE_YEAR,
+  KARAKTER_ABOUT, KARAKTER_BASE, KARAKTER_API_URL, KARAKTER_PROGRAMS, KARAKTER_YEARS, MAPPING_FALLBACK, TTB, TTB_LIVE_YEAR, mappingFallbackItems,
   driveFolder, driveThumb, drivePlayer,
 } from "../../lib/karakter.js";
 import { fmtNum } from "../../lib/format.js";
@@ -153,32 +153,44 @@ function Ring({ value, label, hint, tone, note }) {
   );
 }
 
-// Data TTB: dari Apps Script spreadsheet (TTB_API_URL) bila tersedia, disimpan di browser sebagai cadangan
-// bila spreadsheet tidak bisa dihubungi; terakhir angka cadangan di karakter.js.
-const TTB_CACHE = "ditsama-ttb-live";
-function readTtbCache() {
-  try { return JSON.parse(localStorage.getItem(TTB_CACHE)) || null; } catch { return null; }
+// Data dari Apps Script spreadsheet (KARAKTER_API_URL?data=ttb|mapping) bila tersedia; disimpan di browser
+// sebagai cadangan bila spreadsheet tidak bisa dihubungi. Tanpa data live, halaman memakai data cadangan di karakter.js.
+const liveKey = (key) => "ditsama-karakter-" + key;
+function readLive(key) {
+  try { return JSON.parse(localStorage.getItem(liveKey(key))) || null; } catch { return null; }
 }
-function useTtb(year) {
-  const live = year === TTB_LIVE_YEAR && Boolean(TTB_API_URL);
-  const [data, setData] = useState(() => (live ? readTtbCache() : null));
-  const [source, setSource] = useState("cache");
+function useLiveData(key, enabled = true) {
+  const live = enabled && Boolean(KARAKTER_API_URL);
+  const [data, setData] = useState(() => (live ? readLive(key) : null));
+  const [fresh, setFresh] = useState(false);
   useEffect(() => {
     if (!live) return undefined;
     let off = false;
-    fetch(TTB_API_URL)
+    fetch(KARAKTER_API_URL + (KARAKTER_API_URL.includes("?") ? "&" : "?") + "data=" + key)
       .then((r) => r.json())
       .then((j) => {
         if (off || !j?.ok) return;
-        setData(j); setSource("live");
-        try { localStorage.setItem(TTB_CACHE, JSON.stringify(j)); } catch { /* penyimpanan browser tidak tersedia */ }
+        setData(j); setFresh(true);
+        try { localStorage.setItem(liveKey(key), JSON.stringify(j)); } catch { /* penyimpanan browser tidak tersedia */ }
       })
       .catch(() => {});
     return () => { off = true; };
-  }, [live]);
+  }, [key, live]);
+  return live && data ? { data, source: fresh ? "live" : "cache" } : { data: null, source: "static" };
+}
+
+function useTtb(year) {
+  const { data, source } = useLiveData("ttb", year === TTB_LIVE_YEAR);
   const base = TTB[year];
   if (!base) return null;
-  return live && data ? { ...base, ...data, source } : { ...base, source: "static" };
+  return data ? { ...base, ...data, source } : { ...base, source };
+}
+
+// keterangan sumber data di bawah judul halaman
+function SourceChip({ source, updatedAt, asOf, sheet }) {
+  const text = source === "static" ? `Data sheet ${sheet} per ${fmtDate(asOf, { day: "numeric", month: "short", year: "numeric" })}`
+    : `${source === "live" ? "Diperbarui otomatis dari spreadsheet" : "Data tersimpan terakhir"} · ${new Date(updatedAt).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })}`;
+  return <span className="kr-chip">{text}</span>;
 }
 
 const fmtDate = (iso, opts) => (iso ? new Date(iso.length === 10 ? iso + "T00:00:00" : iso).toLocaleDateString("id-ID", opts) : "");
@@ -200,14 +212,12 @@ function Ttb({ year, picker }) {
   const maxCum = Math.max(d.targetMeetings, ...timeline.map((w) => w.cumTarget));
   const sameMonth = week && week.start.slice(0, 7) === week.end.slice(0, 7);
   const range = week && `${fmtDate(week.start, sameMonth ? { day: "numeric" } : { day: "numeric", month: "short" })}–${fmtDate(week.end, { day: "numeric", month: "short", year: "numeric" })}`;
-  const updated = d.source === "static" ? `Data sheet Ringkasan per ${fmtDate(d.asOf, { day: "numeric", month: "short", year: "numeric" })}`
-    : `${d.source === "live" ? "Diperbarui otomatis dari spreadsheet" : "Data tersimpan terakhir"} · ${new Date(d.updatedAt).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })}`;
   return (
     <>
       {head}
       <div className="kr-status">
         {d.week && <span className="kr-chip"><i className="kr-live" />Pekan ke-{d.week}{range && " · " + range}{week?.activity && " · " + week.activity}</span>}
-        <span className="kr-chip">{updated}</span>
+        <SourceChip source={d.source} updatedAt={d.updatedAt} asOf={d.asOf} sheet="Ringkasan" />
       </div>
       <div className="kpi-row">
         <Kpi icon="users" label="Total mahasiswa TPB (sasaran)" value={fmtNum(d.students)} hint="jumlah mahasiswa seluruh kelompok" />
@@ -302,14 +312,54 @@ function Ttb({ year, picker }) {
 }
 
 /* ---------------- 2. Kampanye Etika Mahasiswa ---------------- */
-const mappingStats = (buildings) => {
-  const rooms = buildings.flatMap((b) => b.rooms.map(([name, bits]) => ({ building: b.building, name, bits, count: [...bits].filter((c) => c === "1").length })));
-  const placed = rooms.reduce((s, r) => s + r.count, 0);
-  return { rooms, placed, slots: rooms.length * BANNER_THEMES.length, empty: rooms.filter((r) => !r.count) };
-};
+// Mapping Banner: baris {year, campus, area, location, theme, done, note} → kampus → area → lokasi.
+// Sel lokasi × tema: true = sudah terpasang, false = belum, tidak ada = tidak direncanakan di lokasi itu.
+const campusLabel = (name) => (/ganesha/i.test(name) ? "Kampus Ganesha" : /jatinangor|jtn/i.test(name) ? "Kampus Jatinangor" : name);
+function groupMapping(items, year) {
+  const themes = [...BANNER_THEMES];
+  const themeOf = (t) => {
+    const i = themes.findIndex((x) => x.toLowerCase() === t.toLowerCase());
+    if (i >= 0) return themes[i];
+    themes.push(t); // tema baru di sheet ikut tampil sebagai kolom
+    return t;
+  };
+  const campuses = [];
+  for (const it of items) {
+    if (String(it.year) !== String(year)) continue;
+    let c = campuses.find((x) => x.name === it.campus);
+    if (!c) campuses.push(c = { name: it.campus, key: it.campus, label: campusLabel(it.campus), areas: [] });
+    let a = c.areas.find((x) => x.name === it.area);
+    if (!a) c.areas.push(a = { name: it.area, rooms: [] });
+    let r = a.rooms.find((x) => x.name === it.location);
+    if (!r) a.rooms.push(r = { name: it.location, area: it.area, note: "", st: {} });
+    r.st[themeOf(it.theme)] = Boolean(it.done);
+    if (it.note) r.note = it.note;
+  }
+  for (const c of campuses) {
+    c.rooms = c.areas.flatMap((a) => a.rooms);
+    for (const r of c.rooms) {
+      r.planned = Object.keys(r.st).length;
+      r.done = Object.values(r.st).filter(Boolean).length;
+    }
+    c.planned = c.rooms.reduce((n, r) => n + r.planned, 0);
+    c.done = c.rooms.reduce((n, r) => n + r.done, 0);
+    c.complete = c.rooms.filter((r) => r.planned && r.done === r.planned);
+    c.empty = c.rooms.filter((r) => r.planned && !r.done);
+  }
+  // Jatinangor dulu (urutan menu sebelumnya), lalu kampus lain sesuai urutan sheet
+  campuses.sort((x, y) => (/jatinangor/i.test(y.name) ? 1 : 0) - (/jatinangor/i.test(x.name) ? 1 : 0));
+  return { themes, campuses };
+}
+const FALLBACK_ITEMS = mappingFallbackItems();
+function useMapping(year) {
+  const { data, source } = useLiveData("mapping");
+  const items = data?.items || FALLBACK_ITEMS;
+  const grouped = useMemo(() => groupMapping(items, year), [items, year]);
+  return { ...grouped, source, updatedAt: data?.updatedAt, asOf: MAPPING_FALLBACK.asOf };
+}
 
 function Kampanye({ year, picker }) {
-  const jtn = useMemo(() => mappingStats(MAPPING_CAMPUSES[0].data), []);
+  const map = useMapping(CAMPAIGN_YEAR);
   const [book, setBook] = useState(false);
   const [poster, setPoster] = useState(null); // indeks poster yang dibuka besar
   const head = <PageHead title={<>Kampanye Etika Mahasiswa <span className="title-prog">{year}</span></>}
@@ -344,8 +394,10 @@ function Kampanye({ year, picker }) {
         <section className="card">
           <div className="card-head"><div><h2 className="card-title">Mapping banner di kampus</h2><div className="card-sub">Pantau banner yang sudah dan belum terpasang</div></div></div>
           <div className="kpi-row kr-two">
-            <Kpi label="Banner terpasang · Jatinangor" value={`${jtn.placed} / ${jtn.slots}`} hint={`${pct((jtn.placed / jtn.slots) * 100)} dari ${jtn.rooms.length} lokasi × ${BANNER_THEMES.length} tema`} />
-            <Kpi label="Lokasi belum ada banner" value={jtn.empty.length} tone="t-neg" hint="perlu dipasang" />
+            {map.campuses.map((c) => (
+              <Kpi key={c.key} label={"Banner terpasang · " + c.label.replace(/^Kampus /, "")} value={`${fmtNum(c.done)} / ${fmtNum(c.planned)}`}
+                hint={`${pct(c.planned ? (c.done / c.planned) * 100 : 0)} · ${c.empty.length} dari ${c.rooms.length} lokasi belum ada banner`} />
+            ))}
           </div>
           <Link className="btn" to={`${KARAKTER_BASE}/mapping`}><Icon name="pin" size={16} />Buka dashboard mapping</Link>
         </section>
@@ -459,58 +511,70 @@ function BookViewer({ book, onClose }) {
 
 /* ---------------- Mapping Banner ---------------- */
 function Mapping({ year, picker }) {
-  const [campus, setCampus] = useState(MAPPING_CAMPUSES[0].key);
-  const c = MAPPING_CAMPUSES.find((x) => x.key === campus);
-  const st = useMemo(() => mappingStats(c.data), [c]);
-  const byTheme = BANNER_THEMES.map((t, i) => [t, st.rooms.filter((r) => r.bits[i] === "1").length]).sort((a, b) => b[1] - a[1]);
-  const n = st.rooms.length;
+  const map = useMapping(year);
+  const [campus, setCampus] = useState(null);
+  const c = map.campuses.find((x) => x.key === campus) || map.campuses[0];
+  const themes = map.themes;
   const tone = (share) => (share < 0.35 ? "crit" : share < 0.6 ? "warn" : "ok");
+  const byTheme = c ? themes.map((t) => {
+    const planned = c.rooms.filter((r) => t in r.st);
+    return { t, planned: planned.length, done: planned.filter((r) => r.st[t]).length };
+  }).filter((x) => x.planned).sort((x, y) => y.done / y.planned - x.done / x.planned) : [];
+  const priority = c ? [...c.rooms].filter((r) => r.planned > r.done)
+    .sort((x, y) => x.done / x.planned - y.done / y.planned || y.planned - x.planned).slice(0, 10) : [];
   return (
     <>
       <PageHead title={<>Mapping Banner <span className="title-prog">{year}</span></>} sub="Sebaran banner Kampanye Etika Mahasiswa per lokasi kampus">{picker}</PageHead>
-      <Segmented label="Kampus" value={campus} onChange={setCampus} options={MAPPING_CAMPUSES.map((x) => [x.key, x.label])} />
-      {year !== CAMPAIGN_YEAR || !n ? (
-        <section className="card"><EmptyState icon="pin" title={`Belum ada data ${c.label} ${year}`}>Isi data lokasi banner kampus ini di sheet Mapping Banner.</EmptyState></section>
+      <div className="kr-status">
+        <SourceChip source={map.source} updatedAt={map.updatedAt} asOf={map.asOf} sheet="Lokasi Kampanye" />
+      </div>
+      {map.campuses.length > 1 && <Segmented label="Kampus" value={c.key} onChange={setCampus} options={map.campuses.map((x) => [x.key, x.label])} />}
+      {!c ? (
+        <section className="card"><EmptyState icon="pin" title={`Belum ada data Mapping Banner ${year}`}>Data diambil dari tab Lokasi Kampanye di spreadsheet TTB (menu Pembaruan Data → Perbarui data lokasi kampanye).</EmptyState></section>
       ) : (
         <>
           <div className="kpi-row">
-            <Kpi icon="pin" label="Lokasi dipantau" value={n} hint={`${c.data.length} gedung / area`} />
-            <Kpi icon="checkCircle" label="Banner terpasang" value={`${st.placed} / ${st.slots}`} hint={`${pct((st.placed / st.slots) * 100)} dari ${n} lokasi × ${BANNER_THEMES.length} tema`} />
-            <Kpi icon="star" label="Lokasi lengkap 7 tema" value={st.rooms.filter((r) => r.count === BANNER_THEMES.length).length} />
-            <Kpi icon="alert" label="Lokasi belum ada banner" tone="t-neg" value={st.empty.length} hint={st.empty.map((r) => r.name).join(", ")} />
+            <Kpi icon="pin" label="Lokasi dipantau" value={fmtNum(c.rooms.length)} hint={`${c.areas.length} gedung / area`} />
+            <Kpi icon="checkCircle" label="Banner terpasang" value={`${fmtNum(c.done)} / ${fmtNum(c.planned)}`} hint={`${pct(c.planned ? (c.done / c.planned) * 100 : 0)} dari banner yang direncanakan`} />
+            <Kpi icon="star" label="Lokasi sudah lengkap" value={fmtNum(c.complete.length)} hint="semua banner yang direncanakan sudah terpasang" />
+            <Kpi icon="alert" label="Lokasi belum ada banner" tone="t-neg" value={fmtNum(c.empty.length)} hint={`dari ${fmtNum(c.rooms.length)} lokasi`} />
           </div>
           <div className="grid g-2">
             <section className="card">
-              <div className="card-head"><div><h2 className="card-title">Keterpasangan per tema</h2><div className="card-sub">Jumlah lokasi yang sudah ada banner tema itu (dari {n})</div></div></div>
-              <ul className="kr-bars">{byTheme.map(([t, k]) => (
-                <li key={t}><span>{t}</span><Bar value={(k / n) * 100} tone={tone(k / n)} /><b>{k} · {Math.round((k / n) * 100)}%</b></li>
+              <div className="card-head"><div><h2 className="card-title">Keterpasangan per tema</h2><div className="card-sub">Banner terpasang dari lokasi yang direncanakan untuk tema itu</div></div></div>
+              <ul className="kr-bars">{byTheme.map(({ t, planned, done }) => (
+                <li key={t}><span>{t}</span><Bar value={(done / planned) * 100} tone={tone(done / planned)} /><b>{done}/{planned} · {Math.round((done / planned) * 100)}%</b></li>
               ))}</ul>
             </section>
             <section className="card">
-              <div className="card-head"><div><h2 className="card-title">Prioritas pemasangan</h2><div className="card-sub">Lokasi dengan banner paling sedikit</div></div></div>
-              <div className="tbl-scroll"><table className="tbl compact">
-                <thead><tr><th>Lokasi</th><th>Gedung</th><th className="num">Terpasang</th></tr></thead>
-                <tbody>{[...st.rooms].sort((a, b) => a.count - b.count).slice(0, 8).map((r) => (
-                  <tr key={r.building + r.name}><td className="cell-strong">{r.name}</td><td className="kr-muted">{r.building}</td>
-                    <td className={"num " + (r.count ? "" : "kr-bad")}>{r.count}/{BANNER_THEMES.length}</td></tr>
-                ))}</tbody>
-              </table></div>
+              <div className="card-head"><div><h2 className="card-title">Prioritas pemasangan</h2><div className="card-sub">Lokasi dengan banner terpasang paling sedikit</div></div></div>
+              {priority.length ? (
+                <div className="tbl-scroll"><table className="tbl compact">
+                  <thead><tr><th>Lokasi</th><th>Gedung / area</th><th className="num">Terpasang</th></tr></thead>
+                  <tbody>{priority.map((r) => (
+                    <tr key={r.area + r.name}><td className="cell-strong">{r.name}</td><td className="kr-muted">{r.area}</td>
+                      <td className={"num " + (r.done ? "" : "kr-bad")}>{r.done}/{r.planned}</td></tr>
+                  ))}</tbody>
+                </table></div>
+              ) : <p className="kr-muted">Semua banner yang direncanakan sudah terpasang.</p>}
             </section>
           </div>
           <section className="card">
-            <div className="card-head"><div><h2 className="card-title">Peta keterpasangan per lokasi</h2><div className="card-sub">Hijau = banner sudah terpasang · dikelompokkan per gedung</div></div></div>
+            <div className="card-head"><div><h2 className="card-title">Peta keterpasangan per lokasi</h2>
+              <div className="card-sub">Hijau = sudah terpasang · kotak kosong = belum · – = tidak direncanakan · dikelompokkan per gedung / area</div></div></div>
             <div className="tbl-scroll"><table className="tbl compact kr-matrix">
-              <thead><tr><th>Lokasi</th>{BANNER_THEMES.map((t) => <th key={t} className="c">{t.replace(/^Etika /, "")}</th>)}<th className="num">Jumlah</th></tr></thead>
-              <tbody>{c.data.map((b) => [
-                <tr key={b.building} className="kr-group"><td colSpan={BANNER_THEMES.length + 2}>{b.building}</td></tr>,
-                ...b.rooms.map(([name, bits]) => {
-                  const k = [...bits].filter((x) => x === "1").length;
-                  return (
-                    <tr key={b.building + name}><td className="kr-room">{name}</td>
-                      {[...bits].map((x, i) => <td key={i} className="c"><span className={"kr-dot" + (x === "1" ? " on" : "")} title={`${BANNER_THEMES[i]}: ${x === "1" ? "sudah" : "belum"}`} /></td>)}
-                      <td className={"num cell-strong " + (k ? "" : "kr-bad")}>{k}/{BANNER_THEMES.length}</td></tr>
-                  );
-                }),
+              <thead><tr><th>Lokasi</th>{themes.map((t) => <th key={t} className="c">{t.replace(/^Etika /, "")}</th>)}<th className="num">Terpasang</th></tr></thead>
+              <tbody>{c.areas.map((a) => [
+                <tr key={a.name} className="kr-group"><td colSpan={themes.length + 2}>{a.name}</td></tr>,
+                ...a.rooms.map((r) => (
+                  <tr key={a.name + r.name}><td className="kr-room" title={r.note || undefined}>{r.name}{r.note && <small className="kr-note">{r.note}</small>}</td>
+                    {themes.map((t) => (
+                      <td key={t} className="c">{t in r.st
+                        ? <span className={"kr-dot" + (r.st[t] ? " on" : "")} title={`${t}: ${r.st[t] ? "sudah" : "belum"}`} />
+                        : <span className="kr-na" title={`${t}: tidak direncanakan`}>–</span>}</td>
+                    ))}
+                    <td className={"num cell-strong " + (r.done ? "" : "kr-bad")}>{r.done}/{r.planned}</td></tr>
+                )),
               ])}</tbody>
             </table></div>
           </section>

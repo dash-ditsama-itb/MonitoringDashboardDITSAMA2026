@@ -31,9 +31,10 @@ export const KARAKTER_PROGRAMS = [
 ];
 
 // 1. Teman Tumbuh Bersama — sheet "Ringkasan" (angka dihitung otomatis dari tab Kelompok & Pertemuan)
-// URL web app Apps Script di spreadsheet TTB (apps-script/ttb-ringkasan.gs). Selama kosong / tidak bisa dihubungi,
-// halaman TTB memakai data terakhir yang tersimpan di browser, lalu angka cadangan TTB di bawah.
-export const TTB_API_URL = "";
+// URL web app Apps Script di spreadsheet TTB (apps-script/dashboard-karakter.gs): ?data=ttb dan ?data=mapping.
+// Selama kosong / tidak bisa dihubungi, halaman memakai data terakhir yang tersimpan di browser, lalu data cadangan
+// (TTB dan MAPPING_FALLBACK) di file ini.
+export const KARAKTER_API_URL = "";
 export const TTB_LIVE_YEAR = "2026";
 // angka cadangan = isi sheet Ringkasan & Timeline per 25 Okt 2026 (bentuknya sama dengan JSON Apps Script)
 export const TTB = {
@@ -111,85 +112,41 @@ export const CAMPAIGN_BOOK = {
   desc: "Panduan untuk tumbuh, bukan sekadar bertahan, selama menjalani Tahap Persiapan Bersama di ITB.",
 };
 
-// Mapping banner per lokasi: urutan tema = urutan karakter "1"/"0" (1 = sudah terpasang)
+// tema banner Kampanye Etika (urutan kolom di Mapping Banner); Jenis_Materi di sheet dicocokkan tanpa beda huruf besar/kecil
 export const BANNER_THEMES = ["5S", "Etika Sopan Santun", "Etika Bersosmed", "Etika Berpenampilan", "Etika Menghubungi Dosen", "Etika Seksualitas Sehat", "Etika Adab Pergaulan"];
-export const MAPPING_JATINANGOR = [
-  { building: "GEDUNG A (KULIAH)", rooms: [
-    ["Gedung A Lantai 1", "1011110"],
-    ["Gedung A Lantai 2", "0001110"],
-  ] },
-  { building: "GEDUNG D (KULIAH)", rooms: [
-    ["Gedung D Lantai 1", "1001010"],
-    ["Gedung D Lantai 2", "1011110"],
-  ] },
-  { building: "GEDUNG E (KULIAH)", rooms: [
-    ["Gedung E Lantai 1", "1001110"],
-    ["Gedung E Lantai 2", "1011100"],
-  ] },
-  { building: "GEDUNG C (LFD + Studio NVD DKV)", rooms: [
-    ["Gedung C Lantai 1 LFD", "1011110"],
-  ] },
-  { building: "GEDUNG UTAMA", rooms: [
-    ["Lantai 1", "1001010"],
-    ["Lantai 3 Ruang Perkuliahan + Auditorium", "1001010"],
-  ] },
-  { building: "GKU 1 (KULIAH)", rooms: [
-    ["Selasar GKU 1 Lantai 1", "1001110"],
-    ["TGCL (GKU 1 Lantai 2)", "0000000"],
-    ["Selasar GKU 1 Lantai 2", "1001010"],
-    ["GKU 1 Lantai 3", "1101010"],
-    ["GKU 1 Lantai 4", "1001011"],
-  ] },
-  { building: "GKU 2 (KULIAH)", rooms: [
-    ["Kantin GKU 2 Lantai 1", "0000000"],
-    ["GKU 2 Lantai 2", "0111100"],
-    ["GKU 2 Lantai 3 (Auditorium)", "1101010"],
-  ] },
-  { building: "GKU 3 (KULIAH)", rooms: [
-    ["Longue GKU 3 Lantai 1", "1011110"],
-    ["Longue GKU 3 Lantai 2", "1101110"],
-    ["Longue GKU 3 Lantai 3", "1101110"],
-  ] },
-  { building: "Gedung Serba Guna (GSG) FSRD", rooms: [
-    ["Area Selasar GSG FSRD + Lapangan Multifungsi", "1001000"],
-  ] },
-  { building: "Asrama ITB Jatinangor", rooms: [
-    ["Kantin Asrama TB1 + Co- Working Space Luar", "0111000"],
-    ["Kantin Asrama TB2 + Co- Working Space Luar-Dalam", "1101010"],
-    ["Kantin Asrama TB3 + Co- Working Space Luar-Dalam", "1111010"],
-    ["Co- Working Space Luar TB4", "1111010"],
-    ["Co- Working Space Dalam TB5", "0000000"],
-  ] },
-  { building: "Mushola Al-Wasath", rooms: [
-    ["Lorong Al-Wasath depan Kantin dan Sekre MIJ", "1001110"],
-  ] },
-  { building: "KOICA", rooms: [
-    ["Co-Working Space KOICA depan Perpustakaan Digital", "1001100"],
-    ["Kantin KOICA", "1001010"],
-  ] },
-  { building: "Labtek IA (SITH dan LFD dan LKD)", rooms: [
-    ["Area LFD", "1001110"],
-    ["Area LKD", "1011010"],
-    ["Co-Working Space SITH", "1101010"],
-    ["Lantai Lab Gamtek", "0100000"],
-  ] },
-  { building: "Labtek IB (FTSL)", rooms: [
-    ["Co-Working Space FTSL (IL & SA)", "1001010"],
-  ] },
-  { building: "Labtek IIA dan IIB (FTI-J: TB & PG)", rooms: [
-    ["Area Selasar Bersama FTI Lantai I", "1101000"],
-  ] },
-  { building: "Gedung B (SBM) (Kurang Ramai)", rooms: [
-    ["Gedung B Lantai 1", "1011110"],
-    ["Gedung B Lantai 2", "0011110"],
-    ["Gedung FTI Atas", "1001110"],
-    ["Gedung FTI Bawah", "0001010"],
-  ] },
-];
-export const MAPPING_CAMPUSES = [
-  { key: "jatinangor", label: "Kampus Jatinangor", data: MAPPING_JATINANGOR },
-  { key: "ganesha", label: "Kampus Ganesha", data: [] },
-];
+// Mapping Banner cadangan = isi tab "Lokasi Kampanye" spreadsheet TTB per 24 Okt 2026, dipakai selama
+// KARAKTER_API_URL kosong / tidak bisa dihubungi. Format ringkas per area:
+// [tahun, kampus, area, [[lokasi, status per tema BANNER_THEMES (S = sudah, B = belum, - = tidak direncanakan), catatan?]]]
+export const MAPPING_FALLBACK = {
+  asOf: "2026-10-24",
+  areas: [
+    ["2026", "ITB Kampus Ganesha", "AREA KUMPUL-KUMPUL (BELAJAR DSB.)", [["Teras FTMD", "BB-SBBS"], ["Ruang Belajar Bersama (Bagian Utara ITB Ganesha)", "BB-BBBB", "belum ada sama sekali"], ["CWS Labtek V FTI", "BB-BBBB"], ["Area Belajar 24 Jam CC Timur", "BB-BBBB"]]],
+    ["2026", "ITB Kampus Ganesha", "Area Labtek Biru (Labtek X dan XI)", [["Area Sekre Himpunan", "BB-BBBB"], ["Area Kantin Labtek Biru", "BB-BBBB"], ["Kantin-Kantin", "B--BB--"], ["Kantin Labtek V", "BB-BBBB"], ["Kantin Dalaraos", "BB-BBBB"], ["Kantin Perpustakaan Pusat", "B--BB--"], ["Kantin CC Barat", "BB-BBBB"], ["Kantin CC Timur", "B--BB--"], ["Kantin GKU Barat", "BB-BSBS"], ["Kantin GKU Timiur", "BB-BBBB"]]],
+    ["2026", "ITB Kampus Ganesha", "Gedung-Gedung Kuliah", [["Oktagon", "BB-BBBB"], ["TVST", "BB-SBSS"], ["Labtek I", "BB-BBBB", "area samping mesin kopi"], ["Labtek V", "BB-BBBB"], ["Labtek VI", "BB-BBBB"], ["Labtek VII", "B--BB--"], ["Labtek VIII", "BB-BBBB"]]],
+    ["2026", "ITB Kampus Ganesha", "Gedung-Gedung Seminar/Acara", [["CRCS", "BB-BBBB", "area menuju KKP dan depan multipurpose hall kosong"]]],
+    ["2026", "ITB Kampus Ganesha", "Gedung Lainnya", [["PAU", "BB-BBBB"], ["CAS", "BB-BBBB", "area antara tangga dan lift"], ["CADL", "BB-BBBB"]]],
+    ["2026", "DEMK-Jatinangor", "GEDUNG A (KULIAH)", [["Gedung A Lantai 1", "SBSSSSB"], ["Gedung A Lantai 2", "BBBSSSB"]]],
+    ["2026", "DEMK-Jatinangor", "GEDUNG D (KULIAH)", [["Gedung D Lantai 1", "SBBSBSB"], ["Gedung D Lantai 2", "SBSSSSB"]]],
+    ["2026", "DEMK-Jatinangor", "GEDUNG E (KULIAH)", [["Gedung E Lantai 1", "SBBSSSB"], ["Gedung E Lantai 2", "SBSSSBB"]]],
+    ["2026", "DEMK-Jatinangor", "GEDUNG C (LFD + Studio NVD DKV)", [["Gedung C Lantai 1 LFD", "SBSSSSB"]]],
+    ["2026", "DEMK-Jatinangor", "GEDUNG UTAMA", [["Lantai 1", "SBBSBSB"], ["Lantai 3 Ruang Perkuliahan + Auditorium", "SBBSBSB"]]],
+    ["2026", "DEMK-Jatinangor", "GKU 1 (KULIAH)", [["Selasar GKU 1 Lantai 1", "SBBSSSB"], ["TGCL (GKU 1 Lantai 2)", "BBBBBBB"], ["Selasar GKU 1 Lantai 2", "SBBSBSB"], ["GKU 1 Lantai 3", "SSBSBSB"], ["GKU 1 Lantai 4", "SBBSBSS"]]],
+    ["2026", "DEMK-Jatinangor", "GKU 2 (KULIAH)", [["Kantin GKU 2 Lantai 1", "BBBBBBB"], ["GKU 2 Lantai 2", "BSSSSBB"], ["GKU 2 Lantai 3 (Auditorium)", "SSBSBSB"]]],
+    ["2026", "DEMK-Jatinangor", "GKU 3 (KULIAH)", [["Longue GKU 3 Lantai 1", "SBSSSSB"], ["Longue GKU 3 Lantai 2", "SSBSSSB"], ["Longue GKU 3 Lantai 3", "SSBSSSB"]]],
+    ["2026", "DEMK-Jatinangor", "Gedung Serba Guna (GSG) FSRD", [["Area Selasar GSG FSRD + Lapangan Multifungsi", "SBBSBBB"]]],
+    ["2026", "DEMK-Jatinangor", "Asrama ITB Jatinangor", [["Kantin Asrama TB1 + Co- Working Space Luar", "BSSSBBB"], ["Kantin Asrama TB2 + Co- Working Space Luar-Dalam", "SSBSBSB"], ["Kantin Asrama TB3 + Co- Working Space Luar-Dalam", "SSSSBSB"], ["Co- Working Space Luar TB4", "SSSSBSB"], ["Co- Working Space Dalam TB5", "BBBBBBB"]]],
+    ["2026", "DEMK-Jatinangor", "Mushola Al-Wasath", [["Lorong Al-Wasath depan Kantin dan Sekre MIJ", "SBBSSSB"]]],
+    ["2026", "DEMK-Jatinangor", "KOICA", [["Co-Working Space KOICA depan Perpustakaan Digital", "SBBSSBB"], ["Kantin KOICA", "SBBSBSB"]]],
+    ["2026", "DEMK-Jatinangor", "Labtek IA (SITH dan LFD dan LKD)", [["Area LFD::", "SBBSSSB"], ["Area LKD", "SBSSBSB"], ["Co-Working Space SITH", "SSBSBSB"], ["Lantai Lab Gamtek", "BSBBBBB"]]],
+    ["2026", "DEMK-Jatinangor", "Labtek IB (FTSL)", [["Co-Working Space FTSL (IL & SA)", "SBBSBSB"]]],
+    ["2026", "DEMK-Jatinangor", "Labtek IIA dan IIB (FTI-J: TB & PG)", [["Area Selasar Bersama FTI Lantai I", "SSBSBBB"]]],
+    ["2026", "DEMK-Jatinangor", "Gedung B (SBM) (Kurang Ramai)", [["Gedung B Lantai 1", "SBSSSSB"], ["Gedung B Lantai 2", "BBSSSSB"], ["Gedung FTI Atas", "SBBSSSB"], ["Gedung FTI Bawah", "BBBSBSB"]]],
+  ],
+};
+// diubah ke bentuk baris yang sama dengan JSON Apps Script (?data=mapping)
+export const mappingFallbackItems = () => MAPPING_FALLBACK.areas.flatMap(([year, campus, area, rooms]) =>
+  rooms.flatMap(([location, st, note = ""]) => [...st].flatMap((s, i) =>
+    s === "-" ? [] : [{ year, campus, area, location, theme: BANNER_THEMES[i], done: s === "S", note }])));
 
 // 3. Diskusi Interaktif (tanpa tahun) & Dokumentasi Kegiatan: menunggu tab Diskusi dan Dokumentasi di spreadsheet
 export const DISCUSSIONS = [];
