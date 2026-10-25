@@ -7,7 +7,7 @@ import { Icon } from "../../components/Icon.jsx";
 import { Bar, EmptyState, Kpi, PageHead, Segmented } from "../../components/ui.jsx";
 import {
   BANNER_THEMES, CAMPAIGN_BOOK, CAMPAIGN_YEAR, CAMPAIGN_POSTERS, CAMPAIGN_VIDEOS, DISCUSSIONS, DOCUMENTATION,
-  KARAKTER_ABOUT, KARAKTER_BASE, KARAKTER_PROGRAMS, KARAKTER_YEARS, MAPPING_CAMPUSES, TTB, TTB_STAGES,
+  KARAKTER_ABOUT, KARAKTER_BASE, KARAKTER_PROGRAMS, KARAKTER_YEARS, MAPPING_CAMPUSES, TTB, TTB_API_URL, TTB_LIVE_YEAR,
   driveFolder, driveThumb, drivePlayer,
 } from "../../lib/karakter.js";
 import { fmtNum } from "../../lib/format.js";
@@ -29,7 +29,7 @@ const SECTIONS = {
   diskusi: { title: "Diskusi Interaktif", page: Diskusi, noYear: true },
   dokumentasi: { title: "Dokumentasi Kegiatan", page: Dokumentasi },
 };
-const pct = (v) => Number(v).toLocaleString("id-ID", { maximumFractionDigits: 1 }) + "%";
+const pct = (v) => Number(v).toLocaleString("id-ID", { maximumFractionDigits: 2 }) + "%";
 
 export default function Karakter() {
   const { section = "" } = useParams();
@@ -144,32 +144,111 @@ function Beranda({ year, picker }) {
 }
 
 /* ---------------- 1. Teman Tumbuh Bersama ---------------- */
-function Ring({ value, label, hint, tone }) {
+function Ring({ value, label, hint, tone, note }) {
   return (
     <div className="card kr-ring-card">
       <div className={"kr-ring " + tone} style={{ "--p": Math.min(100, value) }}><span>{pct(value)}</span></div>
-      <b>{label}</b><small>{hint}</small>
+      <b>{label}</b><small>{hint}</small>{note && <small className="kr-bad">{note}</small>}
     </div>
   );
 }
 
+// Data TTB: dari Apps Script spreadsheet (TTB_API_URL) bila tersedia, disimpan di browser sebagai cadangan
+// bila spreadsheet tidak bisa dihubungi; terakhir angka cadangan di karakter.js.
+const TTB_CACHE = "ditsama-ttb-live";
+function readTtbCache() {
+  try { return JSON.parse(localStorage.getItem(TTB_CACHE)) || null; } catch { return null; }
+}
+function useTtb(year) {
+  const live = year === TTB_LIVE_YEAR && Boolean(TTB_API_URL);
+  const [data, setData] = useState(() => (live ? readTtbCache() : null));
+  const [source, setSource] = useState("cache");
+  useEffect(() => {
+    if (!live) return undefined;
+    let off = false;
+    fetch(TTB_API_URL)
+      .then((r) => r.json())
+      .then((j) => {
+        if (off || !j?.ok) return;
+        setData(j); setSource("live");
+        try { localStorage.setItem(TTB_CACHE, JSON.stringify(j)); } catch { /* penyimpanan browser tidak tersedia */ }
+      })
+      .catch(() => {});
+    return () => { off = true; };
+  }, [live]);
+  const base = TTB[year];
+  if (!base) return null;
+  return live && data ? { ...base, ...data, source } : { ...base, source: "static" };
+}
+
+const fmtDate = (iso, opts) => (iso ? new Date(iso.length === 10 ? iso + "T00:00:00" : iso).toLocaleDateString("id-ID", opts) : "");
+const signed = (v, unit) => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toLocaleString("id-ID", { maximumFractionDigits: 2 }) + unit;
+
 function Ttb({ year, picker }) {
-  const d = TTB[year];
+  const d = useTtb(year);
   const head = <PageHead title={<>Teman Tumbuh Bersama TPB ITB <span className="title-prog">{year}</span></>}
     sub="Mentor ke mentee, dosen pembina ke pementor · sekitar 1 semester">{picker}</PageHead>;
   if (!d) return <>{head}<section className="card"><EmptyState icon="users" title={`Belum ada data TTB ${year}`}>Data diambil dari sheet Ringkasan program TTB.</EmptyState></section></>;
-  const totalMeetings = d.groups * d.targetMeetings;
-  const held = Math.round((totalMeetings * d.realization) / 100);
-  const avgHeld = (d.targetMeetings * d.realization) / 100; // rata-rata pertemuan per kelompok
-  const stage = d.groupsDone >= d.groups ? 3 : 2;
+  const toDate = d.targetToDate || d.targetMeetings;
+  const target = d.meetingsTarget || d.groups * toDate; // target pertemuan s.d. pekan ini
+  const held = d.meetingsHeld ?? Math.round((target * d.realization) / 100);
+  const short = d.meetingsShort ?? Math.max(0, target - held);
+  const semester = d.groups * d.targetMeetings;
+  const avgHeld = held / d.groups; // rata-rata pertemuan terlaksana per kelompok
+  const timeline = d.timeline || [];
+  const week = timeline.find((w) => w.week === d.week);
+  const maxCum = Math.max(d.targetMeetings, ...timeline.map((w) => w.cumTarget));
+  const sameMonth = week && week.start.slice(0, 7) === week.end.slice(0, 7);
+  const range = week && `${fmtDate(week.start, sameMonth ? { day: "numeric" } : { day: "numeric", month: "short" })}–${fmtDate(week.end, { day: "numeric", month: "short", year: "numeric" })}`;
+  const updated = d.source === "static" ? `Data sheet Ringkasan per ${fmtDate(d.asOf, { day: "numeric", month: "short", year: "numeric" })}`
+    : `${d.source === "live" ? "Diperbarui otomatis dari spreadsheet" : "Data tersimpan terakhir"} · ${new Date(d.updatedAt).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })}`;
   return (
     <>
       {head}
+      <div className="kr-status">
+        {d.week && <span className="kr-chip"><i className="kr-live" />Pekan ke-{d.week}{range && " · " + range}{week?.activity && " · " + week.activity}</span>}
+        <span className="kr-chip">{updated}</span>
+      </div>
       <div className="kpi-row">
         <Kpi icon="users" label="Total mahasiswa TPB (sasaran)" value={fmtNum(d.students)} hint="jumlah mahasiswa seluruh kelompok" />
         <Kpi icon="layers" label="Kelompok pembinaan" value={fmtNum(d.groups)} hint={`target ${d.targetMeetings} pertemuan per kelompok`} />
         <Kpi icon="userCheck" label="Pementor aktif" value={fmtNum(d.mentors)} hint="pementor unik" />
         <Kpi icon="grad" label="Dosen pembina" value={fmtNum(d.lecturers)} hint="dosen pembina unik" />
+      </div>
+      <div className="grid kr-ttb-top">
+        <section className="card">
+          <div className="card-head"><div><h2 className="card-title">Pertemuan terlaksana vs target s.d. pekan ini</h2>
+            <div className="card-sub">Target = {toDate} pertemuan × {fmtNum(d.groups)} kelompok{d.week ? ` (pekan ke-${d.week}, tab Timeline)` : ""}</div></div></div>
+          <div className="kr-big"><b>{fmtNum(held)}</b><span>dari {fmtNum(target)} pertemuan</span></div>
+          <div className="kr-bar"><i style={{ width: Math.min(100, (held / target) * 100) + "%" }} /></div>
+          <div className="kr-bar-legend"><span>Realisasi {pct(d.realization)}</span><span>Target 100%</span></div>
+          <div className="kr-trio">
+            <div><small>Target pertemuan</small><b>{fmtNum(target)}</b></div>
+            <div><small>Sudah terlaksana</small><b>{fmtNum(held)}</b></div>
+            <div className="bad"><small>Kekurangan</small><b>{fmtNum(short)}</b></div>
+          </div>
+          <div className="kr-semester">
+            Terhadap target satu semester ({d.targetMeetings} × {fmtNum(d.groups)} = {fmtNum(semester)} pertemuan): <b>{pct((held / semester) * 100)}</b>
+            <div className="kr-bar thin"><i style={{ width: Math.min(100, (held / semester) * 100) + "%" }} /></div>
+          </div>
+        </section>
+        <section className="card">
+          <div className="card-head"><div><h2 className="card-title">Indikator vs target</h2><div className="card-sub">Kolom TARGET dan Selisih (Nilai − Target) di sheet Ringkasan</div></div></div>
+          {d.targets?.length ? (
+            <ul className="kr-vs">
+              {d.targets.map((t) => (
+                <li key={t.key}>
+                  <span className="t">{t.label}</span>
+                  <b>{t.unit === "%" ? pct(t.value) : fmtNum(t.value)}</b>
+                  <span className="m">Target {t.unit === "%" ? pct(t.target) : fmtNum(t.target)}
+                    <span className={"kr-gap" + (t.gap >= 0 ? " ok" : "")}>{signed(t.gap, t.unit)}</span></span>
+                  <div className="kr-bar thin"><i style={{ width: Math.min(100, t.target ? (t.value / t.target) * 100 : 0) + "%" }} /></div>
+                </li>
+              ))}
+            </ul>
+          ) : <p className="kr-muted">Belum ada indikator dengan kolom TARGET.</p>}
+          <p className="kr-muted kr-small">Indikator lain yang diberi TARGET di sheet otomatis muncul di sini.</p>
+        </section>
       </div>
       <section className="card">
         <div className="card-head"><div><h2 className="card-title">Alur pembinaan</h2><div className="card-sub">Dosen pembina membina pementor, pementor mendampingi kelompok mentee</div></div></div>
@@ -181,29 +260,42 @@ function Ttb({ year, picker }) {
         </ol>
       </section>
       <div className="kr-rings">
-        <Ring value={d.realization} tone="blue" label="Realisasi kegiatan" hint={`${fmtNum(held)} dari ${fmtNum(totalMeetings)} pertemuan`} />
+        <Ring value={d.realization} tone="blue" label="Realisasi kegiatan" hint={`${fmtNum(held)} dari ${fmtNum(target)} pertemuan`}
+          note={`target 100% · ${signed(d.realization - 100, "%")}`} />
         <Ring value={d.reportCompleteness} tone="violet" label="Kelengkapan laporan" hint="kelompok yang sudah lapor (lengkap / sebagian)" />
         <Ring value={d.studentAttendance} tone="orange" label="Kehadiran mahasiswa" hint="total hadir ÷ (mahasiswa × pertemuan)" />
         <Ring value={d.mentorAttendance} tone="green" label="Kehadiran pementor" hint="pertemuan dengan pementor hadir" />
       </div>
       <section className="card">
         <div className="card-head">
-          <div><h2 className="card-title">Timeline program</h2>
-            <div className="card-sub">Satu semester · rata-rata {avgHeld.toLocaleString("id-ID", { maximumFractionDigits: 1 })} dari {d.targetMeetings} pertemuan per kelompok sudah terlaksana</div></div>
+          <div><h2 className="card-title">Timeline per pekan</h2>
+            <div className="card-sub">{timeline.length ? `${timeline.length} pekan, ${fmtDate(timeline[0].start, { day: "numeric", month: "short" })} – ${fmtDate(timeline[timeline.length - 1].end, { day: "numeric", month: "short", year: "numeric" })} · tinggi batang = target pertemuan kumulatif` : "Dari tab Timeline"}</div></div>
           <span className="kr-pill warn">Kelompok selesai target: {fmtNum(d.groupsDone)} dari {fmtNum(d.groups)}</span>
         </div>
-        <ol className="kr-stages" style={{ "--done": (stage / (TTB_STAGES.length - 1)) * 100 }}>
-          {TTB_STAGES.map(([t, s], i) => (
-            <li key={t} className={i < stage ? "done" : i === stage ? "now" : ""}><b>{t}</b><span>{i === 2 ? `berjalan (1–${d.targetMeetings})` : s}</span></li>
-          ))}
-        </ol>
-        <div className="kr-meet" aria-label={`Rata-rata ${avgHeld.toFixed(1)} pertemuan terlaksana`}>
+        {timeline.length > 0 && <>
+          <div className="kr-weeks" style={{ "--n": timeline.length }}>
+            {timeline.map((w, i) => {
+              const uts = i > 0 && w.cumTarget === timeline[i - 1].cumTarget; // pekan tanpa pertemuan
+              const cls = w.week === d.week ? " now" : d.week && w.week < d.week ? " done" : "";
+              return (
+                <div key={w.week} className={"kr-wk" + cls + (uts ? " uts" : "")}
+                  title={`Pekan ${w.week} · ${fmtDate(w.start, { day: "numeric", month: "short" })}–${fmtDate(w.end, { day: "numeric", month: "short" })} · ${w.activity} · target kumulatif ${w.cumTarget}`}>
+                  <span className="col" style={{ height: (w.cumTarget / maxCum) * 100 + "%" }}><em>{uts ? "UTS" : w.cumTarget}</em></span>
+                  <b>P{w.week}</b>
+                </div>
+              );
+            })}
+          </div>
+          <div className="kr-legend"><span><i className="done" />pekan lewat</span><span><i className="now" />pekan ini</span><span><i className="uts" />tanpa pertemuan (UTS)</span><span>Arahkan kursor ke batang untuk tanggal &amp; kegiatan</span></div>
+        </>}
+        <div className="kr-meet" aria-label={`Rata-rata ${avgHeld.toFixed(1)} pertemuan terlaksana, target ${toDate}`}>
           {Array.from({ length: d.targetMeetings }, (_, i) => {
             const fill = Math.max(0, Math.min(1, avgHeld - i));
-            return <span key={i} style={{ "--f": fill * 100 + "%" }} className={fill >= 1 ? "full" : ""}>{i + 1}</span>;
+            return <span key={i} style={{ "--f": fill * 100 + "%" }} className={(fill >= 1 ? "full" : "") + (i + 1 === toDate ? " tgt" : "")}>{i + 1}</span>;
           })}
         </div>
-        <p className="kr-muted kr-small">Hijau = rata-rata pertemuan yang sudah terlaksana per kelompok.</p>
+        <div className="kr-legend"><span><i className="held" />rata-rata terlaksana: {avgHeld.toLocaleString("id-ID", { maximumFractionDigits: 1 })} pertemuan per kelompok</span>
+          <span><i className="tgt" />target s.d. pekan ini: pertemuan ke-{toDate}</span></div>
       </section>
     </>
   );
