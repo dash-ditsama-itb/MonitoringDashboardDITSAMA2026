@@ -62,8 +62,10 @@ export const CAMPAIGN_VIDEOS = [
   { id: "12_TqthEf1UoMCoNaj4DMfodf5RHSYIxS", dur: 170, title: "Etika Penggunaan AI dan Teknologi Digital", by: "Karya Na…" },
   { id: "1P0LKRXsixdWVjiilVug3cO1E-k3PhPp_", dur: 70, title: "Etika Organisasi dan Kepemimpinan", by: "Karya Muhammad H…" },
   { id: "1S2-0yLKIVwObQGVEyM6wQiWF_daPS73j", dur: 73, title: "Etika Menjaga Fasilitas Kampus", by: "Karya Muhammad Hilm…" },
+  { id: "13QtYPOmnZLxG4mRdnCmKBVWe7ihmpAP8", dur: 88, title: "Etika Komunikasi dan Interaksi", by: "Karya Nathifa Share…" },
+  { id: "1J12J9c9xbEmwLTt4w93WgahGycE5htFn", dur: 177, title: "Disiplin", by: "Karya Ghania Syakira Yuhandini, Ayesha Fa…" },
+  { id: "11yJpU3SKPrJ82YbYcufKZ2CmTHTJSSMP", dur: 44, title: "Budaya 5S", by: "Karya Made Dea Vio Lantini" },
 ];
-export const CAMPAIGN_VIDEO_TOTAL = 9;
 // tahun data kampanye (video, poster, e-book, mapping banner)
 export const CAMPAIGN_YEAR = "2026";
 
