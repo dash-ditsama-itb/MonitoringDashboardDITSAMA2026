@@ -67,7 +67,7 @@ function Shell({ session }) {
           <NavItem session={session} area="activities" to="/dashboard" end><Icon name="grid" />Portofolio Program</NavItem>
           <NavItem session={session} area="finance" to="/dashboard/financial"><Icon name="wallet" />Keuangan</NavItem>
           <NavItem session={session} area="activities" to="/dashboard/peserta"><Icon name="users" />Peserta</NavItem>
-          <NavItem session={session} area="activities" to="/dashboard/dosen"><Icon name="grad" />Portofolio Pengajar</NavItem>
+          <NavItem session={session} area="activities" to="/dashboard/dosen"><Icon name="grad" />Portofolio dan Feedback</NavItem>
           <NavItem session={session} area="activities" to="/dashboard/input"><Icon name="clipboard" />Data Kegiatan</NavItem>
           <NavItem session={session} area="activities" to="/dashboard/sdm"><Icon name="userCheck" />SDM</NavItem>
           {canManageUsers(session) && (
