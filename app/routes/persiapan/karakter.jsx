@@ -227,7 +227,7 @@ function Ttb({ year, picker }) {
       </div>
       <div className="kpi-row">
         <Kpi icon="users" label="Total mahasiswa TPB (sasaran)" value={fmtNum(d.students)} hint="jumlah mahasiswa seluruh kelompok" />
-        <Kpi icon="layers" label="Kelompok pembinaan" value={fmtNum(d.groups)} hint={`target ${d.targetMeetings} pertemuan per kelompok`} />
+        <Kpi icon="layers" label="Kelompok pembinaan" value={fmtNum(d.groups)} hint={`target ${d.targetMeetings} pertemuan per kelompok dalam 1 semester`} />
         <Kpi icon="userCheck" label="Pementor aktif" value={fmtNum(d.mentors)} hint="pementor unik" />
         <Kpi icon="grad" label="Dosen pembina" value={fmtNum(d.lecturers)} hint="dosen pembina unik" />
       </div>
@@ -270,8 +270,8 @@ function Ttb({ year, picker }) {
         <div className="card-head"><div><h2 className="card-title">Alur pembinaan</h2><div className="card-sub">Dosen pembina membina pementor, pementor mendampingi kelompok mentee</div></div></div>
         <ol className="kr-flow">
           <li><b>{fmtNum(d.lecturers)}</b><span>Dosen pembina</span><small>±{Math.round(d.mentors / d.lecturers)} pementor per dosen</small></li>
-          <li><b>{fmtNum(d.mentors)}</b><span>Pementor</span><small>sebagian memegang 2 kelompok</small></li>
-          <li><b>{fmtNum(d.groups)}</b><span>Kelompok</span><small>target {d.targetMeetings} pertemuan</small></li>
+          <li><b>{fmtNum(d.mentors)}</b><span>Pementor</span></li>
+          <li><b>{fmtNum(d.groups)}</b><span>Kelompok</span><small>target {d.targetMeetings} pertemuan dalam 1 semester</small></li>
           <li><b>{fmtNum(d.students)}</b><span>Mahasiswa TPB</span><small>±{Math.round(d.students / d.groups)} mahasiswa per kelompok</small></li>
         </ol>
       </section>
