@@ -22,7 +22,7 @@ const nice = (n) => String(n || "").split(",")[0].replace(/^((prof|dr|drs|dra|ir
 const hasMethod = (methods) => methods.some((m) => m !== "–");
 
 export default function Dosen() {
-  return <RequireAccess area="activities" page="Portofolio Pengajar"><DosenPage /></RequireAccess>;
+  return <RequireAccess area="activities" page="Portofolio dan Feedback"><DosenPage /></RequireAccess>;
 }
 
 function DosenPage() {
@@ -43,7 +43,7 @@ function DosenPage() {
 
   return (
     <div className="page">
-      <PageHead title="Portofolio Pengajar" sub="Hasil evaluasi pengajar oleh peserta">
+      <PageHead title="Portofolio dan Feedback" sub="Feedback program dan hasil evaluasi narasumber/pengajar oleh peserta">
         <button type="button" className="btn" onClick={refresh} disabled={busy || loading}>
           {busy ? <Spinner /> : <Icon name="refresh" size={16} />}<span className="btn-txt">Muat ulang</span>
         </button>
@@ -69,6 +69,10 @@ function DosenPage() {
         </>
       ) : (
         <>
+          <SectionHead icon="message" title="Feedback Program" sub="Rata-rata semua aspek formulir feedback tiap program, termasuk narasumber/pengajar" />
+          <ProgramFeedback d={d} program={ui.program} />
+
+          <SectionHead icon="grad" title="Feedback Narasumber/Pengajar" sub="Hasil evaluasi narasumber/pengajar oleh peserta · klik nama untuk melihat portofolio" />
           <div className="kpi-row six">
             <Kpi label="Pengajar dinilai" value={fmtNum(d.kpi.totalLecturers)} icon="grad" />
             <Kpi label={isOsn ? "Bidang" : "Mata kuliah / kelas"} value={fmtNum(d.kpi.totalSubjects)} icon="book" />
@@ -77,7 +81,7 @@ function DosenPage() {
             <Kpi label="Rata-rata (1–5)" value={score(d.kpi.averageScore)} icon="star" />
             <Kpi label="Tertinggi" value={score(d.kpi.highestScore)} hint={nice(d.kpi.highestScoreLecturer)} icon="trophy" />
           </div>
-          <Charts d={d} onSelect={select} program={ui.program} />
+          <Charts d={d} onSelect={select} />
           <section className="card">
             <div className="card-head"><div><h2 className="card-title">{isOsn ? "Bidang" : "Mata kuliah / kelas peserta"}</h2><div className="card-sub">Klik kartu untuk memfilter per {isOsn ? "bidang" : "mata kuliah atau kelas peserta"}</div></div></div>
             {!d.subjects.length ? <div className="empty-inline">Belum ada data.</div> : (
@@ -130,7 +134,7 @@ function DosenPage() {
   );
 }
 
-function Charts({ d, onSelect, program }) {
+function Charts({ d, onSelect }) {
   const top = d.charts.rankings;
   const rank = useMemo(() => ({
     type: "bar",
@@ -157,29 +161,45 @@ function Charts({ d, onSelect, program }) {
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "top", align: "end" } },
       scales: { x: { grid: { display: false } }, y: { min: 1, max: 5, ticks: { stepSize: 1 } } } },
   }), [d]);
-  // tanpa metode (Riset, BTI, EduQuest): grafik metode kosong, diganti kartu per aspek / per hari
+  // tanpa metode (Riset, BTI, EduQuest, OSN): grafik metode kosong, diganti kartu per hari bila ada
   const showMethod = hasMethod(methods);
-  const methodCard = (
+  const methodCard = showMethod && (
     <section className="card" key="metode"><div className="card-head"><div><h2 className="card-title">Rata-rata per metode</h2><div className="card-sub">Luring / Hibrida / Daring per mata kuliah</div></div></div>
       <ChartCanvas config={metode} height={300} /></section>
   );
-  const fb = d.programFeedback || [];
-  const aspectCard = fb.length > 0 && <ProgramAspectCard key="aspek" list={fb} program={program} />;
-  const feedbackCard = fb.length > 0 && <ProgramFeedbackCard key="feedback" list={fb} program={program} />;
   const dayCard = d.daySessions?.length > 0 && <DayCard key="hari" days={d.daySessions} onSelect={onSelect} />;
-  // tanpa metode (Riset, BTI, EduQuest, OSN): kartu feedback program menggantikan grafik metode
-  const side = showMethod || !feedbackCard ? methodCard : feedbackCard;
-  const rows = (showMethod ? [[aspectCard, feedbackCard], [dayCard]] : [[aspectCard, dayCard]])
-    .map((r) => r.filter(Boolean)).filter((r) => r.length);
+  const side = methodCard || dayCard;
+  const rankCard = (
+    <section className="card"><div className="card-head"><div><h2 className="card-title">15 pengajar dengan nilai tertinggi</h2><div className="card-sub">Rata-rata 1–5 · klik batang untuk membuka portofolio</div></div></div>
+      <ChartCanvas config={rank} height={Math.max(240, top.length * 24 + 40)} /></section>
+  );
   return (
     <>
-      <div className="grid g-2">
-        <section className="card"><div className="card-head"><div><h2 className="card-title">15 pengajar dengan nilai tertinggi</h2><div className="card-sub">Rata-rata 1–5 · klik batang untuk membuka portofolio</div></div></div>
-          <ChartCanvas config={rank} height={Math.max(240, top.length * 24 + 40)} /></section>
-        {side}
-      </div>
-      {rows.map((r, i) => (r.length > 1 ? <div className="grid g-2" key={i}>{r}</div> : r[0]))}
+      {side ? <div className="grid g-2">{rankCard}{side}</div> : rankCard}
+      {methodCard && dayCard}
     </>
+  );
+}
+
+// judul bagian halaman (Feedback Program / Feedback Narasumber/Pengajar)
+function SectionHead({ icon, title, sub }) {
+  return (
+    <div className="sec-head">
+      <h2><Icon name={icon} size={18} />{title}</h2>
+      {sub && <p>{sub}</p>}
+    </div>
+  );
+}
+
+// Feedback Program: rata-rata tiap program (skala 100) + rincian per aspek program terpilih
+function ProgramFeedback({ d, program }) {
+  const fb = d.programFeedback || [];
+  if (!fb.length) return <section className="card"><EmptyState icon="message" title="Belum ada feedback program">Feedback program dihitung dari formulir evaluasi peserta.</EmptyState></section>;
+  return (
+    <div className="grid g-2">
+      <ProgramFeedbackCard list={fb} program={program} />
+      <ProgramAspectCard list={fb} program={program} />
+    </div>
   );
 }
 

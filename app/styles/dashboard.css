@@ -819,7 +819,11 @@ dialog.confirm[open]{animation:pop .2s var(--ease)}
 .asp-sub{grid-column:1 / 3;margin:4px 0 0 4px;padding:6px 0 2px 12px;border-left:2px solid var(--line);display:flex;flex-direction:column;gap:8px}
 .asp-sub div{display:grid;grid-template-columns:minmax(0,1fr) minmax(60px,100px) 40px;gap:10px;align-items:center;font-size:12.5px;color:var(--ink-2)}
 .asp-sub b{text-align:right;color:var(--navy);font-variant-numeric:tabular-nums}
-/* feedback per program (Portofolio Pengajar) */
+/* judul bagian halaman Portofolio dan Feedback */
+.sec-head{margin:6px 0 -6px}
+.sec-head h2{display:flex;align-items:center;gap:8px;margin:0;font-size:17px;font-weight:800;color:var(--navy)}
+.sec-head p{margin:3px 0 0 26px;font-size:12.5px;color:var(--muted)}
+/* feedback per program (Portofolio dan Feedback) */
 .asp-tabs{margin:0 0 14px;overflow-x:auto}
 .asp-total{display:flex;justify-content:space-between;align-items:baseline;gap:12px;border-top:1px solid var(--line);padding-top:12px;font-size:13px;color:var(--muted);font-weight:600}
 .asp-total b{font-size:22px;font-weight:800;color:var(--navy);font-variant-numeric:tabular-nums}
