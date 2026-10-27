@@ -34,8 +34,9 @@ function NavItems({ items, session }) {
 function NavFolder({ group, session }) {
   const { pathname } = useLocation();
   const holdsActive = flattenReports(group).some((r) => pathname.endsWith(reportPath(r.id)));
-  const [open, setOpen] = useState(holdsActive);
-  // membuka laporan di dalam subbagian (mis. dari tautan) ikut membuka subbagiannya
+  // subbagian terbuka sejak awal agar semua laporan terlihat; bisa ditutup dengan klik.
+  // Membuka laporan di dalamnya (mis. dari tautan) membuka subbagiannya lagi.
+  const [open, setOpen] = useState(true);
   useEffect(() => { if (holdsActive) setOpen(true); }, [holdsActive]);
   const id = "nav-folder-" + group.key.replace(/[^a-z0-9]+/gi, "-");
   return (
