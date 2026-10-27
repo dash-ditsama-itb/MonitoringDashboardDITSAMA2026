@@ -43,13 +43,23 @@ a{color:var(--blue-ink);text-underline-offset:3px}
 .rail{background:var(--rail);color:#fff;width:248px;flex:0 0 248px;border-radius:0 26px 26px 0;
   padding:18px 14px 14px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;z-index:40}
 .app.rail-hidden .rail{display:none}
-.rail-top{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 6px}
-.rail-brand{display:flex;gap:10px;align-items:center;min-width:0;color:#fff;text-decoration:none}
+.rail-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+/* kepala rail: satu kartu tipis berisi dashboard aktif (atas) dan pindah ke dashboard lain (bawah, dipisah garis) */
+.rail-head{flex:1;min-width:0;display:flex;flex-direction:column;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:14px;overflow:hidden}
+.rail-brand{display:flex;gap:10px;align-items:center;min-width:0;padding:10px 12px;color:#fff;text-decoration:none}
 .rail-brand small{display:block;font-size:11px;line-height:1.3;color:#BCD2EC;margin-bottom:2px}
 /* nama dashboard yang sedang dibuka */
 .rail-brand b{display:block;font-size:14px;line-height:1.2;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
 .rail-brand:hover small{color:#fff}
-.rail-brand:focus-visible{outline:2px solid #fff;outline-offset:4px;border-radius:6px}
+.rail-brand:focus-visible,.rail-switch:focus-visible{outline:2px solid #fff;outline-offset:-3px;border-radius:12px}
+/* ikon di kolom selebar logo ITB, teks sejajar dengan judul dashboard di atasnya */
+.rail-switch{display:flex;align-items:center;gap:10px;padding:8px 12px 9px;border-top:1px solid rgba(255,255,255,.12);
+  color:#fff;text-decoration:none;line-height:1.25;transition:background .15s}
+.rail-switch-ic{width:36px;flex:0 0 36px;display:flex;justify-content:center;color:#BCD2EC;transition:color .15s}
+.rail-switch small{display:block;font-size:11px;color:#BCD2EC}
+.rail-switch b{display:block;font-size:13px;font-weight:700}
+.rail-switch:hover{background:rgba(255,255,255,.08)}
+.rail-switch:hover .rail-switch-ic{color:#fff}
 .badge-itb{width:36px;height:36px;flex:0 0 36px;background:#fff;border-radius:50%;padding:1px;display:block}
 .rail .rail-close{display:none}
 .rail-nav{margin:22px 0 0;display:flex;flex-direction:column;gap:2px;flex:1;overflow-y:auto;padding:0 2px 8px;
@@ -84,15 +94,7 @@ a{color:var(--blue-ink);text-underline-offset:3px}
   display:inline-flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums}
 .nav-badge.red{background:var(--crit);color:#fff}
 .nav-badge.yellow{background:var(--gold);color:var(--gold-ink)}
-/* pindah ke dashboard lain: satu tombol bergaris di bawah menu, dipisah garis dari menu dashboard ini */
-.rail-alt{margin-top:8px;padding:14px 2px 6px;border-top:1px solid rgba(255,255,255,.14)}
-.rail-switch{display:flex;align-items:center;gap:11px;padding:8px 12px;border:1px solid rgba(255,255,255,.34);border-radius:12px;
-  color:#DCE7F5;text-decoration:none;font-size:13px;font-weight:600;line-height:1.3;transition:background .15s,border-color .15s,color .15s}
-.rail-switch small{display:block;font-size:11px;color:#BCD2EC}
-.rail-switch b{display:block;font-weight:800;color:#fff}
-.rail-switch:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.6);color:#fff}
-.rail-switch:focus-visible{outline:2px solid #fff;outline-offset:2px}
-.rail-foot{display:flex;align-items:center;gap:10px;padding:12px 10px 4px;border:0;
+.rail-foot{display:flex;align-items:center;gap:10px;margin-top:8px;padding:12px 10px 4px;border:0;
   border-top:1px solid rgba(255,255,255,.14);background:transparent;color:#fff;cursor:pointer;text-align:left;border-radius:0}
 .rail-foot:hover .rail-who b{text-decoration:underline;text-underline-offset:3px}
 .rail-who{flex:1;min-width:0}

@@ -62,17 +62,20 @@ export function AppShell({ session, dashboard, nav, control, topbarEnd, profile 
       <a className="skip" href="#main">Langsung ke konten</a>
       <aside className={"rail" + (ui.railOpen ? " open" : "")} aria-label="Menu utama">
         <div className="rail-top">
-          {/* judul rail = dashboard yang sedang dibuka */}
-          <Link to="/" className="rail-brand" title="Ke halaman pilih dashboard">
-            <img className="badge-itb" src={import.meta.env.BASE_URL + "assets/itb-logo.png"} alt="Logo ITB" width="36" height="36" />
-            <span><small>Dashboard DITSAMA 2026</small><b>{dashboard.label}</b></span>
-          </Link>
+          {/* kepala rail: dashboard yang sedang dibuka, dan di bawahnya pindah ke dashboard lain */}
+          <div className="rail-head">
+            <Link to="/" className="rail-brand" title="Ke halaman pilih dashboard">
+              <img className="badge-itb" src={import.meta.env.BASE_URL + "assets/itb-logo.png"} alt="Logo ITB" width="36" height="36" />
+              <span><small>Dashboard DITSAMA 2026</small><b>{dashboard.label}</b></span>
+            </Link>
+            <Link className="rail-switch" to={other.to}>
+              <span className="rail-switch-ic"><Icon name="swap" size={16} /></span>
+              <span><small>Pindah ke</small><b>{other.label}</b></span>
+            </Link>
+          </div>
           <button className="icon-btn on-dark rail-close" type="button" onClick={() => ui.set({ railOpen: false })} aria-label="Tutup menu"><Icon name="x" size={18} /></button>
         </div>
         <nav className="rail-nav" aria-label={"Menu " + dashboard.label}>{nav}</nav>
-        <div className="rail-alt">
-          <Link className="rail-switch" to={other.to}><Icon name="swap" size={16} /><span><small>Pindah ke</small><b>{other.label}</b></span></Link>
-        </div>
         <button className="rail-foot" type="button" onClick={() => setProfileOpen(true)}>
           <span className="ava">{(session.name || "?").slice(0, 1).toUpperCase()}</span>
           <span className="rail-who"><b>{session.name}</b><small>{roleName(session)}</small></span>
