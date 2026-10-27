@@ -1,6 +1,8 @@
+import { useEffect, useState } from "react";
+import { useLocation } from "react-router";
 import { AppShell, Gate, NavItem } from "../../components/AppShell.jsx";
 import { Icon } from "../../components/Icon.jsx";
-import { groupBySection, reportPath, useReports } from "../../components/Reports.jsx";
+import { buildTree, flattenReports, reportPath, useReports } from "../../components/Reports.jsx";
 import { DASHBOARDS } from "../../config.js";
 import { KARAKTER_BASE, KARAKTER_PROGRAMS } from "../../lib/karakter.js";
 import { canManageReports } from "../../lib/format.js";
@@ -20,6 +22,33 @@ export default function PersiapanLayout() {
   return <Gate dashboard={DASHBOARD}>{(session) => <Shell session={session} />}</Gate>;
 }
 
+// laporan & subbagian di dalam satu bagian; subbagian bisa dibuka-tutup
+function NavItems({ items, session }) {
+  return items.map((it) => (it.report ? (
+    <NavItem key={it.report.id} session={session} to={reportPath(it.report.id)}>
+      <Icon name="trend" /><span className="nav-txt nav-txt-2" title={it.report.title}>{it.report.title}</span>
+    </NavItem>
+  ) : <NavFolder key={it.group.key} group={it.group} session={session} />));
+}
+
+function NavFolder({ group, session }) {
+  const { pathname } = useLocation();
+  const holdsActive = flattenReports(group).some((r) => pathname.endsWith(reportPath(r.id)));
+  const [open, setOpen] = useState(holdsActive);
+  // membuka laporan di dalam subbagian (mis. dari tautan) ikut membuka subbagiannya
+  useEffect(() => { if (holdsActive) setOpen(true); }, [holdsActive]);
+  const id = "nav-folder-" + group.key.replace(/[^a-z0-9]+/gi, "-");
+  return (
+    <div className={"nav-folder" + (open ? " open" : "")}>
+      <button type="button" className={"nav-item nav-folder-btn" + (holdsActive && !open ? " holds-active" : "")}
+        aria-expanded={open} aria-controls={id} onClick={() => setOpen(!open)}>
+        <Icon name="right" className="nav-chev" /><span className="nav-txt nav-txt-2" title={group.name}>{group.name}</span>
+      </button>
+      {open && <div className="nav-sub" id={id}><NavItems items={group.items} session={session} /></div>}
+    </div>
+  );
+}
+
 function Shell({ session }) {
   const { reports, error } = useReports();
   return (
@@ -28,14 +57,10 @@ function Shell({ session }) {
         <>
           {!reports && !error && <div className="nav-note">Memuat laporan…</div>}
           {reports && !reports.length && <div className="nav-note">Belum ada laporan.</div>}
-          {groupBySection(reports).map(([section, items]) => (
-            <div key={section} className="nav-group">
-              <div className="nav-label">{section}</div>
-              {items.map((r) => (
-                <NavItem key={r.id} session={session} to={reportPath(r.id)}>
-                  <Icon name="trend" /><span className="nav-txt">{r.title}</span>
-                </NavItem>
-              ))}
+          {buildTree(reports).items.map(({ group }) => (
+            <div key={group.key} className="nav-group">
+              <div className="nav-label">{group.name}</div>
+              <NavItems items={group.items} session={session} />
             </div>
           ))}
           <div className="nav-label">Pengaturan</div>

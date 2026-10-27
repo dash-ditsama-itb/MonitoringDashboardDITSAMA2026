@@ -73,6 +73,11 @@ Buka `http://localhost:5173/MonitoringDashboardDITSAMA2026/`.
 ## Pendidikan Persiapan
 - Isi dashboard = laporan Power BI ("Publish to web") yang ditempel Admin/Kasubdit di **Kelola laporan**:
   bagian (mis. `Proses TPB`), judul, dan link atau seluruh kode `<iframe>` dari Power BI.
+- Bagian bisa bertingkat (bagian › subbagian › …). Di Kelola laporan, bagian dipilih dari daftar,
+  subbagian dibuat lewat "Buat subbagian di dalam …", dan satu bagian bisa diganti nama atau dipindahkan
+  sekaligus beserta isinya. Di database, jalurnya disimpan di kolom `section` dengan pemisah ` / `
+  (mis. `Layanan / Akademik TPB`); pengguna tidak perlu mengetik pemisah ini. Judul berawalan sama
+  ("AKADEMIK TPB - …") bisa diubah menjadi subbagian dengan satu klik.
   Hanya link `https://app.powerbi.com` yang diterima. Urutan diatur dengan tombol panah.
 - Link laporan disimpan di database backend (bukan di kode), jadi tidak ikut terbaca di file publik GitHub Pages.
 - Batasan: link "Publish to web" bersifat publik. Siapa pun yang melihat laporan bisa menyalin

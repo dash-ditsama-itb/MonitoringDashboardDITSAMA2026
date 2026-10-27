@@ -73,6 +73,16 @@ a{color:var(--blue-ink);text-underline-offset:3px}
 .nav-note{font-size:12.5px;color:#B9CBE6;margin:14px 12px 0}
 .nav-label{font-size:11px;font-weight:700;color:#B9CBE6;margin:18px 12px 6px;text-transform:uppercase;letter-spacing:.06em}
 .nav-dot{width:8px;height:8px;border-radius:50%;flex:0 0 8px;margin:0 5px;box-shadow:0 0 0 2px rgba(255,255,255,.18)}
+/* subbagian laporan (Pendidikan Persiapan): tombol buka-tutup + isi menjorok dengan garis pandu */
+.nav-folder-btn{width:100%;background:none;border:0;font:inherit;text-align:left;cursor:pointer}
+/* judul laporan boleh dua baris agar tetap terbaca; lebih panjang dari itu baru dipotong */
+.nav-txt-2{white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;line-height:1.3}
+.nav-folder-btn .nav-chev{transition:transform .18s var(--ease)}
+.nav-folder.open>.nav-folder-btn .nav-chev{transform:rotate(90deg)}
+.nav-folder-btn.holds-active{background:rgba(255,255,255,.09);color:#fff}
+.nav-sub{display:flex;flex-direction:column;gap:2px;margin:2px 0 4px 21px;padding-left:8px;border-left:1px solid rgba(255,255,255,.18)}
+.nav-sub .nav-item{font-size:13.5px;min-height:36px;padding-top:7px;padding-bottom:7px}
+@media (prefers-reduced-motion:reduce){ .nav-folder-btn .nav-chev{transition:none} }
 .nav-txt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .nav-badge{font-size:11px;font-weight:800;border-radius:6px;min-width:20px;height:20px;padding:0 6px;
   display:inline-flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums}
@@ -676,10 +686,21 @@ dialog.confirm[open]{animation:pop .2s var(--ease)}
 .report-frame:fullscreen{border-radius:0;border:0}
 .report-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:8px;color:var(--muted);background:var(--subtle)}
 .report-hint{display:none}
-.rep-list{list-style:none;margin:0 0 12px;padding:0}
-.rep-list li{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
-.rep-list li:last-child{border-bottom:0}
-.rep-list li.busy{opacity:.55}
+/* Kelola laporan: pohon bagian -> subbagian -> laporan; subbagian menjorok dengan garis pandu */
+.rep-tree{list-style:none;margin:0;padding:0}
+.card>.rep-tree{margin-bottom:12px}
+.rep-tree .rep-tree{margin-left:15px;padding-left:22px;border-left:1px solid var(--line-2)}
+.rep-row,.rep-group-head{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.rep-row.busy,.rep-group-head.busy{opacity:.55}
+.rep-group-ic{flex:0 0 auto;color:var(--blue)}
+.rep-group-name{display:block;font-size:14px;font-weight:800;color:var(--navy);line-height:1.35}
+.rep-group.depth-0>.rep-group-head{background:var(--subtle);border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;margin-top:14px}
+.card>.rep-tree>.rep-group:first-child>.rep-group-head{margin-top:0}
+.rep-group.depth-0>.rep-group-head .rep-group-name{font-size:15px}
+.rep-suggest{flex-wrap:wrap}
+.rep-suggest>span{flex:1;min-width:220px}
+.field-row{display:flex;gap:8px}
+.field-row>input{flex:1;min-width:0}
 .rep-order{display:flex;flex-direction:column;gap:2px}
 .rep-order .icon-btn{width:30px;height:26px}
 .rep-txt{flex:1;min-width:0}
@@ -932,6 +953,8 @@ span.asp-lab{cursor:default}
   .filter-bar .field{max-width:none}
 }
 @media (max-width:640px){
+  .rep-tree .rep-tree{margin-left:6px;padding-left:10px}
+  .rep-row,.rep-group-head{gap:8px}
   .report-hint{display:flex}
   .report-frame{height:auto;min-height:0;aspect-ratio:4/3}
   body{font-size:14px}

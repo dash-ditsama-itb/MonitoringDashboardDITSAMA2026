@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import { Icon } from "../../components/Icon.jsx";
-import { reportPath, useReports } from "../../components/Reports.jsx";
+import { reportPath, sectionTrail, useReports } from "../../components/Reports.jsx";
 import { EmptyState, ErrorNote, PageHead, SkeletonCard, Spinner } from "../../components/ui.jsx";
 
 export default function ReportPage() {
@@ -37,7 +37,7 @@ function ReportView({ report }) {
   };
   return (
     <div className="page report-page">
-      <PageHead title={report.title} sub={report.section}>
+      <PageHead title={report.title} sub={sectionTrail(report.section)}>
         <button type="button" className="btn" onClick={fullscreen}><Icon name="expand" size={16} />Layar penuh</button>
       </PageHead>
       <p className="note report-hint"><Icon name="info" size={16} />Laporan Power BI paling nyaman dilihat dengan Layar penuh atau ponsel dalam posisi mendatar.</p>
