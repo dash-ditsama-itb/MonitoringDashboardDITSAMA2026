@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { GRANTS } from "../config.js";
 import { api, errorText, refreshUser } from "../lib/api.js";
-import { fmtDate, fmtNum, grantLabel, programLabel, PROGRAMS_AZ } from "../lib/format.js";
+import { byLabel, fmtDate, fmtNum, grantLabel, programLabel, PROGRAMS_AZ } from "../lib/format.js";
 import { useAuthStore } from "../stores/auth.js";
 import { invalidate, useApi } from "../stores/data.js";
 import { confirmAction, toast } from "./feedback.jsx";
@@ -22,7 +22,7 @@ const NO_ROLE = "";
 const refreshAccounts = () => { invalidate("/users", "/roles"); refreshUser(); };
 
 const grantsText = (role) => (role.isSuperAdmin ? "Semua akses"
-  : role.grants.map((g) => (g === "pic" ? `PIC ${(role.programs || []).map(programLabel).join(", ")}` : grantLabel(g))).join(" · "));
+  : role.grants.map((g) => (g === "pic" ? `PIC ${(role.programs || []).map(programLabel).sort(byLabel()).join(", ")}` : grantLabel(g))).join(" · "));
 
 export function AccountSettings() {
   const [tab, setTab] = useState("users");

@@ -4,7 +4,7 @@ import { Link, Navigate, NavLink, Outlet, useLocation } from "react-router";
 import { useShallow } from "zustand/react/shallow";
 import { DASHBOARDS } from "../config.js";
 import { refreshUser } from "../lib/api.js";
-import { grantLabel, programLabel, roleName } from "../lib/format.js";
+import { byLabel, grantLabel, programLabel, roleName } from "../lib/format.js";
 import { useAuthStore } from "../stores/auth.js";
 import { useUiStore } from "../stores/ui.js";
 import { ACCESS } from "./Access.jsx";
@@ -121,7 +121,7 @@ function ProfileSheet({ open, onClose, session, children }) {
       <dl className="facts">
         <div><dt>Peran</dt><dd>{roleName(session)}</dd></div>
         <div><dt>Akses</dt><dd>{session.role.isSuperAdmin ? "Super Admin (semua akses)"
-          : session.role.grants.map((g) => (g === "pic" ? `PIC ${session.role.programs.map(programLabel).join(", ")}` : grantLabel(g))).join(" · ")}</dd></div>
+          : session.role.grants.map((g) => (g === "pic" ? `PIC ${session.role.programs.map(programLabel).sort(byLabel()).join(", ")}` : grantLabel(g))).join(" · ")}</dd></div>
         {children}
       </dl>
       <p className="hint"><Icon name="info" size={14} />Satu akun untuk kedua dashboard. Keluar berlaku untuk Pra-Universitas dan Pendidikan Persiapan.</p>

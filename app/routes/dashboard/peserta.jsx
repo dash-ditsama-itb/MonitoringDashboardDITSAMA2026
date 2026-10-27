@@ -8,7 +8,7 @@ import {
 } from "../../components/ui.jsx";
 import { RekapPeserta } from "../../components/RekapPeserta.jsx";
 import { PROGRAMS, REKAP_PESERTA } from "../../config.js";
-import { fmtNum, fmtScore, programLabel, withoutAll } from "../../lib/format.js";
+import { byLabel, fmtNum, fmtScore, programLabel, PROGRAMS_AZ, withoutAll } from "../../lib/format.js";
 import { useApi } from "../../stores/data.js";
 import { useUiStore } from "../../stores/ui.js";
 
@@ -23,11 +23,10 @@ const SORTS = [["ujian", "Nilai ujian terpilih"], ["rata", "Rata-rata semua ujia
 const LOW = { C: 1, D: 1, E: 1 };
 // Program dipilih lewat tab di atas, bukan dropdown
 const FILTER_BAR = FILTERS.filter(([k]) => k !== "program");
-// urutan tab; program tanpa sheet peserta (WIT, MAUNG, SUGT) di akhir; sheet lain menyusul sesuai abjad
-const TAB_ORDER = [/siap/i, /riset/i, /opsi/i, /^osn$/i, /bti/i, /eduquest/i, /sang cendekia|\bp?scd\b/i, /^wit$/i, /^maung$/i, /^sugt$/i];
-const DEFAULT_TAB = "SIAP ITB";
-const tabRank = (p) => { const i = TAB_ORDER.findIndex((re) => re.test(p)); return i < 0 ? TAB_ORDER.length : i; };
-const sortTabs = (list) => [...list].sort((a, b) => tabRank(a) - tabRank(b) || a.localeCompare(b, "id"));
+// tab pembuka sebelum daftar sheet diketahui: program pertama menurut abjad
+const DEFAULT_TAB = PROGRAMS_AZ[0].label;
+// tab urut abjad nama program yang tampil (sama seperti menu); tab tanpa sheet peserta ikut urutannya
+const sortTabs = (list) => [...list].sort(byLabel(sheetLabel));
 
 function IdxChip({ ix }) {
   return ix ? <span className={"idx-chip" + (LOW[ix] ? " low" : "")}>{ix}</span> : null;
@@ -222,7 +221,7 @@ export default function Peserta() {
 function PesertaPage() {
   const ui = useUiStore((s) => s.pst);
   const patch = useUiStore((s) => s.patch);
-  // tidak ada tampilan "semua program": tiap tab = satu sheet peserta, default tab pertama
+  // tidak ada tampilan "semua program": tiap tab = satu sheet peserta, dibuka di tab pertama yang punya data
   const program = ui.program === ALL ? DEFAULT_TAB : ui.program;
   const base = withoutAll({ ...Object.fromEntries(FILTERS.map(([k]) => [k, ui[k]])), program });
   const query = { ...base, ...(ui.ujian !== "__LAST__" ? { ujian: ui.ujian } : {}) };
@@ -239,8 +238,11 @@ function PesertaPage() {
   const tabs = sheets.length ? sortTabs([...sheets, ...emptyTabs]) : [];
   // backend menampilkan semua program bila sheet program tidak ada, jadi datanya tidak ditampilkan
   const noData = emptyTabs.includes(program);
-  // program tersimpan yang sudah tidak ada sheetnya -> pindah ke tab pertama
-  useEffect(() => { if (tabs.length && !tabs.includes(program)) openTab(tabs[0]); }, [tabs, program]);
+  // belum memilih tab, atau tab tersimpan sudah tidak ada sheetnya -> tab pertama (abjad) yang punya data
+  const firstTab = tabs.find((t) => !emptyTabs.includes(t));
+  useEffect(() => {
+    if (firstTab && (ui.program === ALL ? program !== firstTab : !tabs.includes(program))) openTab(firstTab);
+  }, [firstTab, tabs, program]);
   const setFilter = (k, v) => patch("pst", { [k]: v, page: 1 });
   const resetFilters = { ...Object.fromEntries(FILTER_BAR.map(([k]) => [k, ALL])), ujian: "__LAST__", page: 1 };
   const openTab = (p) => patch("pst", { ...resetFilters, program: p, search: "", schoolSearch: "", rankAll: false, sekAll: false });

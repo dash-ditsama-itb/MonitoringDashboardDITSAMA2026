@@ -15,7 +15,7 @@ import {
 } from "../../components/ui.jsx";
 import { PROGRAMS, REKAP_PESERTA, TOTAL_PROGRAMS } from "../../config.js";
 import {
-  byLabel, canSeeActivities, fmtDate, fmtNum, levelLabel, monthKeyLabel, pct, phaseLabel, progColor, PROGRAMS_AZ, withoutAll,
+  byLabel, canSeeActivities, fmtDate, fmtNum, levelLabel, monthKeyLabel, pct, phaseLabel, progColor, programLabel, PROGRAMS_AZ, withoutAll,
 } from "../../lib/format.js";
 import { useAuthStore } from "../../stores/auth.js";
 import { useApi } from "../../stores/data.js";
@@ -312,7 +312,7 @@ function CategoryTable({ categories }) {
       <table className="mini-tbl">
         <thead><tr><th>Jenis</th><th className="num">Terdaftar</th><th className="num">Hadir</th><th className="num">Kehadiran</th></tr></thead>
         <tbody>{categories.map((c) => {
-          const progs = c.programs || [];
+          const progs = [...(c.programs || [])].sort(byLabel((p) => programLabel(p.program)));
           const on = progs.length > 1 && !closed.has(c.category);
           return (
             <Fragment key={c.category}>
@@ -326,7 +326,7 @@ function CategoryTable({ categories }) {
               </tr>
               {on && progs.map((p) => (
                 <tr key={p.program} className="mini-sub">
-                  <td><span className="pdot" style={{ background: progColor(p.program) }} aria-hidden="true" />{p.programLabel}</td>
+                  <td><span className="pdot" style={{ background: progColor(p.program) }} aria-hidden="true" />{programLabel(p.program)}</td>
                   {cells(p)}
                 </tr>
               ))}
@@ -390,11 +390,11 @@ function Sdm({ sdm, total, byProgram }) {
         <div className="sdm-prog">
           <div className="mini-head">Per program</div>
           <ul className="sdm-bars">
-            {byProgram.map((p) => (
+            {[...byProgram].sort(byLabel((p) => programLabel(p.program))).map((p) => (
               <li key={p.program}>
-                <span className="sdm-bar-lab"><span className="pdot" style={{ background: progColor(p.program) }} aria-hidden="true" />{p.programLabel}</span>
+                <span className="sdm-bar-lab"><span className="pdot" style={{ background: progColor(p.program) }} aria-hidden="true" />{programLabel(p.program)}</span>
                 <span className="sdm-stack" role="img" aria-label={p.positions.map((r) => `${r.position} ${r.count}`).join(", ")}
-                  style={{ width: (p.total / byProgram[0].total) * 100 + "%" }}>
+                  style={{ width: (p.total / Math.max(...byProgram.map((x) => x.total))) * 100 + "%" }}>
                   {[...p.positions].sort((x, y) => rank(x.position) - rank(y.position)).map((r) => <i key={r.position} className={shade(r.position)} style={{ flex: r.count }} title={`${r.position}: ${r.count}`} />)}
                 </span>
                 <b>{p.total}</b>
@@ -418,7 +418,7 @@ function Mitra({ items }) {
       <div className="card-head"><div><h2 className="card-title">Mitra</h2><div className="card-sub">{items.length} mitra terlibat</div></div></div>
       {!items.length ? <div className="empty-inline">Belum ada data mitra.</div> : (
         <ul className="mitra">
-          {items.map((m) => (
+          {[...items].sort((a, b) => byLabel()(a.program, b.program) || byLabel()(a.name, b.name)).map((m) => (
             <li key={m.name}>
               <span className="mitra-ava">{m.name.split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase()}</span>
               <span><b>{m.name}</b><small>{m.program}</small></span>

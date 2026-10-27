@@ -5,7 +5,7 @@ import { Icon } from "../../components/Icon.jsx";
 import {
   Bar, EmptyState, ErrorNote, Kpi, PageHead, PageSkeleton, Pending, RefreshButton, SearchInput, SelectField, Sheet, Spinner,
 } from "../../components/ui.jsx";
-import { fmtNum, withoutAll } from "../../lib/format.js";
+import { byLabel, fmtNum, sortLabels, withoutAll } from "../../lib/format.js";
 import { useApi } from "../../stores/data.js";
 import { useUiStore } from "../../stores/ui.js";
 
@@ -51,7 +51,7 @@ function DosenPage() {
           // filter tanpa pilihan untuk program ini (mis. OSN tanpa metode, kelas, bahasa) disembunyikan
           if (k !== "program" && list.length <= 1 && ui[k] === ALL) return null;
           return <SelectField key={k} label={k === "mapel" && isOsn ? "Bidang" : label} value={list.includes(ui[k]) ? ui[k] : ALL}
-            options={[[ALL, "Semua " + (k === "mapel" && isOsn ? "bidang" : label.toLowerCase())], ...list]} onChange={(v) => patch("dsn", { [k]: v })} />;
+            options={[[ALL, "Semua " + (k === "mapel" && isOsn ? "bidang" : label.toLowerCase())], ...(k === "program" ? sortLabels(list) : list)]} onChange={(v) => patch("dsn", { [k]: v })} />;
         })}
         <SelectField label="Minimal penilaian" value={ui.minResp} options={[["1", "Semua"], ["5", "≥ 5"], ["10", "≥ 10"], ["30", "≥ 30"]]} onChange={(v) => patch("dsn", { minResp: v })} />
         {active && <button type="button" className="btn btn-sm filter-reset" onClick={() => patch("dsn", { ...Object.fromEntries(FILTERS.map(([k]) => [k, ALL])), minResp: "1" })}>Reset filter</button>}
@@ -110,7 +110,7 @@ function DosenPage() {
                     <tr key={l.key} className={(ui.sel === l.key ? "sel " : "") + (l.rank <= 3 ? "top" : "")} onClick={() => select(l.key)}>
                       <td className="c-rank"><span className={"rank-no" + (l.rank <= 3 ? " top" : "")}>{l.rank}</span></td>
                       <td><button type="button" className="row-link" onClick={(e) => { e.stopPropagation(); select(l.key); }}>{l.name}</button>
-                        <div className="row-meta"><span>{l.subjects.join(", ")}</span><span>{l.programs.join(", ")}</span><span className="sm-only">{fmtNum(l.totalRatings)} penilaian</span></div>
+                        <div className="row-meta"><span>{l.subjects.join(", ")}</span><span>{sortLabels(l.programs).join(", ")}</span><span className="sm-only">{fmtNum(l.totalRatings)} penilaian</span></div>
                         <span className={"pred sm-only " + l.predicate.grade}>{l.predicate.text}</span></td>
                       <td className="c-meth">{l.methods.join(", ")}</td>
                       <td className="num sm-hide">{fmtNum(l.totalRatings)}</td>
@@ -218,7 +218,7 @@ function allPrograms(list) {
   const scored = list.filter((p) => p.feedbackScore != null);
   return {
     aspects: [...cats.values()].map((c) => ({
-      ...c, averageScore: mean(c.items.map((i) => i.averageScore)), items: c.items.sort((a, b) => b.averageScore - a.averageScore),
+      ...c, averageScore: mean(c.items.map((i) => i.averageScore)), items: c.items.sort(byLabel((i) => i.item)),
     })),
     feedbackScore: scored.length ? mean(scored.map((p) => p.feedbackScore)) : null,
     programs: scored.length,
@@ -248,7 +248,7 @@ function ProgramAspectCard({ list, program }) {
 
 // rata-rata feedback tiap program (skala 100), untuk Umpan balik per program
 function ProgramFeedbackCard({ list, program }) {
-  const rows = [...list].filter((p) => p.feedbackScore != null).sort((a, b) => b.feedbackScore - a.feedbackScore);
+  const rows = [...list].filter((p) => p.feedbackScore != null).sort(byLabel((p) => p.program));
   return (
     <section className="card">
       <div className="card-head"><div><h2 className="card-title">Rata-rata umpan balik program</h2>
