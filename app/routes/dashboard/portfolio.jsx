@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { Fragment, useMemo, useRef, useState } from "react";
 import { Navigate } from "react-router";
 import { Calendar } from "../../components/Calendar.jsx";
 import { ChartCanvas } from "../../components/ChartCanvas.jsx";
@@ -80,7 +80,7 @@ function PortfolioPage() {
           <Capaian cap={d.capaian} />
 
           <div className="grid g-2">
-            <Sdm sdm={d.sdmMitra.sdm} total={d.sdmMitra.totalSdm} />
+            <Sdm sdm={d.sdmMitra.sdm} total={d.sdmMitra.totalSdm} byProgram={d.sdmMitra.byProgram} />
             <Mitra items={d.sdmMitra.mitra} />
           </div>
 
@@ -293,18 +293,49 @@ function ParticipantAnalysis({ a, rekapTotal }) {
         </div>
         <div>
           <div className="mini-head">Per jenis peserta</div>
-          {!a.categories.length ? <div className="empty-inline">Belum ada data peserta.</div> : (
-            <table className="mini-tbl">
-              <thead><tr><th>Jenis</th><th className="num">Terdaftar</th><th className="num">Hadir</th><th className="num">Kehadiran</th></tr></thead>
-              <tbody>{a.categories.map((c) => (
-                <tr key={c.category}><td>{c.category}</td><td className="num">{fmtNum(c.registered)}</td><td className="num">{fmtNum(c.present)}</td>
-                  <td className="num"><span className="att-cell"><Bar value={c.attendancePercentage} />{c.attendancePercentage}%</span></td></tr>
-              ))}</tbody>
-            </table>
-          )}
+          {!a.categories.length ? <div className="empty-inline">Belum ada data peserta.</div> : <CategoryTable categories={a.categories} />}
         </div>
       </div>
     </section>
+  );
+}
+
+// jenis peserta dari lebih dari satu program langsung menampilkan rinciannya per program (bisa ditutup)
+function CategoryTable({ categories }) {
+  const [closed, setClosed] = useState(() => new Set());
+  const toggle = (c) => setClosed((s) => { const n = new Set(s); if (n.has(c)) n.delete(c); else n.add(c); return n; });
+  const cells = (r) => <><td className="num">{fmtNum(r.registered)}</td><td className="num">{fmtNum(r.present)}</td>
+    <td className="num"><span className="att-cell"><Bar value={r.attendancePercentage} />{r.attendancePercentage}%</span></td></>;
+  const any = categories.some((c) => c.programs?.length > 1);
+  return (
+    <>
+      <table className="mini-tbl">
+        <thead><tr><th>Jenis</th><th className="num">Terdaftar</th><th className="num">Hadir</th><th className="num">Kehadiran</th></tr></thead>
+        <tbody>{categories.map((c) => {
+          const progs = c.programs || [];
+          const on = progs.length > 1 && !closed.has(c.category);
+          return (
+            <Fragment key={c.category}>
+              <tr className={on ? "on" : ""}>
+                <td>{progs.length > 1 ? (
+                  <button type="button" className="mini-toggle" aria-expanded={on} onClick={() => toggle(c.category)}>
+                    {c.category}<small>{progs.length} program<Icon name={on ? "up" : "down"} size={14} /></small>
+                  </button>
+                ) : c.category}</td>
+                {cells(c)}
+              </tr>
+              {on && progs.map((p) => (
+                <tr key={p.program} className="mini-sub">
+                  <td><span className="pdot" style={{ background: progColor(p.program) }} aria-hidden="true" />{p.programLabel}</td>
+                  {cells(p)}
+                </tr>
+              ))}
+            </Fragment>
+          );
+        })}</tbody>
+      </table>
+      {any && <div className="hint">Klik jenis peserta untuk menutup atau membuka rinciannya per program.</div>}
+    </>
   );
 }
 
@@ -336,8 +367,11 @@ function Capaian({ cap }) {
   );
 }
 
-function Sdm({ sdm, total }) {
+function Sdm({ sdm, total, byProgram }) {
   const [open, setOpen] = useState(null);
+  // warna peran = gradasi navy (urutan daftar peran di atas); warna program tetap untuk program
+  const rank = (pos) => { const i = sdm.findIndex((s) => s.position === pos); return i < 0 ? sdm.length : i; };
+  const shade = (pos) => "r" + Math.min(rank(pos), 4);
   return (
     <section className="card">
       <div className="card-head"><div><h2 className="card-title">SDM terlibat</h2><div className="card-sub">{total} orang berbeda per peran (ikut filter program &amp; bulan)</div></div></div>
@@ -351,6 +385,25 @@ function Sdm({ sdm, total }) {
             </li>
           ))}
         </ul>
+      )}
+      {byProgram?.length > 1 && (
+        <div className="sdm-prog">
+          <div className="mini-head">Per program</div>
+          <ul className="sdm-bars">
+            {byProgram.map((p) => (
+              <li key={p.program}>
+                <span className="sdm-bar-lab"><span className="pdot" style={{ background: progColor(p.program) }} aria-hidden="true" />{p.programLabel}</span>
+                <span className="sdm-stack" role="img" aria-label={p.positions.map((r) => `${r.position} ${r.count}`).join(", ")}
+                  style={{ width: (p.total / byProgram[0].total) * 100 + "%" }}>
+                  {[...p.positions].sort((x, y) => rank(x.position) - rank(y.position)).map((r) => <i key={r.position} className={shade(r.position)} style={{ flex: r.count }} title={`${r.position}: ${r.count}`} />)}
+                </span>
+                <b>{p.total}</b>
+              </li>
+            ))}
+          </ul>
+          <div className="legend">{sdm.map((s) => <span key={s.position}><i className={"sdm-sw " + shade(s.position)} />{s.position}</span>)}</div>
+          <div className="hint">Satu orang bisa terlibat di lebih dari satu program, jadi jumlah per program bisa melebihi total {total} orang.</div>
+        </div>
       )}
       <Sheet open={!!open} onClose={() => setOpen(null)} title={open ? `${open.position} · ${open.count} orang` : ""}>
         {open && <ol className="name-list">{open.names.map((n) => <li key={n}>{n}</li>)}</ol>}
