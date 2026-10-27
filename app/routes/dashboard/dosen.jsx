@@ -3,7 +3,7 @@ import { ChartCanvas } from "../../components/ChartCanvas.jsx";
 import { RequireAccess } from "../../components/Access.jsx";
 import { Icon } from "../../components/Icon.jsx";
 import {
-  Bar, EmptyState, ErrorNote, Kpi, PageHead, PageSkeleton, Pending, RefreshButton, SearchInput, Segmented, SelectField, Sheet, Spinner,
+  Bar, EmptyState, ErrorNote, Kpi, PageHead, PageSkeleton, Pending, RefreshButton, SearchInput, SelectField, Sheet, Spinner,
 } from "../../components/ui.jsx";
 import { fmtNum, withoutAll } from "../../lib/format.js";
 import { useApi } from "../../stores/data.js";
@@ -202,19 +202,46 @@ function ProgramFeedback({ d, program }) {
 
 const fb100 = (v) => (v == null ? "–" : Number(v).toLocaleString("id-ID", { minimumFractionDigits: 1, maximumFractionDigits: 1 }));
 
-// semua aspek form per program, termasuk satu baris narasumber/pengajar (programFeedback dari backend)
+const mean = (v) => v.reduce((s, x) => s + x, 0) / v.length;
+
+// filter Program = Semua: aspek bernama sama digabung antarprogram, bobot sama per program
+// (seperti Rata-rata umpan balik program); rincian tiap aspek = nilainya di tiap program
+function allPrograms(list) {
+  const cats = new Map();
+  for (const p of list) {
+    for (const a of p.aspects) {
+      const c = cats.get(a.category) || { category: a.category, items: [] };
+      cats.set(a.category, c);
+      c.items.push({ item: p.program, averageScore: a.averageScore });
+    }
+  }
+  const scored = list.filter((p) => p.feedbackScore != null);
+  return {
+    aspects: [...cats.values()].map((c) => ({
+      ...c, averageScore: mean(c.items.map((i) => i.averageScore)), items: c.items.sort((a, b) => b.averageScore - a.averageScore),
+    })),
+    feedbackScore: scored.length ? mean(scored.map((p) => p.feedbackScore)) : null,
+    programs: scored.length,
+  };
+}
+
+// semua aspek form, termasuk satu baris narasumber/pengajar (programFeedback dari backend), mengikuti filter Program
 function ProgramAspectCard({ list, program }) {
-  const fixed = list.find((p) => p.program === program);
-  const [pick, setPick] = useState(list[0].program);
-  const cur = fixed || list.find((p) => p.program === pick) || list[0];
+  const one = list.find((p) => p.program === program);
+  const cur = one || allPrograms(list);
   const aspects = [...cur.aspects].sort((a, b) => b.averageScore - a.averageScore);
+  const scope = one ? one.program : "semua program";
   return (
     <section className="card">
-      <div className="card-head"><div><h2 className="card-title">Penilaian per aspek <span className="title-prog">{cur.program}</span></h2>
-        <div className="card-sub">Semua komponen form, termasuk narasumber/pengajar · rata-rata 1–5 · klik aspek untuk rincian pertanyaan</div></div></div>
-      {!fixed && list.length > 1 && <div className="asp-tabs"><Segmented label="Program" value={cur.program} onChange={setPick} options={list.map((p) => [p.program, p.program])} /></div>}
-      <AspectList key={cur.program} aspects={aspects} />
-      <div className="asp-total"><span>Umpan balik {cur.program} · rata-rata {aspects.length} aspek, skala 100</span><b>{fb100(cur.feedbackScore)}</b></div>
+      <div className="card-head"><div><h2 className="card-title">Penilaian per aspek <span className="title-prog">{scope}</span></h2>
+        <div className="card-sub">{one
+          ? "Semua komponen form, termasuk narasumber/pengajar · rata-rata 1–5 · klik aspek untuk rincian pertanyaan"
+          : "Rata-rata tiap aspek antarprogram (bobot sama per program) · rata-rata 1–5 · klik aspek untuk nilai per program"}</div></div></div>
+      <AspectList key={scope} aspects={aspects} unit={one ? "butir" : "program"} />
+      <div className="asp-total">
+        <span>{one ? `Umpan balik ${one.program} · rata-rata ${aspects.length} aspek, skala 100` : `Umpan balik semua program · rata-rata ${cur.programs} program, skala 100`}</span>
+        <b>{fb100(cur.feedbackScore)}</b>
+      </div>
     </section>
   );
 }
@@ -255,7 +282,8 @@ function DayCard({ days, onSelect }) {
   );
 }
 
-function AspectList({ aspects }) {
+// unit: rincian tiap aspek = "butir" pertanyaan (satu program) atau "program" (semua program; aspek dari satu program saja menampilkan nama programnya)
+function AspectList({ aspects, unit = "butir" }) {
   // satu kategori saja (mis. OSN): langsung tampilkan rincian pertanyaannya
   const [open, setOpen] = useState(() => new Set(aspects.length === 1 ? [aspects[0].category] : []));
   const toggle = (c) => setOpen((s) => { const n = new Set(s); if (n.has(c)) n.delete(c); else n.add(c); return n; });
@@ -266,7 +294,7 @@ function AspectList({ aspects }) {
         return (
           <li key={a.category}>
             <button type="button" className="asp-lab" aria-expanded={on} onClick={() => toggle(a.category)}>
-              <span>{a.category}</span><small>{a.items.length > 1 && `${a.items.length} butir`}<Icon name={on ? "up" : "down"} size={14} /></small>
+              <span>{a.category}</span><small>{a.items.length > 1 ? `${a.items.length} ${unit}` : unit === "program" && a.items[0]?.item}<Icon name={on ? "up" : "down"} size={14} /></small>
             </button>
             <Bar value={(a.averageScore / 5) * 100} tone={tone(a.averageScore)} />
             <b>{score(a.averageScore)}</b>
