@@ -185,8 +185,8 @@ function Tree({ items, parentKey, ctx }) {
 }
 
 const NEW_TOP = "__new__";
-// pilihan bagian bertingkat untuk <select>: nama menjorok sesuai kedalaman
-const groupOptions = (groups) => groups.map((g) => [g.key, "    ".repeat(g.depth) + (g.depth ? "› " : "") + g.name]);
+// pilihan bagian untuk <select>: jalur lengkap ("Layanan › Akademik TPB") supaya terbaca saat terbuka maupun tertutup
+const groupOptions = (groups) => groups.map((g) => [g.key, g.parts.join(" › ")]);
 
 function ReportForm({ open, report, presetKey, tree, onClose }) {
   const groups = allGroups(tree);
