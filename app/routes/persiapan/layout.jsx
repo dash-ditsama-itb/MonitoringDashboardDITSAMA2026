@@ -19,7 +19,7 @@ export function meta() {
 }
 
 export default function PersiapanLayout() {
-  return <Gate dashboard={DASHBOARD}>{(session) => <Shell session={session} />}</Gate>;
+  return <Gate>{(session) => <Shell session={session} />}</Gate>;
 }
 
 // laporan & subbagian di dalam satu bagian; subbagian bisa dibuka-tutup

@@ -1,4 +1,5 @@
-// Tab Profil & Layanan Ditsama di halaman masuk (panel biru; di ponsel tampil di bawah formulir).
+// Tab Profil, Layanan & Struktur Organisasi Ditsama di halaman masuk (panel biru; di ponsel tampil di bawah formulir).
+import { OrgChart } from "./OrgChart.jsx";
 
 const PROFIL = [
   "Direktorat Persiapan Bersama (Ditsama) merupakan unit di Institut Teknologi Bandung yang berada di bawah koordinasi Wakil Rektor Bidang Akademik dan Kemahasiswaan. Ditsama berperan dalam mempersiapkan siswa SMA menuju pendidikan tinggi sekaligus memperkuat fondasi akademik, karakter, dan keterampilan interpersonal mahasiswa ITB untuk mendukung keberhasilan studi.",
@@ -18,7 +19,7 @@ const LAYANAN = [
   ]],
 ];
 
-const TABS = [["profil", "Profil"], ["layanan", "Layanan"]];
+const TABS = [["profil", "Profil"], ["layanan", "Layanan"], ["struktur", "Struktur Organisasi"]];
 
 /** tab & setTab dari Shell agar salinan panel (layar lebar) dan bawah formulir (ponsel) sama. `id` membedakan kedua salinan. */
 export function GateInfo({ id, tab, setTab, className = "" }) {
@@ -30,15 +31,15 @@ export function GateInfo({ id, tab, setTab, className = "" }) {
             className={tab === k ? "on" : ""} onClick={() => setTab(k)}>{label}</button>
         ))}
       </div>
-      <div className="gate-info-body" role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-${tab}`} tabIndex={0}>
-        {tab === "profil"
-          ? PROFIL.map((t) => <p key={t.slice(0, 24)}>{t}</p>)
-          : LAYANAN.map(([title, paras]) => (
-            <div key={title} className="gate-info-group">
-              <h2>{title}</h2>
-              {paras.map((t) => <p key={t.slice(0, 24)}>{t}</p>)}
-            </div>
-          ))}
+      <div className={"gate-info-body" + (tab === "struktur" ? " is-org" : "")} role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-${tab}`} tabIndex={0}>
+        {tab === "profil" && PROFIL.map((t) => <p key={t.slice(0, 24)}>{t}</p>)}
+        {tab === "layanan" && LAYANAN.map(([title, paras]) => (
+          <div key={title} className="gate-info-group">
+            <h2>{title}</h2>
+            {paras.map((t) => <p key={t.slice(0, 24)}>{t}</p>)}
+          </div>
+        ))}
+        {tab === "struktur" && <OrgChart />}
       </div>
     </section>
   );

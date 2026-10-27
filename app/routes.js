@@ -1,8 +1,8 @@
 import { index, layout, prefix, route } from "@react-router/dev/routes";
 
 export default [
-  // beranda: pilih dashboard Pra-Universitas atau Pendidikan Persiapan
-  index("./routes/home.jsx"),
+  // halaman pertama: masuk, lalu pilih dashboard Pra-Universitas atau Pendidikan Persiapan
+  index("./routes/login.jsx"),
 
   ...prefix("dashboard", [
     layout("./routes/dashboard/layout.jsx", [

@@ -4,7 +4,9 @@ Website dashboard DITSAMA dengan dua dashboard: **Pra-Universitas** (monitoring 
 **Pendidikan Persiapan** (laporan Power BI). Dibangun dengan **React Router v8 (framework mode, SPA)**
 dan **Zustand** untuk state bersama. Data diambil dari backend
 **monitoring-dashboard-ditsama-be** (Hono + PostgreSQL), dengan login email & password atau Akun ITB.
-Akun baru bisa masuk setelah Administrator memberi peran di Pengaturan Akun. Satu login berlaku untuk kedua dashboard.
+Akun baru bisa masuk setelah Administrator memberi peran di Pengaturan Akun. Satu login berlaku untuk kedua dashboard:
+halaman pertama (`/`) adalah halaman masuk, lalu pengguna memilih Pra-Universitas atau Pendidikan Persiapan. Membuka
+halaman dashboard sebelum masuk diarahkan ke `/?next=…` dan setelah masuk langsung kembali ke halaman itu.
 
 ## Struktur file
 ```
@@ -13,7 +15,7 @@ app/
 ├── routes.js                # daftar route
 ├── config.js                # daftar dashboard, program, jabatan, fase (alamat backend dari .env)
 ├── routes/
-│   ├── home.jsx             # /  — beranda: pilih Pra-Universitas atau Pendidikan Persiapan
+│   ├── login.jsx            # /  — halaman masuk, lalu pilih Pra-Universitas atau Pendidikan Persiapan
 │   ├── persiapan/           # /pendidikan-persiapan — laporan Power BI
 │   │   ├── layout.jsx       # menu laporan per bagian
 │   │   ├── index.jsx        # buka laporan pertama (atau keadaan kosong)
@@ -31,8 +33,9 @@ app/
 │       └── sugt.jsx         # /dashboard/sugt      — ringkasan SUGT (dari aplikasi SUGT lewat backend)
 ├── stores/                  # zustand: auth (sesi), data (cache data backend), ui (filter/tabel)
 ├── lib/                     # api.js (fetch + pesan error), format.js (label, tanggal, akses)
-├── components/              # AppShell (gerbang login, menu, pengalih dashboard, profil), tabel, form, Chart.js, dll.
-└── styles/                  # dashboard.css, home.css
+├── components/              # AppShell (menu, tombol pindah dashboard, profil), AuthGate & GateInfo (halaman masuk:
+│                            # Profil, Layanan, Struktur Organisasi), tabel, form, Chart.js, dll.
+└── styles/                  # dashboard.css, karakter.css
 public/assets/dpb-logo-transparent.png
 ```
 

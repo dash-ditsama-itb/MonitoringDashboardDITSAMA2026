@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router";
-import { API_URL, DASHBOARDS } from "../config.js";
+import { useLocation } from "react-router";
+import { API_URL } from "../config.js";
 import { api, errorText } from "../lib/api.js";
 import { useAuthStore } from "../stores/auth.js";
 import { GateInfo } from "./GateInfo.jsx";
@@ -17,21 +17,36 @@ const COPY = {
 
 const hasMicrosoftToken = () => typeof window !== "undefined" && /[#&]microsoft_token=/.test(window.location.hash);
 
-// Akun ITB selalu kembali ke /dashboard; halaman asal disimpan agar pengguna dibawa kembali ke sana setelah masuk
-const SSO_RETURN = "ditsama-sso-return";
-const rememberSsoReturn = (path) => { try { sessionStorage.setItem(SSO_RETURN, path); } catch { /* penyimpanan diblokir */ } };
-function takeSsoReturn() {
-  try { const v = sessionStorage.getItem(SSO_RETURN); sessionStorage.removeItem(SSO_RETURN); return v; } catch { return null; }
+/** ?next= di halaman masuk = halaman dashboard yang tadi dibuka; hanya jalur di situs ini ("/..."), bukan "/" (= pilih dashboard). */
+export function nextPath(search) {
+  const next = new URLSearchParams(search).get("next");
+  return next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\") && next !== "/" ? next : null;
 }
 
-function Brand() {
+// Akun ITB selalu kembali ke /dashboard#microsoft_token=…; tujuan sebenarnya disimpan saat tombol Akun ITB ditekan
+// ("/" = pilih dashboard) dan dipakai Gate sebagai ?next=
+const SSO_RETURN = "ditsama-sso-return";
+const rememberSsoReturn = (path) => { try { sessionStorage.setItem(SSO_RETURN, path); } catch { /* penyimpanan diblokir */ } };
+const forgetSsoReturn = () => { try { sessionStorage.removeItem(SSO_RETURN); } catch { /* penyimpanan diblokir */ } };
+
+/** Alamat halaman masuk untuk Gate: ?next= = halaman ini (atau tujuan Akun ITB); fragmen URL ikut dibawa untuk diproses di sana. */
+export function loginTarget(location) {
+  let next = location.pathname + location.search;
+  if (/[#&]microsoft_(token|error)=/.test(location.hash)) {
+    try { next = sessionStorage.getItem(SSO_RETURN) || next; } catch { /* penyimpanan diblokir */ }
+  }
+  return { pathname: "/", search: next === "/" ? "" : "?next=" + encodeURIComponent(next), hash: location.hash };
+}
+
+export function Brand() {
   const [failed, setFailed] = useState(false);
   return failed
     ? <div className="gate-logo-text"><b>Direktorat Persiapan Bersama</b><span>Institut Teknologi Bandung</span></div>
     : <img className="gate-logo" src={import.meta.env.BASE_URL + "assets/dpb-logo-transparent.png"} alt="Direktorat Persiapan Bersama ITB" onError={() => setFailed(true)} />;
 }
 
-function Shell({ title = DASHBOARDS[0].title, children }) {
+/** Tata letak halaman masuk: panel biru (tab Profil/Layanan/Struktur Organisasi) + isi (formulir atau pilih dashboard). */
+export function GateShell({ children }) {
   const [tab, setTab] = useState("profil");
   return (
     <div className="gate">
@@ -39,7 +54,7 @@ function Shell({ title = DASHBOARDS[0].title, children }) {
         <img className="gate-badge" src={import.meta.env.BASE_URL + "assets/itb-logo.png"} alt="Logo ITB" width="52" height="52" />
         <GateInfo id="gate-info-side" tab={tab} setTab={setTab} className="on-side" />
         <div>
-          <h1>{title}</h1>
+          <h1>Dashboard DITSAMA 2026</h1>
           <p>Direktorat Persiapan Bersama · Institut Teknologi Bandung</p>
         </div>
       </aside>
@@ -82,17 +97,10 @@ function Msg({ msg }) {
 // akun belum diberi peran oleh Administrator -> tampil sebagai info, bukan error
 const isPending = (err) => err?.raw?.message === "User access is awaiting approval."
 
-/** Gerbang Masuk / Daftar / Verifikasi / Lupa password (tampil sampai user login). title = nama dashboard yang dibuka. */
-export function AuthGate({ title: dashTitle }) {
+/** Gerbang Masuk / Daftar / Verifikasi / Lupa password di halaman masuk "/" (satu akun untuk kedua dashboard). */
+export function AuthGate() {
   const login = useAuthStore((s) => s.login);
   const location = useLocation();
-  const navigate = useNavigate();
-  // masuk lewat Akun ITB: setelah login, kembali ke halaman tempat tombol Akun ITB ditekan
-  const ssoLogin = (user, token) => {
-    login(user, token);
-    const back = takeSsoReturn();
-    if (back && back !== location.pathname) navigate(back, { replace: true });
-  };
   const notice = useAuthStore((s) => s.notice);
   const [mode, setMode] = useState(() => (hasMicrosoftToken() ? "sso" : "login"));
   const [f, setF] = useState({ name: "", email: "", password: "", code: "" });
@@ -118,7 +126,9 @@ export function AuthGate({ title: dashTitle }) {
     if (!token) return go("login", { ok: false, text: "Masuk dengan Akun ITB gagal atau dibatalkan. Silakan coba lagi." });
     run(async () => {
       const out = await post("/auth/microsoft/login", { token });
-      ssoLogin(out.data.user, out.data.accessToken);
+      // tujuan setelah masuk sudah ada di ?next= (dari Gate)
+      forgetSsoReturn();
+      login(out.data.user, out.data.accessToken);
     }).then((err) => err && go("login", { ok: false, info: isPending(err), text: errorText(err) }));
   }, []);
 
@@ -162,12 +172,12 @@ export function AuthGate({ title: dashTitle }) {
 
   if (mode === "sso") {
     return (
-      <Shell title={dashTitle}>
+      <GateShell>
         <div className="gate-form" role="status">
           <Brand />
           <p className="gate-busy"><Spinner />Memproses masuk dengan Akun ITB…</p>
         </div>
-      </Shell>
+      </GateShell>
     );
   }
 
@@ -176,7 +186,7 @@ export function AuthGate({ title: dashTitle }) {
   const button = { login: "Masuk", signup: "Daftar", verify: "Verifikasi", forgot: "Kirim kode", reset: "Simpan password baru" }[mode];
 
   return (
-    <Shell title={dashTitle}>
+    <GateShell>
       <form className="gate-form" onSubmit={submit}>
         <Brand />
         {isEntry && (
@@ -227,7 +237,7 @@ export function AuthGate({ title: dashTitle }) {
         {isEntry && (
           <>
             <div className="gate-or"><span>atau</span></div>
-            <a className="btn btn-block" href={`${API_URL}/auth/microsoft`} onClick={() => rememberSsoReturn(location.pathname)}>
+            <a className="btn btn-block" href={`${API_URL}/auth/microsoft`} onClick={() => rememberSsoReturn(nextPath(location.search) || "/")}>
               <ItbLogo />{mode === "signup" ? "Daftar" : "Masuk"} dengan Akun ITB
             </a>
           </>
@@ -240,6 +250,6 @@ export function AuthGate({ title: dashTitle }) {
           </div>
         )}
       </form>
-    </Shell>
+    </GateShell>
   );
 }

@@ -44,9 +44,12 @@ a{color:var(--blue-ink);text-underline-offset:3px}
   padding:18px 14px 14px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;z-index:40}
 .app.rail-hidden .rail{display:none}
 .rail-top{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 6px}
-.rail-brand{display:flex;gap:10px;align-items:center;color:#fff;text-decoration:none}
-.rail-brand b{display:block;font-size:14.5px;line-height:1.15}
-.rail-brand small{display:block;font-size:11.5px;color:#BCD2EC}
+.rail-brand{display:flex;gap:10px;align-items:center;min-width:0;color:#fff;text-decoration:none}
+.rail-brand small{display:block;font-size:11px;line-height:1.3;color:#BCD2EC;margin-bottom:2px}
+/* nama dashboard yang sedang dibuka */
+.rail-brand b{display:block;font-size:14px;line-height:1.2;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
+.rail-brand:hover small{color:#fff}
+.rail-brand:focus-visible{outline:2px solid #fff;outline-offset:4px;border-radius:6px}
 .badge-itb{width:36px;height:36px;flex:0 0 36px;background:#fff;border-radius:50%;padding:1px;display:block}
 .rail .rail-close{display:none}
 .rail-nav{margin:22px 0 0;display:flex;flex-direction:column;gap:2px;flex:1;overflow-y:auto;padding:0 2px 8px;
@@ -63,17 +66,6 @@ a{color:var(--blue-ink);text-underline-offset:3px}
 .nav-lock{margin-left:auto;opacity:.9}
 .nav-item.disabled .nav-txt+.nav-lock{margin-left:0}
 .nav-item:focus-visible{outline-color:#fff}
-/* pengalih Pra-Universitas ⇄ Pendidikan Persiapan */
-.dash-switch-wrap{margin:16px 2px 0}
-.dash-switch-cap{font-size:10.5px;font-weight:700;color:#9fb6d8;letter-spacing:.08em;text-transform:uppercase;margin:0 10px 6px}
-.dash-switch{display:flex;flex-direction:column;gap:2px;padding:4px;background:rgba(255,255,255,.08);border-radius:12px}
-.dash-switch a{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:9px;color:#C9DAF0;text-decoration:none;font-size:12.5px;font-weight:700;
-  text-transform:uppercase;letter-spacing:.04em}
-.dash-switch a:hover{color:#fff;background:rgba(255,255,255,.08)}
-.dash-switch a.on{background:#fff;color:var(--navy)}
-.dash-switch a:focus-visible{outline:2px solid #fff;outline-offset:1px}
-/* jarak + garis: pengalih dashboard berbeda fungsi dengan menu halaman */
-.dash-switch-wrap+.rail-nav{margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,255,255,.14)}
 .nav-note{font-size:12.5px;color:#B9CBE6;margin:14px 12px 0}
 .nav-label{font-size:11px;font-weight:700;color:#B9CBE6;margin:18px 12px 6px;text-transform:uppercase;letter-spacing:.06em}
 .nav-dot{width:8px;height:8px;border-radius:50%;flex:0 0 8px;margin:0 5px;box-shadow:0 0 0 2px rgba(255,255,255,.18)}
@@ -92,7 +84,15 @@ a{color:var(--blue-ink);text-underline-offset:3px}
   display:inline-flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums}
 .nav-badge.red{background:var(--crit);color:#fff}
 .nav-badge.yellow{background:var(--gold);color:var(--gold-ink)}
-.rail-foot{display:flex;align-items:center;gap:10px;margin-top:8px;padding:12px 10px 4px;border:0;
+/* pindah ke dashboard lain: satu tombol bergaris di bawah menu, dipisah garis dari menu dashboard ini */
+.rail-alt{margin-top:8px;padding:14px 2px 6px;border-top:1px solid rgba(255,255,255,.14)}
+.rail-switch{display:flex;align-items:center;gap:11px;padding:8px 12px;border:1px solid rgba(255,255,255,.34);border-radius:12px;
+  color:#DCE7F5;text-decoration:none;font-size:13px;font-weight:600;line-height:1.3;transition:background .15s,border-color .15s,color .15s}
+.rail-switch small{display:block;font-size:11px;color:#BCD2EC}
+.rail-switch b{display:block;font-weight:800;color:#fff}
+.rail-switch:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.6);color:#fff}
+.rail-switch:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.rail-foot{display:flex;align-items:center;gap:10px;padding:12px 10px 4px;border:0;
   border-top:1px solid rgba(255,255,255,.14);background:transparent;color:#fff;cursor:pointer;text-align:left;border-radius:0}
 .rail-foot:hover .rail-who b{text-decoration:underline;text-underline-offset:3px}
 .rail-who{flex:1;min-width:0}
@@ -124,6 +124,9 @@ a{color:var(--blue-ink);text-underline-offset:3px}
   background:linear-gradient(var(--bg) 70%,rgba(238,242,248,0))}
 .topbar>.icon-btn:first-child{display:none}
 .topbar-filter{margin-left:auto}
+/* nama dashboard di topbar hanya saat rail tak terlihat */
+.topbar-dash{display:none;align-items:center;gap:7px;min-width:0;color:var(--navy);font-size:12.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+.app.rail-hidden .topbar-dash{display:inline-flex}
 .page{display:flex;flex-direction:column;gap:18px}
 .page>.seg{align-self:flex-start}
 .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:2px}
@@ -897,13 +900,31 @@ span.asp-lab{cursor:default}
 .gate-who{display:flex;align-items:center;gap:10px;background:var(--subtle);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px}
 .gate-who b{display:block;font-size:13.5px}
 .gate-who small{color:var(--muted);font-size:12px}
+.gate-who-txt{min-width:0}
+.gate-who-txt small{display:block;line-height:1.35}
+.gate-who-txt b{line-height:1.35}
+/* pilih dashboard setelah masuk: dua kartu putih bergaris tipis, sedikit terangkat saat disorot */
+.dash-choices{display:flex;flex-direction:column;gap:12px}
+.dash-choice{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:14px;
+  background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);padding:16px 16px 16px 18px;color:var(--ink);text-decoration:none;
+  box-shadow:0 1px 2px rgba(32,64,116,.05);
+  transition:transform .2s var(--ease),box-shadow .2s var(--ease),border-color .18s var(--ease)}
+.dash-choice:hover{transform:translateY(-2px);border-color:var(--sky);box-shadow:0 2px 4px rgba(32,64,116,.06),0 14px 28px -12px rgba(32,64,116,.28)}
+.dash-choice:active{transform:none;box-shadow:0 1px 2px rgba(32,64,116,.06)}
+.dash-choice:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
+.dash-choice-ic{width:44px;height:44px;border-radius:12px;background:var(--rail);color:#fff;display:flex;align-items:center;justify-content:center}
+.dash-choice-txt{display:flex;flex-direction:column;gap:3px;min-width:0}
+.dash-choice-txt b{font-size:14.5px;font-weight:800;color:var(--navy);letter-spacing:.04em;text-transform:uppercase}
+.dash-choice-txt span{color:var(--ink-2);font-size:13px;line-height:1.5}
+.dash-choice-go{color:var(--muted);transition:transform .18s var(--ease),color .18s var(--ease)}
+.dash-choice:hover .dash-choice-go{color:var(--blue-ink);transform:translateX(3px)}
 .gate-or{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:12.5px}
 .gate-or::before,.gate-or::after{content:"";flex:1;border-top:1px solid var(--line)}
 .gate-form a.btn{text-decoration:none}
 /* tab Profil & Layanan di panel biru halaman masuk; di ponsel pindah ke bawah formulir */
 .gate-info{display:flex;flex-direction:column;gap:14px;min-height:0}
 .gate-tabs{display:flex;gap:4px;border-bottom:1px solid rgba(255,255,255,.18)}
-.gate-tabs button{background:none;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;padding:8px 2px;margin-right:16px;
+.gate-tabs button{background:none;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;padding:8px 2px;margin-right:14px;white-space:nowrap;
   color:#BCD2EC;font:inherit;font-size:14px;font-weight:700;cursor:pointer}
 .gate-tabs button:hover{color:#fff}
 .gate-tabs button.on{color:#fff;border-bottom-color:#fff}
@@ -914,6 +935,65 @@ span.asp-lab{cursor:default}
 .gate-info-body p{margin:0 0 12px}
 .gate-info-group+.gate-info-group{margin-top:18px}
 .gate-info-group h2{margin:0 0 8px;font-size:15px;font-weight:800;color:#fff}
+.gate-info-body{container-type:inline-size}
+.gate-info-body.is-org{max-width:none;padding-bottom:4px}
+
+/* Struktur Organisasi (tab di halaman masuk). Di panel navy: kotak navy transparan bergaris tipis, Direktur putih.
+   Warna unit dari logo DPB (Pendidikan Persiapan biru, Pra-Universitas oranye) hanya sebagai garis atas kotak subdirektorat.
+   Bawaan: pohon menjorok (panel sempit); bila panel lebar (container query) menjadi bagan dua kolom seperti slide. */
+.org{--org-line:rgba(255,255,255,.36);--org-w:1.5px;--in:14px;--tick-y:25px;--step:10px;--unit:rgba(255,255,255,.4);
+  --box-bg:rgba(255,255,255,.07);--box-line:rgba(255,255,255,.2);--role:#BCD2EC;--name:#fff;
+  --lead-bg:#fff;--lead-role:var(--blue-ink);--lead-name:var(--navy)}
+.org .unit-persiapan{--unit:#86B5EC}
+.org .unit-pra{--unit:#F2A562}
+.org-box{position:relative;background:var(--box-bg);border:1px solid var(--box-line);border-radius:8px;padding:8px 12px;min-height:50px;
+  display:flex;flex-direction:column;justify-content:center;gap:2px;text-align:left}
+.org-role{font-size:12.5px;line-height:1.4;color:var(--role)}
+.org-name{font-size:13.5px;line-height:1.35;font-weight:700;color:var(--name)}
+.org-box:not(:has(.org-name)) .org-role{font-weight:700;color:var(--name)}
+.org-box.lead{background:var(--lead-bg);border-color:var(--lead-bg);padding:10px 14px}
+.org-box.lead .org-role{color:var(--lead-role);font-weight:600}
+.org-box.lead .org-name{color:var(--lead-name);font-size:14.5px;font-weight:800}
+.org-branch>.org-box{border-top:3px solid var(--unit)}
+
+/* pohon: garis pandu menurun dari Direktur, cabang ke Sekretariat, tiap subdirektorat, lalu seksinya */
+.org-staff>span{display:none}
+.org-staff,.org-branches,.org-sections{margin:0 0 0 var(--in);padding:0;list-style:none}
+.org-staff,.org-branch,.org-sections li{position:relative;padding:var(--step) 0 0 var(--in)}
+.org-staff::before,.org-branch::before,.org-sections li::before{content:"";position:absolute;left:0;top:0;bottom:0;border-left:var(--org-w) solid var(--org-line)}
+.org-branch:last-child::before,.org-sections li:last-child::before{bottom:auto;height:calc(var(--step) + var(--tick-y))}
+.org-staff .org-box::before,.org-branch>.org-box::before,.org-sections .org-box::before{content:"";position:absolute;right:100%;top:calc(var(--tick-y) - 1px);width:var(--in);border-top:var(--org-w) solid var(--org-line)}
+.org-branch>.org-box::before{top:calc(var(--tick-y) - 3px)}
+
+/* bagan dua kolom (panel lebar): Direktur di tengah, Sekretariat bercabang ke kanan, dua subdirektorat berdampingan */
+@container (min-width:620px){
+  .org{--gap:28px;--axis:32%;--drop:26px}
+  .org-box{align-items:center;text-align:center}
+  .org-head{display:flex;justify-content:center}
+  .org-head .org-box{width:min(320px,100%)}
+  .org-staff{display:grid;grid-template-columns:1fr 1fr;margin:0;padding:18px 0}
+  .org-staff::before{left:50%;transform:translateX(-50%)}
+  .org-staff>span{display:block}
+  .org-staff .org-box{margin-left:34px;max-width:220px}
+  .org-staff .org-box::before{top:50%;width:34px}
+  .org-branches{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--gap);margin:0;padding-top:var(--drop);position:relative}
+  .org-branches::before{content:"";position:absolute;top:0;border-top:var(--org-w) solid var(--org-line);
+    left:calc((100% - var(--gap)) / 2 * .32);right:calc((100% - var(--gap)) / 2 * .68)}
+  .org-branch{padding:0}
+  .org-branch::before,.org-branch:last-child::before{top:calc(var(--drop) * -1);bottom:auto;left:var(--axis);height:var(--drop);transform:translateX(-50%)}
+  .org-branch>.org-box{width:calc(var(--axis) * 2)}
+  .org-branch>.org-box::before{display:none}
+  .org-sections{margin-left:var(--axis);padding-left:26px}
+  .org-sections li{padding:14px 0 0}
+  .org-sections li::before{left:-26px;transform:translateX(-50%)}
+  .org-sections li:last-child::before{height:calc(50% + 7px)}
+  .org-sections .org-box::before{top:50%;width:26px}
+}
+/* versi terang di bawah formulir (ponsel, latar putih) */
+.below-form .org{--org-line:#A9B7CB;--unit:#8A96A8;--box-bg:var(--subtle);--box-line:var(--line);--role:var(--ink-2);--name:var(--navy);
+  --lead-bg:var(--rail);--lead-role:#BCD2EC;--lead-name:#fff}
+.below-form .org .unit-persiapan{--unit:var(--blue)}
+.below-form .org .unit-pra{--unit:#E8862B}
 .gate-side{position:sticky;top:0;height:100dvh}
 .gate-side .gate-info{flex:1}
 .gate-main{flex-direction:column;gap:40px}
@@ -940,6 +1020,7 @@ span.asp-lab{cursor:default}
   .rail .rail-close{display:inline-flex}
   .topbar>.icon-btn:first-child{display:inline-flex}
   .topbar>.icon-btn.desk{display:none}
+  .topbar-dash{display:inline-flex}
   .stage{padding:0 16px 40px}
   .page-title{font-size:22px}
   .grid,.page{gap:14px}

@@ -27,7 +27,7 @@ const NAV_PROGRAMS = PROGRAMS
   .sort(byLabel((p) => p.label));
 
 export default function DashboardLayout() {
-  return <Gate dashboard={DASHBOARD}>{(session) => <Shell session={session} />}</Gate>;
+  return <Gate>{(session) => <Shell session={session} />}</Gate>;
 }
 
 function Shell({ session }) {

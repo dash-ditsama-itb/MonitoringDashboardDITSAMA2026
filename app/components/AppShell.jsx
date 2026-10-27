@@ -1,6 +1,6 @@
-// Kerangka bersama kedua dashboard: gerbang login, menu kiri (rail) + pengalih dashboard, topbar, profil.
+// Kerangka bersama kedua dashboard: gerbang login, menu kiri (rail) + tombol pindah dashboard, topbar, profil.
 import { useEffect, useState } from "react";
-import { Link, NavLink, Outlet, useLocation } from "react-router";
+import { Link, Navigate, NavLink, Outlet, useLocation } from "react-router";
 import { useShallow } from "zustand/react/shallow";
 import { DASHBOARDS } from "../config.js";
 import { refreshUser } from "../lib/api.js";
@@ -8,7 +8,7 @@ import { grantLabel, programLabel, roleName } from "../lib/format.js";
 import { useAuthStore } from "../stores/auth.js";
 import { useUiStore } from "../stores/ui.js";
 import { ACCESS } from "./Access.jsx";
-import { AuthGate } from "./AuthGate.jsx";
+import { loginTarget } from "./AuthGate.jsx";
 import { FeedbackHost } from "./feedback.jsx";
 import { Icon } from "./Icon.jsx";
 import { Sheet, Spinner } from "./ui.jsx";
@@ -29,30 +29,16 @@ export function NavItem({ session, area, to, end, children }) {
   return <NavLink className={navClass} to={to} end={end}>{children}</NavLink>;
 }
 
-/** Login (satu akun untuk kedua dashboard), lalu isi dashboard sesuai hak akses peran. */
-export function Gate({ dashboard, children }) {
+/** Belum masuk -> ke halaman masuk "/" (dengan ?next= agar kembali ke sini setelah masuk; lihat loginTarget). */
+export function Gate({ children }) {
   const session = useAuthStore((s) => s.session);
+  const signedOut = useAuthStore((s) => s.signedOut);
+  const location = useLocation();
   // hak akses selalu diambil ulang saat dashboard dibuka, jadi perubahan peran langsung terasa
   useEffect(() => { if (session?.token) refreshUser(); }, [session?.token]);
-  if (!session) return <><AuthGate title={dashboard.title} /><FeedbackHost /></>;
+  if (!session) return <Navigate replace to={signedOut && !location.hash ? "/" : loginTarget(location)} />;
   if (!session.permissions) return <p className="gate-loading"><Spinner />Memuat akses akun…</p>;
   return children(session);
-}
-
-// Pra-Universitas ⇄ Pendidikan Persiapan (ditulis kapital, terpisah dari menu halaman di bawahnya)
-function DashboardSwitch({ current }) {
-  return (
-    <div className="dash-switch-wrap">
-      <div className="dash-switch-cap" aria-hidden="true">Pilih dashboard</div>
-      <nav className="dash-switch" aria-label="Pilih dashboard">
-        {DASHBOARDS.map((d) => (
-          <Link key={d.key} to={d.to} className={d.key === current ? "on" : ""} aria-current={d.key === current ? "page" : undefined}>
-            <Icon name={d.icon} size={16} />{d.label}
-          </Link>
-        ))}
-      </nav>
-    </div>
-  );
 }
 
 /**
@@ -65,6 +51,8 @@ export function AppShell({ session, dashboard, nav, control, topbarEnd, profile 
   })));
   const [profileOpen, setProfileOpen] = useState(false);
   const location = useLocation();
+  // menu hanya milik dashboard ini; dashboard lain lewat satu tombol "Pindah ke …" di bawah menu
+  const other = DASHBOARDS.find((d) => d.key !== dashboard.key);
 
   // tutup laci menu (ponsel) setiap pindah halaman
   useEffect(() => { ui.set({ railOpen: false, controlOpen: false }); }, [location.pathname]);
@@ -74,14 +62,17 @@ export function AppShell({ session, dashboard, nav, control, topbarEnd, profile 
       <a className="skip" href="#main">Langsung ke konten</a>
       <aside className={"rail" + (ui.railOpen ? " open" : "")} aria-label="Menu utama">
         <div className="rail-top">
-          <Link to="/" className="rail-brand" title="Ke beranda DITSAMA">
+          {/* judul rail = dashboard yang sedang dibuka */}
+          <Link to="/" className="rail-brand" title="Ke halaman pilih dashboard">
             <img className="badge-itb" src={import.meta.env.BASE_URL + "assets/itb-logo.png"} alt="Logo ITB" width="36" height="36" />
-            <span><b>DITSAMA 2026</b><small>Direktorat Persiapan Bersama</small></span>
+            <span><small>Dashboard DITSAMA 2026</small><b>{dashboard.label}</b></span>
           </Link>
           <button className="icon-btn on-dark rail-close" type="button" onClick={() => ui.set({ railOpen: false })} aria-label="Tutup menu"><Icon name="x" size={18} /></button>
         </div>
-        <DashboardSwitch current={dashboard.key} />
         <nav className="rail-nav" aria-label={"Menu " + dashboard.label}>{nav}</nav>
+        <div className="rail-alt">
+          <Link className="rail-switch" to={other.to}><Icon name="swap" size={16} /><span><small>Pindah ke</small><b>{other.label}</b></span></Link>
+        </div>
         <button className="rail-foot" type="button" onClick={() => setProfileOpen(true)}>
           <span className="ava">{(session.name || "?").slice(0, 1).toUpperCase()}</span>
           <span className="rail-who"><b>{session.name}</b><small>{roleName(session)}</small></span>
@@ -99,6 +90,8 @@ export function AppShell({ session, dashboard, nav, control, topbarEnd, profile 
             aria-label={ui.railHidden ? "Tampilkan menu" : "Sembunyikan menu"} title={ui.railHidden ? "Tampilkan menu" : "Sembunyikan menu"}>
             <Icon name="menu" size={20} />
           </button>
+          {/* nama dashboard saat menu kiri tersembunyi (ponsel, atau menu disembunyikan) */}
+          <span className="topbar-dash"><Icon name={dashboard.icon} size={16} />{dashboard.label}</span>
           {topbarEnd}
         </div>
         <Outlet />
@@ -111,10 +104,10 @@ export function AppShell({ session, dashboard, nav, control, topbarEnd, profile 
 }
 
 function ProfileSheet({ open, onClose, session, children }) {
-  const logout = useAuthStore((s) => s.logout);
+  const signOut = useAuthStore((s) => s.signOut);
   return (
     <Sheet open={open} onClose={onClose} title="Profil" footer={(
-      <><span className="grow" /><button className="btn btn-danger-ghost" type="button" onClick={() => { onClose(); logout(); }}><Icon name="logout" size={16} />Keluar</button></>
+      <><span className="grow" /><button className="btn btn-danger-ghost" type="button" onClick={() => { onClose(); signOut(); }}><Icon name="logout" size={16} />Keluar</button></>
     )}>
       <div className="profile">
         <span className="ava lg">{(session.name || "?").slice(0, 1).toUpperCase()}</span>

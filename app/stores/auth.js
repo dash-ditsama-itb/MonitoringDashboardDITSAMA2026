@@ -22,14 +22,20 @@ export const useAuthStore = create(persist((set) => ({
   // permissions dari backend; diperbarui lewat GET /auth/me agar perubahan peran langsung berlaku
   session: null,
   notice: "",   // pesan untuk gerbang login (mis. sesi berakhir, menunggu persetujuan)
+  signedOut: false,   // keluar lewat tombol Keluar: halaman masuk tanpa ?next=, jadi akun berikutnya mulai dari pilih dashboard
 
   login: (user, token) => {
     useDataStore.getState().reset();
-    set({ session: { ...user, token }, notice: "" });
+    set({ session: { ...user, token }, notice: "", signedOut: false });
   },
   setUser: (user) => set((s) => ({ session: s.session && { ...s.session, ...user } })),
+  // sesi berakhir / ditolak backend: setelah masuk lagi pengguna kembali ke halaman yang sedang dibuka
   logout: (notice = "") => {
-    set({ session: null, notice });
+    set({ session: null, notice, signedOut: false });
+    useDataStore.getState().reset();
+  },
+  signOut: () => {
+    set({ session: null, notice: "", signedOut: true });
     useDataStore.getState().reset();
   },
 }), {
