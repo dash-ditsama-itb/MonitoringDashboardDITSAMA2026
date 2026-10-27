@@ -12,6 +12,7 @@ import { CheckGridSkeleton, EmptyState, ErrorNote, SearchInput, Sheet, Spinner, 
 
 const ALL = "Semua";
 const LAINNYA = "__LAINNYA__";
+const UNUSED = "__BELUM__";   // filter program: nama yang belum dipakai di kegiatan mana pun
 
 // sama dengan pencocokan di backend: huruf besar/kecil, spasi, dan tanda baca diabaikan
 export const sdmKey = (v) => String(v || "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
@@ -128,12 +129,12 @@ export function HumanResourcesTable() {
   const [adding, setAdding] = useState(false);
   const [busyId, setBusyId] = useState(null);
 
-  // pilihan program = program yang sudah memakai nama SDM; nama yang belum dipakai hanya tampil di "Semua program"
+  // pilihan program = program yang sudah memakai nama SDM, lalu "Belum dipakai" untuk nama tanpa kegiatan
   const programs = PROGRAMS_AZ.filter((p) => members.some((m) => m.programs?.includes(p.api)));
   // filter selalu tampil (nonaktif selama memuat) agar toolbar tidak bergeser; backend lama tanpa `programs` tidak menampilkannya
   const byProgram = !data || members.some((m) => m.programs);
   const rows = members.filter((m) => (position === ALL || sdmKey(m.position) === sdmKey(position))
-    && (program === ALL || m.programs?.includes(program))
+    && (program === ALL || (program === UNUSED ? !m.activityCount : m.programs?.includes(program)))
     && (!q || sdmKey(m.name).includes(sdmKey(q))));
   // kegiatan tempat nama dipakai, ikut filter program
   const usedIn = (m) => (m.activities || []).filter((a) => program === ALL || a.program === program);
@@ -181,6 +182,7 @@ export function HumanResourcesTable() {
           <select className="tb-select" value={program} onChange={(e) => setProgram(e.target.value)} aria-label="Filter program" disabled={!data}>
             <option value={ALL}>Semua program</option>
             {programs.map((p) => <option key={p.api} value={p.api}>{p.label}</option>)}
+            <option value={UNUSED}>Belum dipakai</option>
           </select>
         )}
       </div>
@@ -189,7 +191,7 @@ export function HumanResourcesTable() {
 
       {!data && loading ? <TableSkeleton check={canEdit} /> : rows.length === 0 && !error ? (
         q || program !== ALL ? (
-          <EmptyState icon="search" title={q ? `Tidak ada nama yang cocok dengan "${q}"` : `Belum ada nama SDM di ${programLabel(program)}`}>
+          <EmptyState icon="search" title={q ? `Tidak ada nama yang cocok dengan "${q}"` : program === UNUSED ? "Semua nama SDM sudah dipakai di kegiatan" : `Belum ada nama SDM di ${programLabel(program)}`}>
             {q ? "Coba kata kunci lain." : "Ubah filter peran atau program."}
           </EmptyState>
         ) : (
