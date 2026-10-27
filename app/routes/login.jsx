@@ -31,7 +31,7 @@ export default function Login() {
 }
 
 function Chooser({ session }) {
-  const logout = useAuthStore((s) => s.logout);
+  const signOut = useAuthStore((s) => s.signOut);
   return (
     <GateShell>
       <div className="gate-form">
@@ -54,7 +54,7 @@ function Chooser({ session }) {
           ))}
         </nav>
         <div className="gate-links">
-          <button type="button" className="link-btn" onClick={logout}><Icon name="logout" size={15} />Keluar</button>
+          <button type="button" className="link-btn" onClick={signOut}><Icon name="logout" size={15} />Keluar</button>
         </div>
       </div>
     </GateShell>
