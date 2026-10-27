@@ -39,16 +39,19 @@ export function Gate({ dashboard, children }) {
   return children(session);
 }
 
-// Pra-Universitas ⇄ Pendidikan Persiapan
+// Pra-Universitas ⇄ Pendidikan Persiapan (ditulis kapital, terpisah dari menu halaman di bawahnya)
 function DashboardSwitch({ current }) {
   return (
-    <nav className="dash-switch" aria-label="Pilih dashboard">
-      {DASHBOARDS.map((d) => (
-        <Link key={d.key} to={d.to} className={d.key === current ? "on" : ""} aria-current={d.key === current ? "page" : undefined}>
-          <Icon name={d.icon} size={16} />{d.label}
-        </Link>
-      ))}
-    </nav>
+    <div className="dash-switch-wrap">
+      <div className="dash-switch-cap" aria-hidden="true">Pilih dashboard</div>
+      <nav className="dash-switch" aria-label="Pilih dashboard">
+        {DASHBOARDS.map((d) => (
+          <Link key={d.key} to={d.to} className={d.key === current ? "on" : ""} aria-current={d.key === current ? "page" : undefined}>
+            <Icon name={d.icon} size={16} />{d.label}
+          </Link>
+        ))}
+      </nav>
+    </div>
   );
 }
 

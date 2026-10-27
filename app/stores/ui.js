@@ -27,7 +27,7 @@ export const useUiStore = create((set) => ({
     ujian: "__LAST__", rankingSortBy: "ujian", rankAll: false, sekAll: false, schoolSearch: "", search: "", page: 1, perPage: 25,
   },
 
-  // Portofolio dan Feedback
+  // Feedback (program & narasumber/pengajar)
   dsn: { program: ALL, mapel: ALL, metode: ALL, kelas: ALL, bahasa: ALL, minResp: "1", sel: "", search: "" },
 
   // patch sebagian objek state: patch("dash", { program: "SIAP ITB" })

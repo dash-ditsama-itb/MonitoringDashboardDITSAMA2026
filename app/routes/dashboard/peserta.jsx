@@ -22,8 +22,8 @@ const SORTS = [["ujian", "Nilai ujian terpilih"], ["rata", "Rata-rata semua ujia
 const LOW = { C: 1, D: 1, E: 1 };
 // Program dipilih lewat tab di atas, bukan dropdown
 const FILTER_BAR = FILTERS.filter(([k]) => k !== "program");
-// urutan tab; sheet lain menyusul sesuai abjad
-const TAB_ORDER = [/siap/i, /riset/i, /opsi/i, /^osn$/i, /bti/i, /eduquest/i, /sang cendekia|\bp?scd\b/i];
+// urutan tab; program tanpa sheet peserta (WIT, MAUNG, SUGT) di akhir; sheet lain menyusul sesuai abjad
+const TAB_ORDER = [/siap/i, /riset/i, /opsi/i, /^osn$/i, /bti/i, /eduquest/i, /sang cendekia|\bp?scd\b/i, /^wit$/i, /^maung$/i, /^sugt$/i];
 const DEFAULT_TAB = "SIAP ITB";
 const tabRank = (p) => { const i = TAB_ORDER.findIndex((re) => re.test(p)); return i < 0 ? TAB_ORDER.length : i; };
 const sortTabs = (list) => [...list].sort((a, b) => tabRank(a) - tabRank(b) || a.localeCompare(b, "id"));
@@ -226,10 +226,16 @@ function PesertaPage() {
   const dash = useApi("/dashboard/peserta", { ...query, ...(ui.rankingSortBy !== "ujian" ? { rankingSortBy: ui.rankingSortBy } : {}) });
   const d = dash.data?.data;
   const fo = d?.filterOptions;
-  // daftar tab disimpan agar tidak hilang saat data tab berikutnya dimuat
-  const [tabs, setTabs] = useState([]);
+  // daftar sheet disimpan agar tab tidak hilang saat data tab berikutnya dimuat
+  const [savedSheets, setSavedSheets] = useState([]);
   const tabKey = (fo?.programs || []).join("|");
-  useEffect(() => { if (tabKey) setTabs(sortTabs(tabKey.split("|"))); }, [tabKey]);
+  useEffect(() => { if (tabKey) setSavedSheets(tabKey.split("|")); }, [tabKey]);
+  const sheets = tabKey ? tabKey.split("|") : savedSheets;
+  // semua program tetap jadi tab; yang belum punya sheet peserta ditandai "belum ada data"
+  const emptyTabs = sheets.length ? PROGRAMS.filter((p) => !sheets.some((x) => rekapProgramApi(x) === p.api)).map((p) => p.label) : [];
+  const tabs = sheets.length ? sortTabs([...sheets, ...emptyTabs]) : [];
+  // backend menampilkan semua program bila sheet program tidak ada, jadi datanya tidak ditampilkan
+  const noData = emptyTabs.includes(program);
   // program tersimpan yang sudah tidak ada sheetnya -> pindah ke tab pertama
   useEffect(() => { if (tabs.length && !tabs.includes(program)) openTab(tabs[0]); }, [tabs, program]);
   const setFilter = (k, v) => patch("pst", { [k]: v, page: 1 });
@@ -252,11 +258,26 @@ function PesertaPage() {
       </PageHead>
 
       {tabs.length > 0 && <div className="pst-tabs" role="tablist" aria-label="Program">
-        {tabs.map((p) => <button key={p} type="button" role="tab" aria-selected={p === program} className={p === program ? "on" : ""} onClick={() => p !== program && openTab(p)}>{p}</button>)}
+        {tabs.map((p) => {
+          const empty = emptyTabs.includes(p);
+          return (
+            <button key={p} type="button" role="tab" aria-selected={p === program} className={(p === program ? "on" : "") + (empty ? " empty" : "")}
+              onClick={() => p !== program && openTab(p)} title={empty ? `Belum ada data peserta ${p}` : undefined}>
+              {p}{empty && <small>belum ada data</small>}
+            </button>
+          );
+        })}
       </div>}
 
       <RekapPeserta highlight={rekapProgramApi(program)} highlightLabel={program} scope="semua program" />
 
+      {noData ? (
+        <section className="card">
+          <EmptyState icon="users" title={`Belum ada data peserta ${program}`}>
+            Data tampil otomatis setelah sheet peserta {program} ditambahkan ke spreadsheet peserta.
+          </EmptyState>
+        </section>
+      ) : <>
       <section className="card filter-bar">
         {/* hanya filter yang ada isinya di sheet program ini */}
         {FILTER_BAR.map(([k, optKey, label]) => {
@@ -288,6 +309,7 @@ function PesertaPage() {
         </>
       )}
       <Participants query={query} exams={fo?.ujians || []} scope={scope} />
+      </>}
     </div>
   );
 }

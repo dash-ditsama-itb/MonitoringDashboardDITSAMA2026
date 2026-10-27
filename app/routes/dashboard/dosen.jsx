@@ -22,7 +22,7 @@ const nice = (n) => String(n || "").split(",")[0].replace(/^((prof|dr|drs|dra|ir
 const hasMethod = (methods) => methods.some((m) => m !== "–");
 
 export default function Dosen() {
-  return <RequireAccess area="activities" page="Portofolio dan Feedback"><DosenPage /></RequireAccess>;
+  return <RequireAccess area="activities" page="Feedback"><DosenPage /></RequireAccess>;
 }
 
 function DosenPage() {
@@ -43,7 +43,7 @@ function DosenPage() {
 
   return (
     <div className="page">
-      <PageHead title="Portofolio dan Feedback" sub="Feedback program dan hasil evaluasi narasumber/pengajar oleh peserta">
+      <PageHead title="Feedback" sub="Feedback program dan hasil evaluasi narasumber/pengajar oleh peserta">
         <button type="button" className="btn" onClick={refresh} disabled={busy || loading}>
           {busy ? <Spinner /> : <Icon name="refresh" size={16} />}<span className="btn-txt">Muat ulang</span>
         </button>

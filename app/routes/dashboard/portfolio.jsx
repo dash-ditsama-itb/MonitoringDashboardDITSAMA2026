@@ -71,10 +71,7 @@ function PortfolioPage() {
           <ParticipantAnalysis a={d.participantAnalysis}
             rekapTotal={dash.program === "Semua" && dash.month === "Semua" ? REKAP_PESERTA.reduce((s, r) => s + r.value, 0) : null} />
 
-          <div className="grid g-2">
-            <Issues items={d.issues} />
-            <Milestones items={d.milestones} calendar={d.calendar} />
-          </div>
+          <Milestones items={d.milestones} calendar={d.calendar} />
 
           <Capaian cap={d.capaian} />
 
@@ -95,6 +92,7 @@ function PortfolioPage() {
           </section>
 
           <Calendar events={d.calendar} />
+          <Issues items={d.issues} />
         </>
       )}
     </div>
@@ -114,13 +112,15 @@ function PortfolioSkeleton() {
 // semua program: jumlah program selesai (termasuk SUGT) / total program; satu program: aktivitas selesai / total aktivitasnya
 function Progress({ kpi, portfolio, sugt, program, last }) {
   if (program) return <ProgramProgress program={program} kpi={kpi} last={last} showProgram />;
-  const note = kpi.totalActivities
-    ? `${fmtNum(kpi.totalDone)} dari ${fmtNum(kpi.totalActivities)} total aktivitas program selesai (${kpi.progress}%)`
-    : "Belum ada aktivitas tercatat";
   const done = portfolioRows(portfolio, sugt).filter(isProgramDone).length;
   const p = pct(done, TOTAL_PROGRAMS);
+  // aktivitas selesai dari semua program, angka kedua di bawah jumlah program selesai
+  const activities = kpi.totalActivities
+    ? { label: "Aktivitas Selesai", value: `${fmtNum(kpi.totalDone)}/${fmtNum(kpi.totalActivities)}`, unit: `aktivitas (${kpi.progress}%)`, progress: kpi.progress }
+    : null;
   return <ProgressSummary label="Program Selesai" info="progress" kpi={kpi} progress={p}
-    value={`${done}/${TOTAL_PROGRAMS}`} unit={`program (${p}%)`} note={note} last={last} showProgram />;
+    value={`${done}/${TOTAL_PROGRAMS}`} unit={`program (${p}%)`} note={activities ? null : "Belum ada aktivitas tercatat"}
+    second={activities} last={last} showProgram />;
 }
 
 // filter Semua program: Umpan Balik Peserta = rata-rata umpan balik tiap program (termasuk SUGT), bobot sama
