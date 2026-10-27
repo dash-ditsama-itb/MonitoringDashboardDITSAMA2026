@@ -39,7 +39,7 @@ const MESSAGES = {
   "Please restart the process.": "Sesi masuk dengan Akun ITB berakhir. Silakan ulangi masuk dengan Akun ITB.",
   "Human resource member already exists.": "Nama ini sudah ada di daftar SDM untuk peran tersebut.",
   "Human resource member not found.": "Nama SDM tidak ditemukan (mungkin sudah dihapus). Muat ulang halaman.",
-  "Human resource member is still linked to activities.": "Nama ini masih dipakai di kegiatan. Gabungkan ke nama lain untuk menghapusnya.",
+  "Human resource member is still linked to activities.": "Nama ini masih terlibat di kegiatan. Gabungkan ke nama lain untuk menghapusnya.",
   "Human resource member position does not match.": "Nama SDM tidak sesuai dengan perannya. Muat ulang halaman lalu pilih lagi.",
   "Duplicate human resource position.": "Setiap peran SDM hanya boleh dipilih sekali per kegiatan.",
   "Human resource members must have the same position.": "Nama hanya bisa digabung dengan nama dari peran yang sama.",

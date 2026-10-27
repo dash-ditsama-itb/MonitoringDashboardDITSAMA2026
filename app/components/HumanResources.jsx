@@ -12,7 +12,7 @@ import { CheckGridSkeleton, EmptyState, ErrorNote, SearchInput, Sheet, Spinner, 
 
 const ALL = "Semua";
 const LAINNYA = "__LAINNYA__";
-const UNUSED = "__BELUM__";   // filter program: nama yang belum dipakai di kegiatan mana pun
+const UNUSED = "__BELUM__";   // filter program: nama yang belum terlibat di kegiatan mana pun
 
 // sama dengan pencocokan di backend: huruf besar/kecil, spasi, dan tanda baca diabaikan
 export const sdmKey = (v) => String(v || "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
@@ -129,14 +129,14 @@ export function HumanResourcesTable() {
   const [adding, setAdding] = useState(false);
   const [busyId, setBusyId] = useState(null);
 
-  // pilihan program = program yang sudah memakai nama SDM, lalu "Belum dipakai" untuk nama tanpa kegiatan
+  // pilihan program = program yang sudah memakai nama SDM, lalu "Belum terlibat" untuk nama tanpa kegiatan
   const programs = PROGRAMS_AZ.filter((p) => members.some((m) => m.programs?.includes(p.api)));
   // filter selalu tampil (nonaktif selama memuat) agar toolbar tidak bergeser; backend lama tanpa `programs` tidak menampilkannya
   const byProgram = !data || members.some((m) => m.programs);
   const rows = members.filter((m) => (position === ALL || sdmKey(m.position) === sdmKey(position))
     && (program === ALL || (program === UNUSED ? !m.activityCount : m.programs?.includes(program)))
     && (!q || sdmKey(m.name).includes(sdmKey(q))));
-  // kegiatan tempat nama dipakai, ikut filter program
+  // kegiatan tempat nama terlibat, ikut filter program
   const usedIn = (m) => (m.activities || []).filter((a) => program === ALL || a.program === program);
 
   const run = async (id, fn, okText) => {
@@ -182,7 +182,7 @@ export function HumanResourcesTable() {
           <select className="tb-select" value={program} onChange={(e) => setProgram(e.target.value)} aria-label="Filter program" disabled={!data}>
             <option value={ALL}>Semua program</option>
             {programs.map((p) => <option key={p.api} value={p.api}>{p.label}</option>)}
-            <option value={UNUSED}>Belum dipakai</option>
+            <option value={UNUSED}>Belum terlibat</option>
           </select>
         )}
       </div>
@@ -191,7 +191,7 @@ export function HumanResourcesTable() {
 
       {!data && loading ? <TableSkeleton check={canEdit} /> : rows.length === 0 && !error ? (
         q || program !== ALL ? (
-          <EmptyState icon="search" title={q ? `Tidak ada nama yang cocok dengan "${q}"` : program === UNUSED ? "Semua nama SDM sudah dipakai di kegiatan" : `Belum ada nama SDM di ${programLabel(program)}`}>
+          <EmptyState icon="search" title={q ? `Tidak ada nama yang cocok dengan "${q}"` : program === UNUSED ? "Semua nama SDM sudah terlibat di kegiatan" : `Belum ada nama SDM di ${programLabel(program)}`}>
             {q ? "Coba kata kunci lain." : "Ubah filter peran atau program."}
           </EmptyState>
         ) : (
@@ -207,7 +207,7 @@ export function HumanResourcesTable() {
                 <tr>
                   <th>Nama</th>
                   <th>Peran</th>
-                  <th className="c-used">Dipakai di</th>
+                  <th className="c-used">Terlibat di</th>
                   {canEdit && <th className="c-act"><span className="sr-only">Aksi</span></th>}
                 </tr>
               </thead>
@@ -222,7 +222,7 @@ export function HumanResourcesTable() {
                       ) : m.name}
                     </td>
                     <td>{m.position}</td>
-                    <td className="c-used">{!m.activityCount ? <span className="muted">Belum dipakai</span> : !m.activities ? `${fmtNum(m.activityCount)} kegiatan` : (
+                    <td className="c-used">{!m.activityCount ? <span className="muted">Belum terlibat</span> : !m.activities ? `${fmtNum(m.activityCount)} kegiatan` : (
                       <>
                         <button type="button" className="row-link" onClick={() => setUsage(m)}>{fmtNum(usedIn(m).length)} kegiatan</button>
                         <div className="row-meta">{(program === ALL ? m.programs : [program]).map(programLabel).sort(byLabel()).map((l) => <span key={l}>{l}</span>)}</div>
@@ -240,7 +240,7 @@ export function HumanResourcesTable() {
                             <button type="button" className="icon-btn" title="Ubah nama" aria-label={"Ubah nama " + m.name} onClick={() => setEditing({ id: m.id, name: m.name })}><Icon name="pencil" size={16} /></button>
                             <button type="button" className="icon-btn" title="Gabungkan ke nama lain" aria-label={"Gabungkan " + m.name} onClick={() => setMerging(m)}><Icon name="layers" size={16} /></button>
                             <button type="button" className="icon-btn danger" disabled={m.activityCount > 0}
-                              title={m.activityCount > 0 ? `Masih dipakai di ${m.activityCount} kegiatan. Gabungkan ke nama lain untuk menghapusnya.` : "Hapus"}
+                              title={m.activityCount > 0 ? `Masih terlibat di ${m.activityCount} kegiatan. Gabungkan ke nama lain untuk menghapusnya.` : "Hapus"}
                               aria-label={"Hapus " + m.name} onClick={() => remove(m)}><Icon name="trash" size={16} /></button>
                           </div>
                         )}
@@ -258,7 +258,7 @@ export function HumanResourcesTable() {
         defaultPosition={position === ALL ? positions[0] : position} />
       <MergeSheet member={merging} members={members} onClose={() => setMerging(null)} />
       <Sheet open={!!usage} onClose={() => setUsage(null)} title={usage?.name}
-        sub={usage && `${usage.position} · dipakai di ${fmtNum(usedIn(usage).length)} kegiatan${program === ALL ? "" : " " + programLabel(program)}`}>
+        sub={usage && `${usage.position} · terlibat di ${fmtNum(usedIn(usage).length)} kegiatan${program === ALL ? "" : " " + programLabel(program)}`}>
         {usage && (
           <table className="mini-tbl">
             <thead><tr><th>Kegiatan</th><th>Program</th><th>Tanggal</th></tr></thead>
