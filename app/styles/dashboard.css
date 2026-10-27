@@ -64,12 +64,16 @@ a{color:var(--blue-ink);text-underline-offset:3px}
 .nav-item.disabled .nav-txt+.nav-lock{margin-left:0}
 .nav-item:focus-visible{outline-color:#fff}
 /* pengalih Pra-Universitas ⇄ Pendidikan Persiapan */
-.dash-switch{display:flex;flex-direction:column;gap:2px;margin:18px 2px 0;padding:4px;background:rgba(255,255,255,.08);border-radius:12px}
-.dash-switch a{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:9px;color:#C9DAF0;text-decoration:none;font-size:13px;font-weight:700}
+.dash-switch-wrap{margin:16px 2px 0}
+.dash-switch-cap{font-size:10.5px;font-weight:700;color:#9fb6d8;letter-spacing:.08em;text-transform:uppercase;margin:0 10px 6px}
+.dash-switch{display:flex;flex-direction:column;gap:2px;padding:4px;background:rgba(255,255,255,.08);border-radius:12px}
+.dash-switch a{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:9px;color:#C9DAF0;text-decoration:none;font-size:12.5px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.04em}
 .dash-switch a:hover{color:#fff;background:rgba(255,255,255,.08)}
 .dash-switch a.on{background:#fff;color:var(--navy)}
 .dash-switch a:focus-visible{outline:2px solid #fff;outline-offset:1px}
-.dash-switch+.rail-nav{margin-top:8px}
+/* jarak + garis: pengalih dashboard berbeda fungsi dengan menu halaman */
+.dash-switch-wrap+.rail-nav{margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,255,255,.14)}
 .nav-note{font-size:12.5px;color:#B9CBE6;margin:14px 12px 0}
 .nav-label{font-size:11px;font-weight:700;color:#B9CBE6;margin:18px 12px 6px;text-transform:uppercase;letter-spacing:.06em}
 .nav-dot{width:8px;height:8px;border-radius:50%;flex:0 0 8px;margin:0 5px;box-shadow:0 0 0 2px rgba(255,255,255,.18)}
@@ -187,6 +191,8 @@ a{color:var(--blue-ink);text-underline-offset:3px}
 .pc-unit{font-size:13px;font-weight:600;color:var(--muted)}
 .pc-status{align-self:center}
 .pc-note{font-size:12.5px;line-height:1.5;color:var(--muted)}
+.pc-second{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding-top:12px;border-top:1px dashed var(--line)}
+.pc-val.sm{font-size:30px}
 .pc-last{display:flex;flex-direction:column;gap:6px;padding:18px 20px;min-width:0}
 .pc-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
 .pc-head .row-link,.pc-head .pc-name{font-size:15.5px;line-height:1.35;color:var(--ink)}
@@ -657,6 +663,8 @@ dialog.confirm[open]{animation:pop .2s var(--ease)}
 .pst-tabs button{flex:none;border:0;background:none;padding:10px 16px;font:inherit;font-size:14px;font-weight:600;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-1px;cursor:pointer;white-space:nowrap}
 .pst-tabs button:hover{color:var(--ink)}
 .pst-tabs button.on{color:var(--navy);font-weight:800;border-bottom-color:var(--navy)}
+.pst-tabs button.empty{color:#9AA6B6}
+.pst-tabs button small{margin-left:6px;font-size:10.5px;font-weight:600;opacity:.75}
 @container (max-width:460px){ .rp-row,.rp-axis{grid-template-columns:96px minmax(0,1fr);gap:8px} .rp-name{font-size:12.5px} }
 .lv-counts{display:flex;gap:4px}
 .issue-row{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;text-align:left;border:1px solid var(--line);
@@ -840,11 +848,11 @@ dialog.confirm[open]{animation:pop .2s var(--ease)}
 .asp-sub{grid-column:1 / 3;margin:4px 0 0 4px;padding:6px 0 2px 12px;border-left:2px solid var(--line);display:flex;flex-direction:column;gap:8px}
 .asp-sub div{display:grid;grid-template-columns:minmax(0,1fr) minmax(60px,100px) 40px;gap:10px;align-items:center;font-size:12.5px;color:var(--ink-2)}
 .asp-sub b{text-align:right;color:var(--navy);font-variant-numeric:tabular-nums}
-/* judul bagian halaman Portofolio dan Feedback */
+/* judul bagian halaman Feedback */
 .sec-head{margin:6px 0 -6px}
 .sec-head h2{display:flex;align-items:center;gap:8px;margin:0;font-size:17px;font-weight:800;color:var(--navy)}
 .sec-head p{margin:3px 0 0 26px;font-size:12.5px;color:var(--muted)}
-/* feedback per program (Portofolio dan Feedback) */
+/* feedback per program (halaman Feedback) */
 .asp-tabs{margin:0 0 14px;overflow-x:auto}
 .asp-total{display:flex;justify-content:space-between;align-items:baseline;gap:12px;border-top:1px solid var(--line);padding-top:12px;font-size:13px;color:var(--muted);font-weight:600}
 .asp-total b{font-size:22px;font-weight:800;color:var(--navy);font-variant-numeric:tabular-nums}

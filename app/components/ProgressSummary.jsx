@@ -33,8 +33,9 @@ function describe(a) {
  * info: kunci keterangan (lib/kpi.js); kpi: jumlah kegiatan per status, ditampilkan di keterangan.
  * value/unit/note opsional: angka besar (mis. "3/10") + satuannya + keterangan di bawah bar; default `${progress}%`.
  * status opsional: [label, nada] status program, tampil di samping angka.
+ * second opsional: angka kedua di bawahnya { label, value, unit, progress } (mis. Aktivitas Selesai).
  */
-export function ProgressSummary({ label, info, progress, value, unit, note, status, kpi, last, showProgram }) {
+export function ProgressSummary({ label, info, progress, value, unit, note, status, second, kpi, last, showProgram }) {
   const [open, setOpen] = useState(false);
   const full = !!last?.participants;
   const name = showProgram ? `${programLabel(last?.program)} — ${last?.name}` : last?.name;
@@ -46,6 +47,13 @@ export function ProgressSummary({ label, info, progress, value, unit, note, stat
           {status && <span className={"pill pc-status " + status[1]}>{status[0]}</span>}</div>
         <Bar value={progress} tone={progress >= 80 ? "ok" : progress >= 50 ? "" : "warn"} />
         {note && <span className="pc-note">{note}</span>}
+        {second && (
+          <div className="pc-second">
+            <span className="kpi-lab"><Icon name="checkCircle" size={15} />{second.label}</span>
+            <div className="pc-valrow"><b className="pc-val sm">{second.value}</b>{second.unit && <span className="pc-unit">{second.unit}</span>}</div>
+            <Bar value={second.progress} tone={second.progress >= 80 ? "ok" : second.progress >= 50 ? "" : "warn"} />
+          </div>
+        )}
       </div>
       <div className="pc-last">
         <span className="kpi-lab"><Icon name="checkCircle" size={15} />Aktivitas Terakhir<InfoTip k="lastActivity" /></span>
