@@ -6,7 +6,7 @@ import { useApi } from "../stores/data.js";
 import { Icon } from "./Icon.jsx";
 import { InfoTip } from "./InfoTip.jsx";
 import { Performance } from "./ProgressSummary.jsx";
-import { Bar, EmptyState, ErrorNote, Refreshing, SkeletonCard } from "./ui.jsx";
+import { Bar, EmptyState, ErrorNote, Pending, RefreshButton, SkeletonCard } from "./ui.jsx";
 
 // kegiatan SUGT = 10 per sekolah (8 sesi + pretest + posttest)
 export const sugtUnits = (s) => s.progress.kegiatanTerlaksana;
@@ -142,8 +142,7 @@ export function SugtSummary() {
             : "Sesi kelas, pretest, posttest, dan umpan balik dicatat di aplikasi SUGT"}</div>
         </div>
         <div className="sugt-actions">
-          {loading && s && <Refreshing />}
-          <button type="button" className="btn btn-sm" onClick={() => reload()} disabled={loading}><Icon name="refresh" size={15} />Muat ulang</button>
+          <RefreshButton reload={reload} className="btn btn-sm" />
           <a className="btn btn-sm" href={home} target="_blank" rel="noopener noreferrer"><Icon name="external" size={15} />Buka detail web SUGT</a>
         </div>
       </div>
@@ -157,7 +156,7 @@ export function SugtSummary() {
           </section>
         ) : <><SkeletonCard lines={3} /><div className="grid g-2"><SkeletonCard /><SkeletonCard /></div></>
       ) : (
-        <>
+        <Pending busy={loading}>
           <SugtProgress s={s} />
           <SugtMeters s={s} links />
           <Performance title="Umpan balik kelas SUGT" strip={{ feedback: sugtFeedback(s) }}
@@ -169,7 +168,7 @@ export function SugtSummary() {
             <FeedbackCard title="Evaluasi Perjalanan Dinas" info="sugtPerjadinFeedback" f={s.perjadinFeedback}
               noun="evaluasi" items={perjadinRatings(s.perjadinFeedback)} />
           </div>
-        </>
+        </Pending>
       )}
     </>
   );

@@ -8,7 +8,7 @@ import { useAuthStore } from "../stores/auth.js";
 import { invalidate, useApi } from "../stores/data.js";
 import { confirmAction, toast } from "./feedback.jsx";
 import { Icon } from "./Icon.jsx";
-import { CheckGridSkeleton, EmptyState, ErrorNote, Refreshing, SearchInput, Sheet, Spinner, TableSkeleton } from "./ui.jsx";
+import { CheckGridSkeleton, EmptyState, ErrorNote, SearchInput, Sheet, Spinner, TableSkeleton, usePending } from "./ui.jsx";
 
 const ALL = "Semua";
 const LAINNYA = "__LAINNYA__";
@@ -116,6 +116,7 @@ export function HumanResourcesTable() {
   const session = useAuthStore((s) => s.session);
   const canEdit = canEditHumanResources(session);
   const { data, error, loading, reload } = useMembers();
+  const busy = usePending(loading && !!data);
   const members = data?.data || [];
   const positions = positionsOf(members);
   const [position, setPosition] = useState(ALL);
@@ -167,7 +168,6 @@ export function HumanResourcesTable() {
           <option value={ALL}>Semua peran</option>
           {positions.map((p) => <option key={p} value={p}>{p}</option>)}
         </select>
-        {loading && data && <Refreshing />}
       </div>
 
       <ErrorNote error={error} onRetry={() => reload()} />
@@ -177,7 +177,7 @@ export function HumanResourcesTable() {
           {q ? "Coba kata kunci lain." : "Nama yang ditambahkan di sini atau di form kegiatan akan muncul di daftar ini."}
         </EmptyState>
       ) : (
-        <div className={"tbl-body" + (loading ? " is-loading" : "")} aria-busy={loading}>
+        <div className={"tbl-body" + busy} aria-busy={loading}>
           <div className="tbl-scroll">
             <table className="tbl sdm-tbl">
               <thead>

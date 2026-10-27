@@ -1,6 +1,7 @@
 // Komponen kecil yang dipakai berulang.
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { levelLabel, statusLabel } from "../lib/format.js";
+import { useUiStore } from "../stores/ui.js";
 import { Icon } from "./Icon.jsx";
 
 export function Kpi({ value, label, hint, tone, icon }) {
@@ -90,10 +91,58 @@ export function CheckGridSkeleton({ items = 4 }) {
   );
 }
 
-/** Penanda "Memperbarui…" saat data yang sudah tampil sedang dimuat ulang (topbar halaman atau toolbar tabel). */
+/** Penanda "Memperbarui…" di topbar (dan panel Filter) selama ada <Pending busy>. */
 export function Refreshing() {
   return <span className="tb-loading" role="status"><Spinner size={14} />Memperbarui…</span>;
 }
+
+/**
+ * Satu standar untuk memuat ulang (filter/halaman tabel berganti, setelah simpan): data lama tetap tampil tapi pudar
+ * dan tidak bisa diklik, aria-busy, dan topbar menampilkan "Memperbarui…". Pemuatan pertama memakai skeleton, bukan ini.
+ * busy = loading && data sudah ada. Tabel memakai usePending langsung: <div className={"tbl-body" + usePending(busy)} aria-busy={busy}>.
+ */
+export function usePending(busy) {
+  useEffect(() => {
+    if (!busy) return;
+    const { track } = useUiStore.getState();
+    track(1);
+    return () => track(-1);
+  }, [busy]);
+  return busy ? " is-loading" : "";
+}
+export function Pending({ busy, children }) {
+  return <div className={"pending" + usePending(busy)} aria-busy={busy}>{children}</div>;
+}
+
+/** Tombol "Muat ulang": ambil ulang data dari sumbernya (reload({ refresh: true })); berputar hanya saat ditekan. */
+export function RefreshButton({ reload, className = "btn" }) {
+  const [busy, setBusy] = useState(false);
+  const run = async () => { setBusy(true); try { await reload({ refresh: true }); } finally { setBusy(false); } };
+  return (
+    <button type="button" className={className} onClick={run} disabled={busy}>
+      {busy ? <Spinner /> : <Icon name="refresh" size={16} />}<span className="btn-txt">Muat ulang</span>
+    </button>
+  );
+}
+
+/** Kerangka halaman dashboard saat data pertama dimuat: baris KPI + kartu. kpis = jumlah KPI (kelas kpi-row ikut halaman). */
+export function PageSkeleton({ kpis = 4, cards = 2 }) {
+  const row = { 5: " five", 6: " six" }[kpis] || "";
+  return (
+    <div className="pending" role="status">
+      <span className="sr-only">Memuat data…</span>
+      {kpis > 0 && (
+        <div className={"kpi-row" + row} aria-hidden="true">
+          {Array.from({ length: kpis }, (_, i) => (
+            <div key={i} className="kpi"><Skeleton h={11} w="55%" /><Skeleton h={22} w="70%" style={{ marginTop: 10 }} /></div>
+          ))}
+        </div>
+      )}
+      <div className="grid g-2" aria-hidden="true">{Array.from({ length: cards }, (_, i) => <SkeletonCard key={i} />)}</div>
+    </div>
+  );
+}
+
 export function SkeletonCard({ lines = 4, h = 160 }) {
   return (
     <div className="card">

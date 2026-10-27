@@ -3,7 +3,7 @@ import { ChartCanvas } from "../../components/ChartCanvas.jsx";
 import { FinanceTable } from "../../components/Finance.jsx";
 import { RequireAccess } from "../../components/Access.jsx";
 import { Icon } from "../../components/Icon.jsx";
-import { Bar, ErrorNote, Kpi, PageHead, Refreshing, SelectField, SkeletonCard } from "../../components/ui.jsx";
+import { Bar, ErrorNote, Kpi, PageHead, PageSkeleton, Pending, SelectField } from "../../components/ui.jsx";
 import { byLabel, FIN_PROGRAMS_AZ, finProgramLabel, fmtRupiah, fmtRupiahShort, MONTHS, progColor } from "../../lib/format.js";
 import { useApi } from "../../stores/data.js";
 import { useUiStore } from "../../stores/ui.js";
@@ -35,9 +35,7 @@ function FinancialPage() {
 
   return (
     <div className="page">
-      <PageHead title="Keuangan" sub="PKS, pengajuan dana, dan saldo per program">
-        {loading && d && <Refreshing />}
-      </PageHead>
+      <PageHead title="Keuangan" sub="PKS, pengajuan dana, dan saldo per program" />
 
       <section className="card filter-bar">
         <SelectField label="Program" value={ui.program} onChange={(v) => setFilter({ program: v })}
@@ -53,8 +51,8 @@ function FinancialPage() {
 
       <ErrorNote error={error} onRetry={() => reload()} />
 
-      {!d ? <div className="grid g-2"><SkeletonCard /><SkeletonCard /></div> : (
-        <>
+      {!d ? <PageSkeleton kpis={5} /> : (
+        <Pending busy={loading}>
           <div className="kpi-row five">
             <Kpi label="Total nilai PKS" value={fmtRupiahShort(d.kpi.totalPks)} hint={fmtRupiah(d.kpi.totalPks)} icon="wallet" />
             <Kpi label="Total DPKS" value={fmtRupiahShort(d.kpi.totalDpks)} hint={fmtRupiah(d.kpi.totalDpks)} />
@@ -68,7 +66,7 @@ function FinancialPage() {
           </div>
           <FinCharts d={d} />
           <Summary rows={d.summary} />
-        </>
+        </Pending>
       )}
 
       <FinanceTable filters={filters} ui={ui} update={update} />

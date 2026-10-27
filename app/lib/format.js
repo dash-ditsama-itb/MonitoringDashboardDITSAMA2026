@@ -56,6 +56,13 @@ export function toDateInput(v) {
 // nilai <input type="date"> -> ISO (tengah malam UTC, sama seperti data hasil impor)
 export const fromDateInput = (s) => (s ? s + "T00:00:00.000Z" : null);
 export const MONTHS = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+// nilai filter Bulan dari backend ("May 2026", dayjs MMM YYYY) -> "Mei 2026"; nilainya tetap dikirim apa adanya
+const MMM = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+export const monthKeyLabel = (v) => {
+  const [m, y] = String(v).split(" ");
+  const i = MMM.indexOf(m);
+  return i < 0 ? v : MONTHS[i] + " " + y;
+};
 
 // ---------------------------------------------------------------- label ---
 const lookup = (pairs) => { const m = Object.fromEntries(pairs); return (v) => m[v] ?? v ?? "–"; };

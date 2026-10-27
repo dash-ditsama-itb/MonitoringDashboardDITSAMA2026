@@ -13,7 +13,7 @@ import { confirmAction, toast } from "./feedback.jsx";
 import { Icon } from "./Icon.jsx";
 import { ExportButton, ImportButton, importSummary } from "./ImportExport.jsx";
 import {
-  Bar, EmptyState, ErrorNote, LevelBadge, Pagination, Refreshing, SearchInput, Sheet, Spinner, StatusBadge, TableSkeleton,
+  Bar, EmptyState, ErrorNote, LevelBadge, Pagination, SearchInput, Sheet, Spinner, StatusBadge, TableSkeleton, usePending,
 } from "./ui.jsx";
 
 const SORTS = [
@@ -109,7 +109,8 @@ export function ActivitiesTable({ fixedProgram, title = "Data Kegiatan", sub }) 
     : st.program ? [st.program] : ["all"];
   const [sortBy, sortOrder] = st.sort.split(":");
   const query = { programs, page: st.page, perPage: st.perPage, search: st.search, sortBy, sortOrder };
-  const { data, error, loading, fresh, reload } = useApi("/activities", query);
+  const { data, error, loading, reload } = useApi("/activities", query);
+  const busy = usePending(loading && !!data);
   const rows = data?.data || [];
   const pagination = data?.pagination;
 
@@ -183,7 +184,6 @@ export function ActivitiesTable({ fixedProgram, title = "Data Kegiatan", sub }) 
         <select className="tb-select" value={st.sort} onChange={(e) => update({ sort: e.target.value, page: 1 })} aria-label="Urutkan">
           {SORTS.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
         </select>
-        {loading && fresh === false && rows.length > 0 && <Refreshing />}
       </div>
 
       {selected.size > 0 && (
@@ -207,7 +207,7 @@ export function ActivitiesTable({ fixedProgram, title = "Data Kegiatan", sub }) 
               Kegiatan yang Anda catat atau impor dari Excel akan muncul di sini.
             </EmptyState>
       ) : (
-        <div className={"tbl-body" + (loading ? " is-loading" : "")} aria-busy={loading}>
+        <div className={"tbl-body" + busy} aria-busy={loading}>
           <div className="tbl-scroll">
             <table className={"tbl act-tbl" + (showProgram ? " with-prog" : "")}>
               <thead>

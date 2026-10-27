@@ -20,10 +20,10 @@ export const KPI = {
     title: "Performa Kehadiran Peserta",
     arti: "Seberapa banyak peserta terdaftar yang benar-benar hadir.",
     rumus: "Per kegiatan: total hadir ÷ total terdaftar (semua kategori peserta) × 100%. Lalu dirata-rata antar kegiatan.",
-    catatan: "Kegiatan tanpa data peserta tidak dihitung. Setiap kegiatan berbobot sama; kehadiran yang berbobot jumlah peserta ada di % Kehadiran (tertimbang) pada Analisis Peserta.",
+    catatan: "Kegiatan tanpa data peserta tidak dihitung. Setiap kegiatan berbobot sama; kehadiran yang berbobot jumlah peserta ada di % Kehadiran (tertimbang) pada Analisis peserta.",
   },
   activityProgress: {
-    title: "Performa Keberjalanan Aktivitas",
+    title: "Performa Keberjalanan Kegiatan",
     arti: "Apakah kegiatan berjalan sesuai rencana.",
     rumus: "Keberjalanan tiap kegiatan diubah ke skor, lalu dirata-rata.",
     skor: [["Sesuai Rencana", "100%"], ["Ada Kendala", "70%"], ["Tidak Sesuai Rencana", "40%"], ["Tidak Ada Penilaian / kosong", "tidak dihitung"]],
@@ -45,20 +45,20 @@ export const KPI = {
   // ------------------------------------------------------------ kemajuan ---
   progress: {
     title: "Program Selesai",
-    arti: "Jumlah program yang seluruh aktivitasnya sudah selesai, dibanding total program DITSAMA.",
-    rumus: "Jumlah program Selesai ÷ total program (10, termasuk SUGT) × 100%. Keterangan di bawah bar: aktivitas Selesai ÷ seluruh aktivitas yang dicatat di dashboard ini (tanpa kelas dari aplikasi SUGT).",
+    arti: "Jumlah program yang seluruh kegiatannya sudah selesai, dibanding total program DITSAMA.",
+    rumus: "Jumlah program Selesai ÷ total program (10, termasuk SUGT) × 100%. Keterangan di bawah bar: kegiatan Selesai ÷ seluruh kegiatan yang dicatat di dashboard ini (tanpa kelas dari aplikasi SUGT).",
     skor: STATUS_KEGIATAN,
-    catatan: "Program dihitung Selesai bila punya aktivitas dan semuanya Selesai. SUGT dihitung Selesai bila aktivitasnya di dashboard ini dan Kegiatan Terlaksana di aplikasi SUGT semuanya selesai. Ikut filter yang dipilih.",
+    catatan: "Program dihitung Selesai bila punya kegiatan dan semuanya Selesai. SUGT dihitung Selesai bila kegiatannya di dashboard ini dan Kegiatan Terlaksana di aplikasi SUGT semuanya selesai. Ikut filter yang dipilih.",
   },
   programProgress: {
     title: "Kemajuan Program",
-    arti: "Jumlah aktivitas program yang sudah selesai dibanding seluruh aktivitasnya.",
-    rumus: "Aktivitas Selesai / seluruh aktivitas program; persentasenya = Selesai ÷ seluruh aktivitas × 100%.",
+    arti: "Jumlah kegiatan program yang sudah selesai dibanding seluruh kegiatannya.",
+    rumus: "Kegiatan Selesai / seluruh kegiatan program; persentasenya = Selesai ÷ seluruh kegiatan × 100%.",
     skor: STATUS_KEGIATAN,
-    catatan: "Status program: Selesai bila semua aktivitas Selesai; Sedang berlangsung bila ada aktivitas Selesai atau Berlangsung; selain itu Belum dilaksanakan. Angka ini sama di Portofolio Program dan di dashboard program.",
+    catatan: "Status program: Selesai bila semua kegiatan Selesai; Sedang berlangsung bila ada kegiatan Selesai atau Berlangsung; selain itu Belum dilaksanakan. Angka ini sama di Portofolio Program dan di dashboard program.",
   },
   lastActivity: {
-    title: "Aktivitas Terakhir",
+    title: "Kegiatan Terakhir",
     arti: "Kegiatan paling baru yang tanggalnya hari ini atau sebelumnya.",
     rumus: "Diambil dari kegiatan bertanggal paling akhir yang sudah lewat atau sedang berjalan; uraiannya disusun dari data yang diisi (lokasi, fase, kehadiran, nilai, keberjalanan, isu).",
     catatan: "Klik nama kegiatan untuk melihat rincian lengkapnya.",
@@ -73,10 +73,10 @@ export const KPI = {
   },
   programPercent: {
     title: "Progres",
-    arti: "Persentase aktivitas program yang sudah selesai.",
-    rumus: "Aktivitas Selesai ÷ seluruh aktivitas program × 100%.",
+    arti: "Persentase kegiatan program yang sudah selesai.",
+    rumus: "Kegiatan Selesai ÷ seluruh kegiatan program × 100%.",
     skor: STATUS_KEGIATAN,
-    catatan: "Program tanpa aktivitas ditampilkan “–”. SUGT: Selesai / Total dan Progres menggabungkan aktivitas di dashboard ini dengan Kegiatan Terlaksana (sesi kelas, pretest, posttest) dari aplikasi SUGT.",
+    catatan: "Program tanpa kegiatan ditampilkan “–”. SUGT: Selesai / Total dan Progres menggabungkan kegiatan di dashboard ini dengan Kegiatan Terlaksana (sesi kelas, pretest, posttest) dari aplikasi SUGT.",
   },
   performanceScore: {
     title: "Nilai Kinerja",
@@ -87,15 +87,15 @@ export const KPI = {
   programPerformance: {
     title: "Performa",
     arti: "Kualitas pelaksanaan program, dirangkum jadi satu angka.",
-    rumus: "Rata-rata 5 indikator Performa kegiatan program tersebut: Nilai Capaian Peserta, Performa Kehadiran Peserta, Performa Keberjalanan Aktivitas, Umpan Balik Peserta, dan Nilai Isu & Peringatan.",
+    rumus: "Rata-rata 5 indikator Performa kegiatan program tersebut: Nilai Capaian Peserta, Performa Kehadiran Peserta, Performa Keberjalanan Kegiatan, Umpan Balik Peserta, dan Nilai Isu & Peringatan.",
     skor: [["Baik (hijau)", "≥ 80%"], ["Perlu perhatian (kuning)", "60% – 79%"], ["Kritis (merah)", "< 60%"]],
-    catatan: "Indikator yang belum diisi kegiatan mana pun tidak ikut dirata-rata, mis. (100 + 75 + 90) ÷ 3 = 88%. Program tanpa aktivitas ditampilkan “–”. Angkanya sama dengan rata-rata kartu Performa kegiatan saat program itu difilter. SUGT: rata-rata Performa aktivitas di dashboard ini dan Umpan Balik SUGT dari aplikasi SUGT.",
+    catatan: "Indikator yang belum diisi kegiatan mana pun tidak ikut dirata-rata, mis. (100 + 75 + 90) ÷ 3 = 88%. Program tanpa kegiatan ditampilkan “–”. Angkanya sama dengan rata-rata kartu Performa kegiatan saat program itu difilter. SUGT: rata-rata Performa kegiatan di dashboard ini dan Umpan Balik SUGT dari aplikasi SUGT.",
   },
   status: {
     title: "Status Program",
     arti: "Tahap pelaksanaan program.",
-    rumus: "Ditentukan dari status aktivitas program.",
-    skor: [["Selesai", "semua aktivitas Selesai"], ["Sedang berlangsung", "ada aktivitas Selesai atau Berlangsung"], ["Belum dilaksanakan", "belum ada aktivitas yang Selesai atau Berlangsung"]],
+    rumus: "Ditentukan dari status kegiatan program.",
+    skor: [["Selesai", "semua kegiatan Selesai"], ["Sedang berlangsung", "ada kegiatan Selesai atau Berlangsung"], ["Belum dilaksanakan", "belum ada kegiatan yang Selesai atau Berlangsung"]],
   },
 
   // ---------------------------------------------------------------- SUGT ---
@@ -149,7 +149,7 @@ export const KPI = {
 
   // ---------------------------------------------------- analisis peserta ---
   totalActivities: {
-    title: "Jumlah Aktivitas",
+    title: "Jumlah Kegiatan",
     arti: "Jumlah kegiatan yang punya data peserta.",
     rumus: "Hitung kegiatan yang mengisi minimal satu angka terdaftar atau hadir.",
     catatan: "Ikut filter Program & Bulan saja.",
@@ -175,21 +175,21 @@ export const KPI = {
 
   // ----------------------------------------------------------- lain-lain ---
   issues: {
-    title: "Isu & Peringatan",
+    title: "Isu & peringatan",
     arti: "Masalah yang dicatat PIC pada kegiatan, diurutkan dari level tertinggi.",
     rumus: "Diambil dari isu yang diisi di form kegiatan dan ikut semua filter.",
     skor: [["Tinggi (High)", "masalah berat"], ["Sedang (Medium)", "masalah sedang"], ["Rendah (Low)", "masalah ringan"]],
   },
   ongoing: {
-    title: "Sedang Berlangsung",
+    title: "Sedang berlangsung",
     arti: "Kegiatan program yang berstatus Berlangsung.",
     rumus: "Tanggal kegiatan berada di rentang H-2 sampai H+7 dari hari ini, dan belum ditandai selesai.",
     catatan: "Kegiatan tanpa tanggal (bukan agenda) juga dihitung Berlangsung.",
   },
   upcoming: {
-    title: "Agenda Mendatang",
+    title: "Agenda mendatang",
     arti: "Agenda yang belum dimulai, diurutkan dari tanggal terdekat.",
-    rumus: "Aktivitas berjenis Agenda mendatang yang tanggalnya lebih dari 2 hari lagi (< H-2). Begitu masuk H-2, agenda pindah ke Sedang Berlangsung.",
+    rumus: "Kegiatan berjenis Agenda mendatang yang tanggalnya lebih dari 2 hari lagi (< H-2). Begitu masuk H-2, agenda pindah ke Sedang berlangsung.",
     catatan: "Aturan ini sama di Portofolio Program dan dashboard program. Agenda yang belum bertanggal hanya tampil di dashboard program. Agenda dibuat di Data Kegiatan dengan jenis “Agenda mendatang”.",
   },
   timeline: {

@@ -8,7 +8,7 @@ import { useAuthStore } from "../stores/auth.js";
 import { invalidate, useApi } from "../stores/data.js";
 import { confirmAction, toast } from "./feedback.jsx";
 import { Icon } from "./Icon.jsx";
-import { EmptyState, ErrorNote, Refreshing, SearchInput, Segmented, Sheet, Spinner, TableSkeleton } from "./ui.jsx";
+import { EmptyState, ErrorNote, SearchInput, Segmented, Sheet, Spinner, TableSkeleton, usePending } from "./ui.jsx";
 
 const ALL = "Semua";
 const STATUS = {
@@ -39,6 +39,7 @@ function UsersTable() {
   const isSuperAdmin = session.permissions.isSuperAdmin;
   const { data, error, loading, reload } = useApi("/users");
   const roles = useApi("/roles").data?.data || [];
+  const busy = usePending(loading && !!data);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState(ALL);
   const [form, setForm] = useState(null);   // { user } | { user: null }
@@ -86,7 +87,6 @@ function UsersTable() {
           <option value={ALL}>Semua status</option>
           {Object.entries(STATUS).map(([v, [t]]) => <option key={v} value={v}>{t}</option>)}
         </select>
-        {loading && data && <Refreshing />}
       </div>
 
       <ErrorNote error={error} onRetry={() => reload()} />
@@ -96,7 +96,7 @@ function UsersTable() {
           {q ? "Coba kata kunci lain." : "Akun yang mendaftar atau Anda tambahkan akan muncul di sini."}
         </EmptyState>
       ) : (
-        <div className={"tbl-body" + (loading ? " is-loading" : "")} aria-busy={loading}>
+        <div className={"tbl-body" + busy} aria-busy={loading}>
           <div className="tbl-scroll">
             <table className="tbl acc-tbl">
               <thead>
@@ -225,6 +225,7 @@ function UserSheet({ form, roles, session, onClose }) {
 function RolesTable() {
   const session = useAuthStore((s) => s.session);
   const { data, error, loading, reload } = useApi("/roles");
+  const busy = usePending(loading && !!data);
   const [form, setForm] = useState(null);   // { role } | { role: null }
   const [busyId, setBusyId] = useState(null);
   const roles = data?.data || [];
@@ -257,7 +258,7 @@ function RolesTable() {
       <ErrorNote error={error} onRetry={() => reload()} />
 
       {!data && loading ? <TableSkeleton rows={4} /> : (
-        <div className={"tbl-body" + (loading ? " is-loading" : "")} aria-busy={loading}>
+        <div className={"tbl-body" + busy} aria-busy={loading}>
           <div className="tbl-scroll">
             <table className="tbl acc-tbl">
               <thead>

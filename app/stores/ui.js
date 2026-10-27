@@ -10,6 +10,10 @@ export const useUiStore = create((set) => ({
   controlHidden: false,   // panel Filter disembunyikan di layar lebar
   set: (patch) => set(patch),
 
+  // jumlah wilayah data yang sedang dimuat ulang (lihat <Pending>); > 0 -> topbar menampilkan "Memperbarui…"
+  pending: 0,
+  track: (delta) => set((s) => ({ pending: Math.max(0, s.pending + delta) })),
+
   // filter panel Filter di Portofolio Program (nilai = label dari backend)
   dash: { program: ALL, year: ALL, month: ALL, phase: ALL, activity: ALL, issueLevel: ALL },
   calMonth: null,   // Date (tgl 1) bulan yang tampil di kalender; null = bulan data terbaru

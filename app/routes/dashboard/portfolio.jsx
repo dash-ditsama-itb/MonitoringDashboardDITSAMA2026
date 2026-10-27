@@ -11,10 +11,12 @@ import {
 import { RekapPeserta } from "../../components/RekapPeserta.jsx";
 import { SugtSummary, withSugt, withSugtFeedback } from "../../components/Sugt.jsx";
 import {
-  Bar, EmptyState, ErrorNote, LevelBadge, PageHead, ProgramAbout, Refreshing, SearchInput, SeeMore, Sheet, SkeletonCard,
+  Bar, EmptyState, ErrorNote, LevelBadge, PageHead, Pending, ProgramAbout, RefreshButton, SearchInput, SeeMore, Sheet, SkeletonCard,
 } from "../../components/ui.jsx";
 import { PROGRAMS, REKAP_PESERTA, TOTAL_PROGRAMS } from "../../config.js";
-import { byLabel, canSeeActivities, fmtDate, fmtNum, pct, phaseLabel, progColor, PROGRAMS_AZ, withoutAll } from "../../lib/format.js";
+import {
+  byLabel, canSeeActivities, fmtDate, fmtNum, levelLabel, monthKeyLabel, pct, phaseLabel, progColor, PROGRAMS_AZ, withoutAll,
+} from "../../lib/format.js";
 import { useAuthStore } from "../../stores/auth.js";
 import { useApi } from "../../stores/data.js";
 import { useUiStore } from "../../stores/ui.js";
@@ -39,24 +41,26 @@ function PortfolioPage() {
     { enabled: !!lastEvent });
   const full = lastEvent && hit?.data?.find((a) => a.id === lastEvent.id);
   const last = full ? { ...full, status: lastEvent.status } : lastEvent;
-  const program = PROGRAMS.find((p) => p.label === dash.program);
-  // program milik data yang sedang tampil: saat filter berganti, angka lama tidak diberi label program baru
-  const dataProgram = useRef(program);
-  if (fresh) dataProgram.current = program;
-  const shown = dataProgram.current;
-  const filters = Object.entries(dash).filter(([, v]) => v !== "Semua").map(([, v]) => v);
+  // filter milik data yang sedang tampil: saat filter berganti, judul & angka lama tidak diberi label filter baru
+  // (data lama tampil pudar lewat <Pending> sampai data baru siap)
+  const dataDash = useRef(dash);
+  if (fresh) dataDash.current = dash;
+  const shownDash = dataDash.current;
+  const shown = PROGRAMS.find((p) => p.label === shownDash.program);
+  const filters = Object.entries(shownDash).filter(([, v]) => v !== "Semua")
+    .map(([k, v]) => (k === "month" ? monthKeyLabel(v) : k === "issueLevel" ? levelLabel(v.toLowerCase()) : v));
   const timeline = useMemo(() => [...(d?.timeline || [])].sort(byLabel((t) => t.programLabel)), [d]);
 
   return (
     <div className="page">
-      <PageHead title={program ? program.fullName : "Portofolio Program"}
+      <PageHead title={shown ? shown.fullName : "Portofolio Program"}
         sub={filters.length ? "Filter: " + filters.join(" · ") : "Semua program DITSAMA 2026"}>
-        {loading && d && <Refreshing />}
+        <RefreshButton reload={reload} />
       </PageHead>
       <ErrorNote error={error} onRetry={() => reload()} />
-      {program && <ProgramAbout program={program} />}
       {!d ? <PortfolioSkeleton /> : (
-        <>
+        <Pending busy={loading}>
+          {shown && <ProgramAbout program={shown} />}
           <Progress kpi={d.kpi} portfolio={d.portfolio} sugt={d.sugt} program={shown} last={last} />
           {shown?.api === "sugt" && <SugtSummary />}
 
@@ -93,7 +97,7 @@ function PortfolioPage() {
 
           <Calendar events={d.calendar} />
           <Issues items={d.issues} />
-        </>
+        </Pending>
       )}
     </div>
   );
@@ -101,11 +105,12 @@ function PortfolioPage() {
 
 function PortfolioSkeleton() {
   return (
-    <>
+    <div className="pending" role="status">
+      <span className="sr-only">Memuat data…</span>
       <SkeletonCard lines={3} />
       <div className="grid g-5-7"><SkeletonCard lines={5} /><SkeletonCard lines={5} /></div>
       <div className="grid g-2"><SkeletonCard /><SkeletonCard /></div>
-    </>
+    </div>
   );
 }
 
@@ -116,10 +121,10 @@ function Progress({ kpi, portfolio, sugt, program, last }) {
   const p = pct(done, TOTAL_PROGRAMS);
   // aktivitas selesai dari semua program, angka kedua di bawah jumlah program selesai
   const activities = kpi.totalActivities
-    ? { label: "Aktivitas Selesai", value: `${fmtNum(kpi.totalDone)}/${fmtNum(kpi.totalActivities)}`, unit: `aktivitas (${kpi.progress}%)`, progress: kpi.progress }
+    ? { label: "Kegiatan Selesai", value: `${fmtNum(kpi.totalDone)}/${fmtNum(kpi.totalActivities)}`, unit: `kegiatan (${kpi.progress}%)`, progress: kpi.progress }
     : null;
   return <ProgressSummary label="Program Selesai" info="progress" kpi={kpi} progress={p}
-    value={`${done}/${TOTAL_PROGRAMS}`} unit={`program (${p}%)`} note={activities ? null : "Belum ada aktivitas tercatat"}
+    value={`${done}/${TOTAL_PROGRAMS}`} unit={`program (${p}%)`} note={activities ? null : "Belum ada kegiatan tercatat"}
     second={activities} last={last} showProgram />;
 }
 
@@ -145,8 +150,8 @@ function PortfolioList({ items, sugt, program }) {
   const rows = portfolioRows(items, sugt, program ? [program] : PROGRAMS_AZ);
   return (
     <section className="card">
-      <div className="card-head"><div><h2 className="card-title">Kinerja Portofolio Program</h2>
-        <div className="card-sub">Progres = aktivitas selesai / total aktivitas · Performa = rata-rata indikator performa program</div></div></div>
+      <div className="card-head"><div><h2 className="card-title">Kinerja portofolio program</h2>
+        <div className="card-sub">Progres = kegiatan selesai / total kegiatan · Performa = rata-rata indikator performa program</div></div></div>
       <ul className="port">
         <li className="port-head">
           <span />
@@ -165,9 +170,9 @@ function PortfolioList({ items, sugt, program }) {
               <span className="port-dot" style={{ background: progColor(p.program) }} />
               <div className="port-nm"><b>{p.label}</b><small>{p.pics.length ? "PIC: " + p.pics.join(", ") : "Belum ada PIC"}</small>
                 <SlimBar value={prog} tone={tone} /></div>
-              <div className="port-cnt" title={`${p.completedActivities} selesai dari ${p.totalActivities} aktivitas`}>{p.completedActivities}<span className="muted">/{p.totalActivities}</span></div>
+              <div className="port-cnt" title={`${p.completedActivities} selesai dari ${p.totalActivities} kegiatan`}>{p.completedActivities}<span className="muted">/{p.totalActivities}</span></div>
               <div className="port-score"><small>Progres</small><Bar value={prog} tone={tone === "ok" ? "ok" : ""} />
-                <b>{p.totalActivities ? prog + "%" : <span className="muted" title="Belum ada aktivitas">–</span>}</b></div>
+                <b>{p.totalActivities ? prog + "%" : <span className="muted" title="Belum ada kegiatan">–</span>}</b></div>
               <span className={"pill " + tone}>{label}</span>
               <PerfValue value={perf} empty="Belum ada indikator terisi" />
             </li>
@@ -198,7 +203,7 @@ function Issues({ items }) {
   return (
     <section className="card">
       <div className="card-head">
-        <div><h2 className="card-title with-info">Isu &amp; Peringatan<InfoTip k="issues" /></h2><div className="card-sub">{items.length ? `${items.length} isu tercatat, terberat di atas` : "Tidak ada isu tercatat"}</div></div>
+        <div><h2 className="card-title with-info">Isu &amp; peringatan<InfoTip k="issues" /></h2><div className="card-sub">{items.length ? `${items.length} isu tercatat, terberat di atas` : "Tidak ada isu tercatat"}</div></div>
         <div className="lv-counts">{["high", "medium", "low"].map((l) => counts[l] ? <span key={l} className={"level lv-" + l}>{counts[l]}</span> : null)}</div>
       </div>
       {!items.length ? <EmptyState icon="checkCircle" title="Semua kegiatan berjalan tanpa isu" /> : (
@@ -230,7 +235,7 @@ function Milestones({ items, calendar }) {
   const past = items.length - next.length;
   return (
     <section className="card">
-      <div className="card-head"><div><h2 className="card-title with-info">Agenda Mendatang<InfoTip k="upcoming" /></h2>
+      <div className="card-head"><div><h2 className="card-title with-info">Agenda mendatang<InfoTip k="upcoming" /></h2>
         <div className="card-sub">{next.length ? `${next.length} agenda terjadwal` : "Tidak ada agenda terjadwal"}{past > 0 && ` · ${past} agenda sudah berlangsung atau selesai`}</div></div></div>
       {!next.length ? <EmptyState icon="calendar" title="Belum ada agenda ke depan">Agenda dibuat dari Data Kegiatan dengan jenis “Agenda mendatang”.</EmptyState> : (
         <SeeMore items={next} limit={4} render={(m) => {
@@ -272,9 +277,9 @@ function ParticipantAnalysis({ a, rekapTotal }) {
 
   return (
     <section className="card">
-      <div className="card-head"><div><h2 className="card-title">Analisis Peserta</h2><div className="card-sub">Pendaftaran &amp; kehadiran (ikut filter program &amp; bulan)</div></div></div>
+      <div className="card-head"><div><h2 className="card-title">Analisis peserta</h2><div className="card-sub">Pendaftaran &amp; kehadiran (ikut filter program &amp; bulan)</div></div></div>
       <div className="stat-row">
-        <div><span>Jumlah Aktivitas<InfoTip k="totalActivities" /></span><b>{fmtNum(a.totalActivities)}</b></div>
+        <div><span>Jumlah Kegiatan<InfoTip k="totalActivities" /></span><b>{fmtNum(a.totalActivities)}</b></div>
         <div><span>Total Pendaftaran<InfoTip k="totalRegistered" /></span><b>{fmtNum(rekapTotal ?? a.totalRegistered)}</b>
           {rekapTotal != null && <small className="stat-hint">sesuai rekap kepesertaan</small>}</div>
         <div><span>Total Kehadiran<InfoTip k="totalPresent" /></span><b>{fmtNum(a.totalPresent)}</b></div>

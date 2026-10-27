@@ -7,7 +7,7 @@ import { Gantt } from "../../components/Gantt.jsx";
 import { Icon } from "../../components/Icon.jsx";
 import { InfoTip } from "../../components/InfoTip.jsx";
 import { lastPerformed, ProgramProgress } from "../../components/ProgressSummary.jsx";
-import { ErrorNote, PageHead, ProgramAbout, Refreshing, SkeletonCard } from "../../components/ui.jsx";
+import { ErrorNote, PageHead, PageSkeleton, Pending, ProgramAbout } from "../../components/ui.jsx";
 import { canEditActivity, fmtDate, phaseLabel, programByKey, PROG_COLORS } from "../../lib/format.js";
 import { RekapPeserta } from "../../components/RekapPeserta.jsx";
 import { SugtSummary } from "../../components/Sugt.jsx";
@@ -24,7 +24,10 @@ export function clientLoader({ params }) {
 const phaseColor = (ph) => PROG_COLORS[Math.max(0, PHASES.findIndex(([v]) => v === ph)) % PROG_COLORS.length];
 
 export default function ProgramDashboard({ loaderData }) {
-  return <RequireAccess area="activities" page="Dashboard program"><ProgramPage loaderData={loaderData} /></RequireAccess>;
+  return <RequireAccess area="activities" page="Dashboard program">
+    {/* program lain = halaman baru: dipasang ulang agar data program sebelumnya tidak tampil di bawah judul baru */}
+    <ProgramPage key={loaderData.program.key} loaderData={loaderData} />
+  </RequireAccess>;
 }
 
 function ProgramPage({ loaderData }) {
@@ -34,19 +37,17 @@ function ProgramPage({ loaderData }) {
 
   return (
     <div className="page">
-      <PageHead title={<>{program.fullName}<span className="title-abbr">{program.label}</span></>}>
-        {loading && d && <Refreshing />}
-      </PageHead>
+      <PageHead title={<>{program.fullName}<span className="title-abbr">{program.label}</span></>} />
       <ErrorNote error={error} onRetry={() => reload()} />
       <ProgramAbout program={program} />
-      {!d ? <><div className="grid g-2"><SkeletonCard /><SkeletonCard /></div></> : (
-        <>
+      {!d ? <PageSkeleton kpis={0} /> : (
+        <Pending busy={loading}>
           <ProgramProgress program={program} kpi={d.kpi} last={lastPerformed(d.activities)} />
           {program.api === "sugt" && <SugtSummary />}
           <div className="grid g-2">
-            <MilestoneCard title="Sedang Berlangsung" info="ongoing" tone="red" items={d.milestones.ongoing} program={program}
+            <MilestoneCard title="Sedang berlangsung" info="ongoing" tone="red" items={d.milestones.ongoing} program={program}
               empty="Tidak ada kegiatan dalam rentang H-2 sampai H+7." />
-            <MilestoneCard title="Agenda Mendatang" info="upcoming" tone="yellow" items={d.milestones.upcoming} program={program}
+            <MilestoneCard title="Agenda mendatang" info="upcoming" tone="yellow" items={d.milestones.upcoming} program={program}
               empty="Belum ada agenda. Tambahkan lewat Data Kegiatan dengan jenis “Agenda mendatang”." />
           </div>
           <section className="card">
@@ -55,7 +56,7 @@ function ProgramPage({ loaderData }) {
               key: t.phase, label: phaseLabel(t.phase), color: phaseColor(t.phase), start: t.startDate, end: t.endDate, count: t.activityCount,
             }))} />
           </section>
-        </>
+        </Pending>
       )}
       <RekapPeserta program={program.api} programLabel={program.label} />
       <ActivitiesTable fixedProgram={program.api} title={"Kegiatan " + program.label} />

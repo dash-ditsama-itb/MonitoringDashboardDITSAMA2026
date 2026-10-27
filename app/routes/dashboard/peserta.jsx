@@ -1,20 +1,21 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChartCanvas } from "../../components/ChartCanvas.jsx";
 import { RequireAccess } from "../../components/Access.jsx";
 import { Icon } from "../../components/Icon.jsx";
 import {
-  Bar, EmptyState, ErrorNote, Kpi, PageHead, Pagination, Refreshing, SearchInput, Segmented, SelectField, Sheet, SkeletonCard, Spinner, TableSkeleton,
+  Bar, EmptyState, ErrorNote, Kpi, PageHead, PageSkeleton, Pagination, Pending, RefreshButton, SearchInput, Segmented, SelectField, Sheet, Spinner,
+  TableSkeleton, usePending,
 } from "../../components/ui.jsx";
 import { RekapPeserta } from "../../components/RekapPeserta.jsx";
 import { PROGRAMS, REKAP_PESERTA } from "../../config.js";
-import { fmtNum, fmtScore, withoutAll } from "../../lib/format.js";
+import { fmtNum, fmtScore, programLabel, withoutAll } from "../../lib/format.js";
 import { useApi } from "../../stores/data.js";
 import { useUiStore } from "../../stores/ui.js";
 
 const ALL = "Semua";
 const NAVY = "#204074", BLUE = "#3a6db0", ORANGE = "#E08A2E";
 const FILTERS = [
-  ["program", "programs", "Program"], ["periode", "periodes", "Periode"], ["aktivitas", "aktivitas", "Aktivitas"],
+  ["program", "programs", "Program"], ["periode", "periodes", "Periode"], ["aktivitas", "aktivitas", "Kegiatan"],
   ["provinsi", "provinsis", "Provinsi"], ["fakultas", "fakultas", "Fakultas / jurusan"], ["skema", "skemas", "Skema"],
   ["tipe", "tipes", "Tipe"], ["kelompok", "kelompoks", "Kelompok"],
 ];
@@ -57,6 +58,8 @@ function rekapProgramApi(name) {
   const p = PROGRAMS.find((x) => [x.label, x.key, x.api, x.label.replace(/^inspirasi\s+/i, "")].some((v) => norm(v) === n));
   return p?.api ?? REKAP_PESERTA.find((r) => norm(r.label) === n)?.programs[0];
 }
+// nama tab/program yang tampil = nama program di menu (sheet "Riset Kolaboratif" -> "Riset"); nilai filter tetap nama sheet
+const sheetLabel = (name) => { const api = rekapProgramApi(name); return api ? programLabel(api) : name; };
 
 // data profil (mis. Peserta_BTI) dipakai bila diisi hampir semua peserta yang sedang dilihat,
 // supaya angka gabungan "semua program" tidak tampil seolah mewakili semua peserta
@@ -244,17 +247,16 @@ function PesertaPage() {
   const active = FILTER_BAR.some(([k]) => ui[k] !== ALL) || ui.ujian !== "__LAST__";
   // pilihan ujian hanya untuk sheet yang punya nilai ujian (bukan BTI / EduQuest)
   const showUjian = (d?.kpi.totalExamsWithData ?? 0) > 0 || ui.ujian !== "__LAST__";
-  // nama program yang sedang dilihat, ditulis di setiap judul kartu & grafik
-  const scope = program;
-  const [busy, setBusy] = useState(false);
-  const refresh = async () => { setBusy(true); await dash.reload({ refresh: true }); setBusy(false); };
+  // nama program milik data yang sedang tampil, ditulis di setiap judul kartu & grafik
+  // (saat tab/filter berganti, data lama tampil pudar dengan nama programnya sendiri sampai data baru siap)
+  const dataProgram = useRef(program);
+  if (dash.fresh) dataProgram.current = program;
+  const scope = sheetLabel(dataProgram.current);
 
   return (
     <div className="page">
       <PageHead title="Peserta" sub="Data peserta, nilai, dan sebaran sekolah per program">
-        <button type="button" className="btn" onClick={refresh} disabled={busy || dash.loading}>
-          {busy ? <Spinner /> : <Icon name="refresh" size={16} />}<span className="btn-txt">Muat ulang</span>
-        </button>
+        <RefreshButton reload={dash.reload} />
       </PageHead>
 
       {tabs.length > 0 && <div className="pst-tabs" role="tablist" aria-label="Program">
@@ -262,19 +264,19 @@ function PesertaPage() {
           const empty = emptyTabs.includes(p);
           return (
             <button key={p} type="button" role="tab" aria-selected={p === program} className={(p === program ? "on" : "") + (empty ? " empty" : "")}
-              onClick={() => p !== program && openTab(p)} title={empty ? `Belum ada data peserta ${p}` : undefined}>
-              {p}{empty && <small>belum ada data</small>}
+              onClick={() => p !== program && openTab(p)} title={empty ? `Belum ada data peserta ${sheetLabel(p)}` : undefined}>
+              {sheetLabel(p)}{empty && <small>belum ada data</small>}
             </button>
           );
         })}
       </div>}
 
-      <RekapPeserta highlight={rekapProgramApi(program)} highlightLabel={program} scope="semua program" />
+      <RekapPeserta highlight={rekapProgramApi(program)} highlightLabel={sheetLabel(program)} scope="semua program" />
 
       {noData ? (
         <section className="card">
-          <EmptyState icon="users" title={`Belum ada data peserta ${program}`}>
-            Data tampil otomatis setelah sheet peserta {program} ditambahkan ke spreadsheet peserta.
+          <EmptyState icon="users" title={`Belum ada data peserta ${sheetLabel(program)}`}>
+            Data tampil otomatis setelah sheet peserta {sheetLabel(program)} ditambahkan ke spreadsheet peserta.
           </EmptyState>
         </section>
       ) : <>
@@ -283,7 +285,8 @@ function PesertaPage() {
         {FILTER_BAR.map(([k, optKey, label]) => {
           const list = fo?.[optKey] || [];
           if (!list.length && ui[k] === ALL) return null;
-          return <SelectField key={k} label={filterLabel(k, label, program)} value={list.includes(ui[k]) ? ui[k] : ALL} options={[ALL, ...list]} onChange={(v) => setFilter(k, v)} />;
+          return <SelectField key={k} label={filterLabel(k, label, program)} value={list.includes(ui[k]) ? ui[k] : ALL}
+            options={[[ALL, "Semua " + filterLabel(k, label, program).toLowerCase()], ...list]} onChange={(v) => setFilter(k, v)} />;
         })}
         {showUjian && <SelectField label="Ujian" value={ui.ujian} onChange={(v) => setFilter("ujian", v)}
           options={[["__LAST__", "Terbaru yang sudah dinilai"], ...[...(fo?.ujians || [])].reverse().map((u) => [u.key, u.label])]} />}
@@ -295,10 +298,10 @@ function PesertaPage() {
       {!d ? (
         <>
           {dash.loading && <div className="note"><Spinner />Memuat data peserta… pemuatan pertama bisa memakan waktu beberapa detik.</div>}
-          <div className="grid g-2"><SkeletonCard lines={0} /><SkeletonCard lines={0} /></div>
+          <PageSkeleton />
         </>
       ) : (
-        <>
+        <Pending busy={dash.loading}>
           <KpiRow d={d} scope={scope} />
           <Profile d={d} scope={scope} />
           <Assessment d={d} scope={scope} />
@@ -306,7 +309,7 @@ function PesertaPage() {
           {/* belum ada nilai sama sekali untuk filter ini: peringkat disembunyikan */}
           {d.kpi.gradedCount > 0 && <Ranking d={d} scope={scope} sort={ui.rankingSortBy} onSort={(v) => patch("pst", { rankingSortBy: v })} showAll={ui.rankAll} onToggle={() => patch("pst", { rankAll: !ui.rankAll })} />}
           {d.schools.length > 0 && <Schools d={d} scope={scope} />}
-        </>
+        </Pending>
       )}
       <Participants query={query} exams={fo?.ujians || []} scope={scope} />
       </>}
@@ -378,8 +381,8 @@ function Ranking({ d, scope, sort, onSort, showAll, onToggle }) {
           <tbody>{shown.map((p, i) => (
             <tr key={i} className={p.rank <= 3 ? "top" : ""}>
               <td className="c-rank"><span className={"rank-no" + (p.rank <= 3 ? " top" : "")}>{p.rank}</span></td>
-              <td><div className="cell-strong">{p.nama}</div><div className="row-meta"><span className="sm-only">{p.program}</span><span>{p.school}</span><span>{p.province}</span></div></td>
-              <td className="sm-hide">{p.program}</td><td className="sm-hide">{p.faculty || "–"}</td><td><IdxChip ix={p.index} /></td>
+              <td><div className="cell-strong">{p.nama}</div><div className="row-meta"><span className="sm-only">{sheetLabel(p.program)}</span><span>{p.school}</span><span>{p.province}</span></div></td>
+              <td className="sm-hide">{sheetLabel(p.program)}</td><td className="sm-hide">{p.faculty || "–"}</td><td><IdxChip ix={p.index} /></td>
               <td className="num cell-strong">{sort === "naik" && p.metricValue > 0 ? "+" : ""}{Number(p.metricValue).toLocaleString("id-ID", { maximumFractionDigits: 1 })}</td>
             </tr>
           ))}</tbody>
@@ -433,6 +436,7 @@ function Participants({ query, exams, scope }) {
   const patch = useUiStore((s) => s.patch);
   const { data, error, loading, reload } = useApi("/peserta/participants", { ...query, search: ui.search, page: ui.page, perPage: ui.perPage });
   const rows = data?.data || [];
+  const busy = usePending(loading && !!data);
   const [open, setOpen] = useState(null);
   const scoreChips = (p) => [
     ...exams.filter((u) => p.scores?.[u.key]?.value != null).map((u) => (
@@ -448,20 +452,19 @@ function Participants({ query, exams, scope }) {
         <div className="card-sub">{data?.pagination ? fmtNum(data.pagination.totalRecords) + " peserta sesuai filter" : "Memuat…"}</div></div></div>
       <div className="tbl-toolbar">
         <SearchInput value={ui.search} onChange={(v) => patch("pst", { search: v, page: 1 })} placeholder="Cari nama, sekolah, atau kelompok" />
-        {loading && data && <Refreshing />}
       </div>
       <ErrorNote error={error} onRetry={() => reload()} />
       {!data && loading ? <TableSkeleton /> : !rows.length ? (
         <EmptyState icon={ui.search ? "search" : "users"} title={ui.search ? `Tidak ada peserta yang cocok dengan "${ui.search}"` : "Belum ada peserta untuk filter ini"} />
       ) : (
-        <div className={"tbl-body" + (loading ? " is-loading" : "")} aria-busy={loading}>
+        <div className={"tbl-body" + busy} aria-busy={loading}>
           <div className="tbl-scroll"><table className="tbl pst-tbl">
             <thead><tr><th>Peserta</th><th>Program</th><th className="c-fak">Fakultas / jurusan</th><th className="c-kel">Kelompok</th><th>Nilai</th></tr></thead>
             <tbody>{rows.map((p, i) => (
               <tr key={i} onClick={() => setOpen(p)}>
                 <td><button type="button" className="row-link" onClick={(e) => { e.stopPropagation(); setOpen(p); }}>{p.nama}</button>
                   <div className="row-meta"><span>{p.sekolah || "–"}</span>{p.kabupaten && <span>{p.kabupaten}</span>}{p.provinsi && <span>{p.provinsi}</span>}</div></td>
-                <td><div>{p.program}{p.periode && <span className="muted"> · P{p.periode}</span>}</div>
+                <td><div>{sheetLabel(p.program)}{p.periode && <span className="muted"> · P{p.periode}</span>}</div>
                   <div className="row-meta"><span className="trunc">{[p.peran, p.bidang].filter(Boolean).join(" · ") || p.aktivitas}</span></div></td>
                 <td className="c-fak">{p.fakultas || <span className="muted">–</span>}</td>
                 <td className="c-kel">{p.kelompok || <span className="muted">–</span>}{p.kategori && <div className="row-meta"><span>{p.kategori}</span></div>}</td>
@@ -472,7 +475,7 @@ function Participants({ query, exams, scope }) {
           <ul className="rec-list">{rows.map((p, i) => (
             <li key={i} className="rec"><button type="button" className="rec-main" onClick={() => setOpen(p)}>
               <span className="rec-top"><span className="rec-name">{p.nama}</span></span>
-              <span className="rec-meta"><span>{p.sekolah || "–"}</span><span>{p.program}{p.periode && " · P" + p.periode}</span>{p.kelompok && <span>{p.kelompok}</span>}</span>
+              <span className="rec-meta"><span>{p.sekolah || "–"}</span><span>{sheetLabel(p.program)}{p.periode && " · P" + p.periode}</span>{p.kelompok && <span>{p.kelompok}</span>}</span>
               <span className="scores">{scoreChips(p)}</span>
             </button></li>
           ))}</ul>
@@ -480,7 +483,7 @@ function Participants({ query, exams, scope }) {
       )}
       <Pagination pagination={data?.pagination} perPage={ui.perPage} noun="peserta"
         onPage={(n) => patch("pst", { page: n })} onPerPage={(n) => patch("pst", { perPage: n, page: 1 })} />
-      <Sheet open={!!open} onClose={() => setOpen(null)} title={open?.nama} sub={open && open.program + (open.periode ? " · Periode " + open.periode : "")}>
+      <Sheet open={!!open} onClose={() => setOpen(null)} title={open?.nama} sub={open && sheetLabel(open.program) + (open.periode ? " · Periode " + open.periode : "")}>
         {open && (
           <>
             <dl className="facts">

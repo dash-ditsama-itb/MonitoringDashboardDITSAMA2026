@@ -114,6 +114,7 @@ a{color:var(--blue-ink);text-underline-offset:3px}
 .control-head{display:flex;align-items:center;justify-content:space-between;font-weight:800;font-size:16px;margin-bottom:12px}
 .control-head>span{display:flex;align-items:center;gap:8px}
 .control-head .count{background:#fff;color:var(--navy);font-size:11px;border-radius:10px;padding:1px 7px}
+.control-head .tb-loading{color:#DCE7F5;font-weight:600;margin-left:auto;margin-right:8px}
 .control-body{display:flex;flex-direction:column;gap:12px}
 .control .field-lab{color:#fff;font-weight:600}
 .control select{border:0;color:var(--navy);font-weight:600}
@@ -126,6 +127,10 @@ a{color:var(--blue-ink);text-underline-offset:3px}
   background:linear-gradient(var(--bg) 70%,rgba(238,242,248,0))}
 .topbar>.icon-btn:first-child{display:none}
 .topbar-filter{margin-left:auto}
+/* penanda "Memperbarui…" dari <Pending>: di kanan topbar, sebelum tombol Filter bila ada */
+.topbar-busy{margin-left:auto;display:inline-flex}
+.topbar-busy+.topbar-filter{margin-left:6px}
+.topbar-filter .count{background:var(--navy);color:#fff;font-size:11px;font-weight:700;border-radius:10px;padding:1px 7px;margin-left:2px}
 /* nama dashboard di topbar hanya saat rail tak terlihat */
 .topbar-dash{display:none;align-items:center;gap:7px;min-width:0;color:var(--navy);font-size:12.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
 .app.rail-hidden .topbar-dash{display:inline-flex}
@@ -380,8 +385,10 @@ a.sk-link:hover{text-decoration:underline}
 .bulkbar>span{margin-right:auto}
 .bulkbar .btn:not(.btn-danger){background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.25);color:#fff}
 @keyframes rise{from{opacity:0;transform:translateY(-4px)}}
-.tbl-body{transition:opacity .15s}
-.tbl-body.is-loading{opacity:.55;pointer-events:none}
+/* memuat ulang (<Pending>): data lama pudar & tidak bisa diklik; pudar menunggu sebentar agar muatan cepat tidak berkedip */
+.pending{display:flex;flex-direction:column;gap:inherit;min-width:0}
+.pending,.tbl-body{transition:opacity .15s}
+.is-loading{opacity:.55;pointer-events:none;transition-delay:.12s}
 .tbl-scroll{overflow-x:auto}
 .card:not(.tbl-card)>.tbl-scroll{margin:0 -20px;padding:0}
 .tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13.5px}

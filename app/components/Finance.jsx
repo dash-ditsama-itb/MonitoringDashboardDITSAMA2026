@@ -10,7 +10,7 @@ import { invalidate, useApi } from "../stores/data.js";
 import { confirmAction, toast } from "./feedback.jsx";
 import { Icon } from "./Icon.jsx";
 import { ExportButton, ImportButton, importSummary } from "./ImportExport.jsx";
-import { EmptyState, ErrorNote, Pagination, SearchInput, Segmented, Sheet, Spinner, TableSkeleton } from "./ui.jsx";
+import { EmptyState, ErrorNote, Pagination, SearchInput, Segmented, Sheet, Spinner, TableSkeleton, usePending } from "./ui.jsx";
 
 const SORTS = [
   ["date:desc", "Tanggal (terbaru)"], ["date:asc", "Tanggal (terlama)"],
@@ -36,6 +36,7 @@ export function FinanceTable({ filters, ui, update }) {
   const [sortBy, sortOrder] = ui.sort.split(":");
   const query = { ...filters, page: ui.page, perPage: ui.perPage, search: ui.search, sortBy, sortOrder };
   const { data, error, loading, reload } = useApi("/financial", query);
+  const busy = usePending(loading && !!data);
   const rows = data?.data?.records || [];
   const pagination = data?.data?.pagination;
   const [selected, setSelected] = useState(() => new Set());
@@ -126,7 +127,7 @@ export function FinanceTable({ filters, ui, update }) {
               {canEdit ? "Tambahkan PKS lebih dulu, lalu catat setiap pengajuan dana." : "Transaksi yang dicatat tim Keuangan akan tampil di sini."}
             </EmptyState>
       ) : (
-        <div className={"tbl-body" + (loading ? " is-loading" : "")} aria-busy={loading}>
+        <div className={"tbl-body" + busy} aria-busy={loading}>
           <div className="tbl-scroll">
             <table className="tbl fin-tbl">
               <thead>

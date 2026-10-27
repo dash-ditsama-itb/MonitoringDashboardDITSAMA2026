@@ -3,7 +3,7 @@ import { ChartCanvas } from "../../components/ChartCanvas.jsx";
 import { RequireAccess } from "../../components/Access.jsx";
 import { Icon } from "../../components/Icon.jsx";
 import {
-  Bar, EmptyState, ErrorNote, Kpi, PageHead, SearchInput, Segmented, SelectField, Sheet, SkeletonCard, Spinner,
+  Bar, EmptyState, ErrorNote, Kpi, PageHead, PageSkeleton, Pending, RefreshButton, SearchInput, Segmented, SelectField, Sheet, Spinner,
 } from "../../components/ui.jsx";
 import { fmtNum, withoutAll } from "../../lib/format.js";
 import { useApi } from "../../stores/data.js";
@@ -22,7 +22,7 @@ const nice = (n) => String(n || "").split(",")[0].replace(/^((prof|dr|drs|dra|ir
 const hasMethod = (methods) => methods.some((m) => m !== "–");
 
 export default function Dosen() {
-  return <RequireAccess area="activities" page="Feedback"><DosenPage /></RequireAccess>;
+  return <RequireAccess area="activities" page="Umpan Balik"><DosenPage /></RequireAccess>;
 }
 
 function DosenPage() {
@@ -32,8 +32,6 @@ function DosenPage() {
   const { data, error, loading, reload } = useApi("/dashboard/dosen", filters);
   const d = data?.data;
   const fo = d?.filterOptions;
-  const [busy, setBusy] = useState(false);
-  const refresh = async () => { setBusy(true); await reload({ refresh: true }); setBusy(false); };
   const select = (key) => patch("dsn", { sel: key });
   const active = FILTERS.some(([k]) => ui[k] !== ALL) || ui.minResp !== "1";
   // Dosen_OSN: mata kuliah = Bidang (Geografi, Fisika, …)
@@ -43,10 +41,8 @@ function DosenPage() {
 
   return (
     <div className="page">
-      <PageHead title="Feedback" sub="Feedback program dan hasil evaluasi narasumber/pengajar oleh peserta">
-        <button type="button" className="btn" onClick={refresh} disabled={busy || loading}>
-          {busy ? <Spinner /> : <Icon name="refresh" size={16} />}<span className="btn-txt">Muat ulang</span>
-        </button>
+      <PageHead title="Umpan Balik" sub="Umpan balik program dan hasil evaluasi narasumber/pengajar oleh peserta">
+        <RefreshButton reload={reload} />
       </PageHead>
 
       <section className="card filter-bar">
@@ -54,7 +50,8 @@ function DosenPage() {
           const list = fo?.[optKey] || [];
           // filter tanpa pilihan untuk program ini (mis. OSN tanpa metode, kelas, bahasa) disembunyikan
           if (k !== "program" && list.length <= 1 && ui[k] === ALL) return null;
-          return <SelectField key={k} label={k === "mapel" && isOsn ? "Bidang" : label} value={list.includes(ui[k]) ? ui[k] : ALL} options={[ALL, ...list]} onChange={(v) => patch("dsn", { [k]: v })} />;
+          return <SelectField key={k} label={k === "mapel" && isOsn ? "Bidang" : label} value={list.includes(ui[k]) ? ui[k] : ALL}
+            options={[[ALL, "Semua " + (k === "mapel" && isOsn ? "bidang" : label.toLowerCase())], ...list]} onChange={(v) => patch("dsn", { [k]: v })} />;
         })}
         <SelectField label="Minimal penilaian" value={ui.minResp} options={[["1", "Semua"], ["5", "≥ 5"], ["10", "≥ 10"], ["30", "≥ 30"]]} onChange={(v) => patch("dsn", { minResp: v })} />
         {active && <button type="button" className="btn btn-sm filter-reset" onClick={() => patch("dsn", { ...Object.fromEntries(FILTERS.map(([k]) => [k, ALL])), minResp: "1" })}>Reset filter</button>}
@@ -65,14 +62,14 @@ function DosenPage() {
       {!d ? (
         <>
           {loading && <div className="note"><Spinner />Memuat data evaluasi… pemuatan pertama bisa memakan waktu beberapa detik.</div>}
-          <div className="grid g-2"><SkeletonCard lines={0} /><SkeletonCard lines={0} /></div>
+          <PageSkeleton kpis={6} />
         </>
       ) : (
-        <>
-          <SectionHead icon="message" title="Feedback Program" sub="Rata-rata semua aspek formulir feedback tiap program, termasuk narasumber/pengajar" />
+        <Pending busy={loading}>
+          <SectionHead icon="message" title="Umpan balik program" sub="Rata-rata semua aspek formulir umpan balik tiap program, termasuk narasumber/pengajar" />
           <ProgramFeedback d={d} program={ui.program} />
 
-          <SectionHead icon="grad" title="Feedback Narasumber/Pengajar" sub="Hasil evaluasi narasumber/pengajar oleh peserta · klik nama untuk melihat portofolio" />
+          <SectionHead icon="grad" title="Umpan balik narasumber/pengajar" sub="Hasil evaluasi narasumber/pengajar oleh peserta · klik nama untuk melihat portofolio" />
           <div className="kpi-row six">
             <Kpi label="Pengajar dinilai" value={fmtNum(d.kpi.totalLecturers)} icon="grad" />
             <Kpi label={isOsn ? "Bidang" : "Mata kuliah / kelas"} value={fmtNum(d.kpi.totalSubjects)} icon="book" />
@@ -127,7 +124,7 @@ function DosenPage() {
               </table></div>
             )}
           </section>
-        </>
+        </Pending>
       )}
       <LecturerDetail lecturerKey={ui.sel} filters={filters} onClose={() => select("")} />
     </div>
@@ -181,7 +178,7 @@ function Charts({ d, onSelect }) {
   );
 }
 
-// judul bagian halaman (Feedback Program / Feedback Narasumber/Pengajar)
+// judul bagian halaman (Umpan balik program / Umpan balik narasumber/pengajar)
 function SectionHead({ icon, title, sub }) {
   return (
     <div className="sec-head">
@@ -194,7 +191,7 @@ function SectionHead({ icon, title, sub }) {
 // Feedback Program: rata-rata tiap program (skala 100) + rincian per aspek program terpilih
 function ProgramFeedback({ d, program }) {
   const fb = d.programFeedback || [];
-  if (!fb.length) return <section className="card"><EmptyState icon="message" title="Belum ada feedback program">Feedback program dihitung dari formulir evaluasi peserta.</EmptyState></section>;
+  if (!fb.length) return <section className="card"><EmptyState icon="message" title="Belum ada umpan balik program">Umpan balik program dihitung dari formulir evaluasi peserta.</EmptyState></section>;
   return (
     <div className="grid g-2">
       <ProgramFeedbackCard list={fb} program={program} />
@@ -217,7 +214,7 @@ function ProgramAspectCard({ list, program }) {
         <div className="card-sub">Semua komponen form, termasuk narasumber/pengajar · rata-rata 1–5 · klik aspek untuk rincian pertanyaan</div></div></div>
       {!fixed && list.length > 1 && <div className="asp-tabs"><Segmented label="Program" value={cur.program} onChange={setPick} options={list.map((p) => [p.program, p.program])} /></div>}
       <AspectList key={cur.program} aspects={aspects} />
-      <div className="asp-total"><span>Feedback {cur.program} · rata-rata {aspects.length} aspek, skala 100</span><b>{fb100(cur.feedbackScore)}</b></div>
+      <div className="asp-total"><span>Umpan balik {cur.program} · rata-rata {aspects.length} aspek, skala 100</span><b>{fb100(cur.feedbackScore)}</b></div>
     </section>
   );
 }
@@ -227,7 +224,7 @@ function ProgramFeedbackCard({ list, program }) {
   const rows = [...list].filter((p) => p.feedbackScore != null).sort((a, b) => b.feedbackScore - a.feedbackScore);
   return (
     <section className="card">
-      <div className="card-head"><div><h2 className="card-title">Rata-rata feedback program</h2>
+      <div className="card-head"><div><h2 className="card-title">Rata-rata umpan balik program</h2>
         <div className="card-sub">Rata-rata semua aspek (bobot sama, termasuk narasumber/pengajar) ÷ 5 × 100 · semua penilaian program, tanpa filter</div></div></div>
       <ul className="asp">{rows.map((p) => (
         <li key={p.program} className={p.program === program ? "on" : ""}>

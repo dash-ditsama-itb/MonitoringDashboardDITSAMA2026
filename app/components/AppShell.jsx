@@ -11,11 +11,11 @@ import { ACCESS } from "./Access.jsx";
 import { loginTarget } from "./AuthGate.jsx";
 import { FeedbackHost } from "./feedback.jsx";
 import { Icon } from "./Icon.jsx";
-import { Sheet, Spinner } from "./ui.jsx";
+import { Refreshing, Sheet, Spinner } from "./ui.jsx";
 
 const navClass = ({ isActive }) => "nav-item" + (isActive ? " active" : "");
 
-// tautan menu; untuk jabatan tanpa akses tetap tampil tapi nonaktif
+// tautan menu; untuk peran tanpa akses tetap tampil tapi nonaktif
 export function NavItem({ session, area, to, end, children }) {
   const rule = area && ACCESS[area];
   if (rule && !rule.can(session)) {
@@ -47,7 +47,7 @@ export function Gate({ children }) {
  */
 export function AppShell({ session, dashboard, nav, control, topbarEnd, profile }) {
   const ui = useUiStore(useShallow((s) => ({
-    railOpen: s.railOpen, railHidden: s.railHidden, controlOpen: s.controlOpen, set: s.set,
+    railOpen: s.railOpen, railHidden: s.railHidden, controlOpen: s.controlOpen, pending: s.pending, set: s.set,
   })));
   const [profileOpen, setProfileOpen] = useState(false);
   const location = useLocation();
@@ -95,6 +95,8 @@ export function AppShell({ session, dashboard, nav, control, topbarEnd, profile 
           </button>
           {/* nama dashboard saat menu kiri tersembunyi (ponsel, atau menu disembunyikan) */}
           <span className="topbar-dash"><Icon name={dashboard.icon} size={16} />{dashboard.label}</span>
+          {/* satu penanda muat ulang untuk seluruh halaman; topbar menempel di atas, jadi selalu terlihat */}
+          {ui.pending > 0 && <span className="topbar-busy"><Refreshing /></span>}
           {topbarEnd}
         </div>
         <Outlet />
