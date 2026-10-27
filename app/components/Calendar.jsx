@@ -52,9 +52,9 @@ export function Calendar({ events }) {
           if (!ev) return <div className={cls} key={d}><span className="cal-num">{d}</span></div>;
           return (
             <button type="button" className={cls} key={d} onClick={() => setDetail({ list: ev, date: new Date(y, m, d) })}
-              aria-label={`${d} ${MONTHS[m]}: ${ev.length} kegiatan`}>
+              aria-label={`${d} ${MONTHS[m]}: ${ev.length} kegiatan, ${ev.map((e) => e.name).join(", ")}`}>
               <span className="cal-num">{d}</span>
-              {ev.slice(0, 2).map((e) => <span className={"cal-ev ev-" + e.status} key={e.id}>{e.name}</span>)}
+              {ev.slice(0, 2).map((e) => <span className={"cal-ev ev-" + e.status} key={e.id} title={e.name}>{e.name}</span>)}
               {ev.length > 2 && <span className="cal-more">+{ev.length - 2} lagi</span>}
               <span className="cal-dots">{ev.slice(0, 4).map((e) => <i key={e.id} className={"ev-" + e.status} />)}</span>
             </button>

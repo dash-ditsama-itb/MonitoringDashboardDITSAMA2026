@@ -33,7 +33,8 @@ export function Gantt({ rows, legend }) {
             {ticks.map((t) => <i key={t.left} className="gantt-grid" style={{ left: t.left + "%" }} />)}
             <div className="gantt-bar" style={{ ...pos(r), background: r.color }}
               title={`${r.label}: ${fmtDate(r.start)} – ${fmtDate(r.end)} · ${r.count} kegiatan`}>
-              <span>{short(r.s)}{r.s.toDateString() !== r.e.toDateString() && "–" + short(r.e)}</span>
+              <span className="gb-range">{short(r.s)}{r.s.toDateString() !== r.e.toDateString() && "–" + short(r.e)}</span>
+              <span className="gb-start" aria-hidden="true">{short(r.s)}</span>
             </div>
           </div>
         </div>

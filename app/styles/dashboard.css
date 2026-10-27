@@ -297,7 +297,8 @@ input:not([type=checkbox]):not([type=radio]):not([type=file]),select,textarea{
 textarea{height:auto;padding:10px 12px;resize:vertical;line-height:1.5}
 select{padding-right:32px;appearance:none;cursor:pointer;
   background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235d6879' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center}
-input::placeholder,textarea::placeholder{color:#7d8798}
+/* placeholder memakai Muted Slate (5,7:1 di atas putih), tetap lebih terang dari isian */
+input::placeholder,textarea::placeholder{color:var(--muted);opacity:1}
 input:hover,select:hover,textarea:hover{border-color:#b9c6d8}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(58,109,176,.18)}
 input[readonly]{background:var(--subtle);color:var(--ink-2)}
@@ -675,8 +676,9 @@ dialog.confirm[open]{animation:pop .2s var(--ease)}
 .pst-tabs button{flex:none;border:0;background:none;padding:10px 16px;font:inherit;font-size:14px;font-weight:600;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-1px;cursor:pointer;white-space:nowrap}
 .pst-tabs button:hover{color:var(--ink)}
 .pst-tabs button.on{color:var(--navy);font-weight:800;border-bottom-color:var(--navy)}
-.pst-tabs button.empty{color:#9AA6B6}
-.pst-tabs button small{margin-left:6px;font-size:10.5px;font-weight:600;opacity:.75}
+/* tab tanpa sheet peserta: ditandai lewat teks "belum ada data" dan bobot lebih ringan, bukan abu-abu pucat */
+.pst-tabs button.empty{font-weight:500}
+.pst-tabs button small{margin-left:6px;font-size:11px;font-weight:600;color:var(--muted)}
 @container (max-width:460px){ .rp-row,.rp-axis{grid-template-columns:96px minmax(0,1fr);gap:8px} .rp-name{font-size:12.5px} }
 .lv-counts{display:flex;gap:4px}
 .issue-row{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;text-align:left;border:1px solid var(--line);
@@ -686,7 +688,7 @@ dialog.confirm[open]{animation:pop .2s var(--ease)}
 .issue-row.lv-medium{background:#FFFBF0;border-color:#F3E1B5}
 .issue-txt{min-width:0}
 .issue-txt b{display:block;font-size:13.5px;line-height:1.35}
-.issue-txt small{display:block;font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.issue-txt small{display:block;font-size:12px;color:var(--muted);overflow-wrap:anywhere}
 .ms{display:grid;grid-template-columns:48px minmax(0,1fr);gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
 .ms:last-of-type{border-bottom:0}
 .ms-date{background:var(--pale);border-radius:10px;text-align:center;padding:5px 0;line-height:1.1;color:var(--navy)}
@@ -781,8 +783,12 @@ dialog.confirm[open]{animation:pop .2s var(--ease)}
 .gantt-lab{font-size:12.5px;font-weight:600;color:var(--ink-2);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .gantt-track{position:relative;height:28px;background:var(--subtle);border-radius:8px}
 .gantt-grid{position:absolute;top:0;bottom:0;width:1px;background:var(--line)}
-.gantt-bar{position:absolute;top:4px;height:20px;border-radius:6px;display:flex;align-items:center;overflow:hidden;min-width:6px}
+.gantt-bar{position:absolute;top:4px;height:20px;border-radius:6px;display:flex;align-items:center;overflow:hidden;min-width:6px;container-type:inline-size}
 .gantt-bar span{color:#fff;font-size:11px;font-weight:700;padding:0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+/* label tanggal mengikuti lebar batang: rentang penuh -> tanggal mulai saja -> tanpa label (tanggal lengkap di tooltip) */
+.gantt-bar .gb-start{display:none}
+@container (max-width:104px){.gantt-bar .gb-range{display:none}.gantt-bar .gb-start{display:block}}
+@container (max-width:56px){.gantt-bar .gb-start{display:none}}
 .legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
 .legend span{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-2)}
 .legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
