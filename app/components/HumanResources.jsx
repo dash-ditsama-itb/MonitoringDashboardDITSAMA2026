@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { SDM_POSITIONS } from "../config.js";
 import { api, errorText } from "../lib/api.js";
-import { byLabel, canEditHumanResources, fmtNum, splitPeople } from "../lib/format.js";
+import { byLabel, canEditHumanResources, fmtDate, fmtNum, programLabel, PROGRAMS_AZ, splitPeople } from "../lib/format.js";
 import { useAuthStore } from "../stores/auth.js";
 import { invalidate, useApi } from "../stores/data.js";
 import { confirmAction, toast } from "./feedback.jsx";
@@ -120,14 +120,23 @@ export function HumanResourcesTable() {
   const members = data?.data || [];
   const positions = positionsOf(members);
   const [position, setPosition] = useState(ALL);
+  const [program, setProgram] = useState(ALL);
   const [q, setQ] = useState("");
+  const [usage, setUsage] = useState(null);
   const [editing, setEditing] = useState(null);
   const [merging, setMerging] = useState(null);
   const [adding, setAdding] = useState(false);
   const [busyId, setBusyId] = useState(null);
 
+  // pilihan program = program yang sudah memakai nama SDM; nama yang belum dipakai hanya tampil di "Semua program"
+  const programs = PROGRAMS_AZ.filter((p) => members.some((m) => m.programs?.includes(p.api)));
+  // filter selalu tampil (nonaktif selama memuat) agar toolbar tidak bergeser; backend lama tanpa `programs` tidak menampilkannya
+  const byProgram = !data || members.some((m) => m.programs);
   const rows = members.filter((m) => (position === ALL || sdmKey(m.position) === sdmKey(position))
+    && (program === ALL || m.programs?.includes(program))
     && (!q || sdmKey(m.name).includes(sdmKey(q))));
+  // kegiatan tempat nama dipakai, ikut filter program
+  const usedIn = (m) => (m.activities || []).filter((a) => program === ALL || a.program === program);
 
   const run = async (id, fn, okText) => {
     setBusyId(id);
@@ -168,14 +177,26 @@ export function HumanResourcesTable() {
           <option value={ALL}>Semua peran</option>
           {positions.map((p) => <option key={p} value={p}>{p}</option>)}
         </select>
+        {byProgram && (
+          <select className="tb-select" value={program} onChange={(e) => setProgram(e.target.value)} aria-label="Filter program" disabled={!data}>
+            <option value={ALL}>Semua program</option>
+            {programs.map((p) => <option key={p.api} value={p.api}>{p.label}</option>)}
+          </select>
+        )}
       </div>
 
       <ErrorNote error={error} onRetry={() => reload()} />
 
       {!data && loading ? <TableSkeleton check={canEdit} /> : rows.length === 0 && !error ? (
-        <EmptyState icon={q ? "search" : "users"} title={q ? `Tidak ada nama yang cocok dengan "${q}"` : "Belum ada nama SDM"}>
-          {q ? "Coba kata kunci lain." : "Nama yang ditambahkan di sini atau di form kegiatan akan muncul di daftar ini."}
-        </EmptyState>
+        q || program !== ALL ? (
+          <EmptyState icon="search" title={q ? `Tidak ada nama yang cocok dengan "${q}"` : `Belum ada nama SDM di ${programLabel(program)}`}>
+            {q ? "Coba kata kunci lain." : "Ubah filter peran atau program."}
+          </EmptyState>
+        ) : (
+          <EmptyState icon="users" title="Belum ada nama SDM">
+            Nama yang ditambahkan di sini atau di form kegiatan akan muncul di daftar ini.
+          </EmptyState>
+        )
       ) : (
         <div className={"tbl-body" + busy} aria-busy={loading}>
           <div className="tbl-scroll">
@@ -184,7 +205,7 @@ export function HumanResourcesTable() {
                 <tr>
                   <th>Nama</th>
                   <th>Peran</th>
-                  <th className="num">Dipakai di</th>
+                  <th className="c-used">Dipakai di</th>
                   {canEdit && <th className="c-act"><span className="sr-only">Aksi</span></th>}
                 </tr>
               </thead>
@@ -199,7 +220,12 @@ export function HumanResourcesTable() {
                       ) : m.name}
                     </td>
                     <td>{m.position}</td>
-                    <td className="num">{m.activityCount ? `${fmtNum(m.activityCount)} kegiatan` : <span className="muted">Belum dipakai</span>}</td>
+                    <td className="c-used">{!m.activityCount ? <span className="muted">Belum dipakai</span> : !m.activities ? `${fmtNum(m.activityCount)} kegiatan` : (
+                      <>
+                        <button type="button" className="row-link" onClick={() => setUsage(m)}>{fmtNum(usedIn(m).length)} kegiatan</button>
+                        <div className="row-meta">{(program === ALL ? m.programs : [program]).map(programLabel).sort(byLabel()).map((l) => <span key={l}>{l}</span>)}</div>
+                      </>
+                    )}</td>
                     {canEdit && (
                       <td className="c-act">
                         {editing?.id === m.id ? (
@@ -229,6 +255,17 @@ export function HumanResourcesTable() {
       <AddMembersSheet open={adding} onClose={() => setAdding(false)} members={members} positions={positions}
         defaultPosition={position === ALL ? positions[0] : position} />
       <MergeSheet member={merging} members={members} onClose={() => setMerging(null)} />
+      <Sheet open={!!usage} onClose={() => setUsage(null)} title={usage?.name}
+        sub={usage && `${usage.position} · dipakai di ${fmtNum(usedIn(usage).length)} kegiatan${program === ALL ? "" : " " + programLabel(program)}`}>
+        {usage && (
+          <table className="mini-tbl">
+            <thead><tr><th>Kegiatan</th><th>Program</th><th>Tanggal</th></tr></thead>
+            <tbody>{usedIn(usage).map((a) => (
+              <tr key={a.id}><td>{a.name}</td><td>{programLabel(a.program)}</td><td>{a.date ? fmtDate(a.date) : <span className="muted">–</span>}</td></tr>
+            ))}</tbody>
+          </table>
+        )}
+      </Sheet>
     </section>
   );
 }
