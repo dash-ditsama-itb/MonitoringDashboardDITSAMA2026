@@ -44,12 +44,15 @@ export default function Karakter() {
   const picker = info.noYear ? null : <Segmented label="Tahun" value={year} onChange={setYear} options={KARAKTER_YEARS.map((y) => [y, "Tahun " + y])} />;
   return (
     <div className="page kr">
-      <nav className="kr-crumb" aria-label="Lokasi halaman">
-        <span>Pendidikan Persiapan</span>
-        {section ? <Link to={KARAKTER_BASE}>Pembinaan Karakter TPB</Link> : <span>Pembinaan Karakter TPB</span>}
-        {info.parent && <Link to={`${KARAKTER_BASE}/${info.parent}`}>{SECTIONS[info.parent].title}</Link>}
-        {section && <span aria-current="page">{info.title}</span>}
-      </nav>
+      <div className="kr-top">
+        {section && <Link className="btn btn-sm" to={KARAKTER_BASE}><Icon name="left" size={15} />Kembali ke Beranda program</Link>}
+        <nav className="kr-crumb" aria-label="Lokasi halaman">
+          <span>Pendidikan Persiapan</span>
+          {section ? <Link to={KARAKTER_BASE}>Pembinaan Karakter TPB</Link> : <span>Pembinaan Karakter TPB</span>}
+          {info.parent && <Link to={`${KARAKTER_BASE}/${info.parent}`}>{SECTIONS[info.parent].title}</Link>}
+          {section && <span aria-current="page">{info.title}</span>}
+        </nav>
+      </div>
       <Page year={year} picker={picker} />
     </div>
   );
@@ -138,7 +141,7 @@ function Beranda({ year, picker }) {
       <div className="kr-progs">
         {KARAKTER_PROGRAMS.map((p) => (
           <Link key={p.key} to={`${KARAKTER_BASE}/${p.key}`} className={"kr-prog " + p.tone}>
-            <span className="kr-prog-head"><span className="kr-ic"><Icon name={p.icon} size={20} /></span><b>{p.no}. {p.title}</b></span>
+            <span className="kr-prog-head"><span className="kr-ic"><Icon name={p.icon} size={20} /></span><b>{p.title}</b></span>
             <span className="kr-prog-desc">{p.desc}</span>
             <span className="kr-chips">{p.chips.map((c) => <span key={c}>{c}</span>)}</span>
             <span className="kr-go">Buka program<Icon name="right" size={15} /></span>

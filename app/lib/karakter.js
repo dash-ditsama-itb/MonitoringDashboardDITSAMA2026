@@ -19,13 +19,13 @@ export const KARAKTER_ABOUT =
 
 // menu program (beranda + menu samping)
 export const KARAKTER_PROGRAMS = [
-  { key: "ttb", no: "1", icon: "users", tone: "blue", title: "Teman Tumbuh Bersama TPB ITB (TTB)", short: "Teman Tumbuh (TTB)",
+  { key: "ttb", icon: "users", tone: "blue", title: "Teman Tumbuh Bersama TPB ITB (TTB)", short: "Teman Tumbuh (TTB)",
     desc: "Pendampingan mentee oleh pementor, dengan pementor dibina oleh dosen pembina, selama sekitar satu semester.",
     chips: ["523 kelompok", "521 pementor", "54 dosen pembina"] },
-  { key: "kampanye", no: "2", icon: "star", tone: "orange", title: "Kampanye Etika Mahasiswa", short: "Kampanye Etika",
+  { key: "kampanye", icon: "star", tone: "orange", title: "Kampanye Etika Mahasiswa", short: "Kampanye Etika",
     desc: "Poster, 9 video karya mahasiswa, Buku Panduan Tumbuh di ITB, dan banner etika di kampus Ganesha dan Jatinangor.",
     chips: ["Poster & banner", "9 video", "Buku panduan", "Mapping banner"] },
-  { key: "diskusi", no: "3", icon: "message", tone: "green", title: "Diskusi Interaktif", short: "Diskusi Interaktif",
+  { key: "diskusi", icon: "message", tone: "green", title: "Diskusi Interaktif", short: "Diskusi Interaktif",
     desc: "Diskusi bersama mahasiswa TPB tentang etika dan kehidupan kampus, lengkap dengan ringkasan setiap sesi.",
     chips: ["Ringkasan sesi"] },
 ];
