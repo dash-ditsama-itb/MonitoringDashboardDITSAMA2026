@@ -33,8 +33,32 @@ export function useActivityActions() {
     catch (e) { toast(errorText(e), "err"); return false; }
     finally { setBusyId(null); }
   };
+  // tandai banyak kegiatan selesai sekaligus (mis. daftar Telat update), 4 permintaan berjalan bersamaan
+  const markDoneMany = async (list) => {
+    if (!list.length) return false;
+    const ok = await confirmAction({
+      title: `Tandai ${list.length} kegiatan selesai?`, confirmText: "Tandai selesai",
+      body: "Pastikan data kegiatannya (kehadiran, nilai, umpan balik, isu) sudah diisi. Status selesai bisa dibatalkan lagi per kegiatan.",
+    });
+    if (!ok) return false;
+    setBusyId("bulk");
+    const queue = [...list];
+    let done = 0, failed = 0;
+    const worker = async () => {
+      for (let a = queue.shift(); a; a = queue.shift()) {
+        try { await api("/activity/" + a.id, { method: "PATCH", body: { isDone: true } }); done++; }
+        catch { failed++; }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(4, list.length) }, worker));
+    setBusyId(null);
+    refreshActivities();
+    toast(failed ? `${done} kegiatan ditandai selesai, ${failed} gagal. Coba lagi untuk yang gagal.` : `${done} kegiatan ditandai selesai.`, failed ? "err" : undefined);
+    return !failed;
+  };
   return {
     busyId,
+    markDoneMany,
     toggleDone: (a) => run(a.id, () => api("/activity/" + a.id, { method: "PATCH", body: { isDone: !a.isDone } }),
       a.isDone ? "Status selesai dibatalkan." : `"${a.name}" ditandai selesai.`),
     remove: async (a) => {
