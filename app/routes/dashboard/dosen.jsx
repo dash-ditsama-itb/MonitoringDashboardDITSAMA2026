@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router";
 import { ChartCanvas } from "../../components/ChartCanvas.jsx";
 import { RequireAccess } from "../../components/Access.jsx";
 import { Icon } from "../../components/Icon.jsx";
+import { SugtFeedbackPanel } from "../../components/Sugt.jsx";
 import {
   Bar, EmptyState, ErrorNote, Kpi, PageHead, PageSkeleton, Pending, ProgramTabs, RefreshButton, SearchInput, SelectField, Sheet, Spinner,
 } from "../../components/ui.jsx";
@@ -53,6 +53,7 @@ function DosenPage() {
   const active = FILTER_BAR.some(([k]) => ui[k] !== ALL) || ui.minResp !== "1";
   // Dosen_OSN: mata kuliah = Bidang (Geografi, Fisika, …)
   const isOsn = /^osn$/i.test(program);
+  const isSugt = /^sugt$/i.test(program);
   const q = ui.search.trim().toLowerCase();
   const lecturers = (d?.lecturers || []).filter((l) => !q || l.name.toLowerCase().includes(q));
 
@@ -64,17 +65,14 @@ function DosenPage() {
 
       <ProgramTabs items={tabs.map((t) => [t, t])} value={program} onChange={openTab} />
 
-      {noData ? (
+      {/* SUGT: umpan balik dari aplikasi SUGT, sama dengan di dashboard SUGT */}
+      {isSugt && <SugtFeedbackPanel />}
+
+      {noData ? (!isSugt &&
         <section className="card">
-          {/^sugt$/i.test(program) ? (
-            <EmptyState icon="message" title="Umpan balik SUGT ada di dashboard SUGT">
-              Umpan balik peserta dan evaluasi perjalanan dinas SUGT diambil dari aplikasi SUGT. <Link to="/dashboard/sugt">Buka dashboard SUGT</Link>
-            </EmptyState>
-          ) : (
-            <EmptyState icon="message" title={`Belum ada data umpan balik ${program}`}>
-              Data tampil otomatis setelah formulir umpan balik {program} (tab Dosen_…) ditambahkan ke spreadsheet umpan balik.
-            </EmptyState>
-          )}
+          <EmptyState icon="message" title={`Belum ada data umpan balik ${program}`}>
+            Data tampil otomatis setelah formulir umpan balik {program} (tab Dosen_…) ditambahkan ke spreadsheet umpan balik.
+          </EmptyState>
         </section>
       ) : <>
       <section className="card filter-bar">

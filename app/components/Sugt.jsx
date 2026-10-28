@@ -150,17 +150,58 @@ export function SugtSummary() {
       ) : (
         <Pending busy={loading}>
           <SugtMeters s={s} links />
-          <Performance title="Umpan balik kelas SUGT" strip={{ feedback: sugtFeedback(s) }}
-            sub="Dari aplikasi SUGT · tekan (i) untuk cara hitungnya"
-            info={{ feedback: "sugtFeedback" }} empty="belum tersedia dari aplikasi SUGT" />
-          <div className="grid g-2">
-            <FeedbackCard title="Umpan Balik Peserta" info="sugtParticipantFeedback" f={s.participantFeedback}
-              noun="formulir" items={participantRatings(s.participantFeedback)} />
-            <FeedbackCard title="Evaluasi Perjalanan Dinas" info="sugtPerjadinFeedback" f={s.perjadinFeedback}
-              noun="evaluasi" items={perjadinRatings(s.perjadinFeedback)} />
-          </div>
+          <SugtFeedbackCards s={s} />
         </Pending>
       )}
+    </>
+  );
+}
+
+/** Umpan balik dari aplikasi SUGT: ringkasan (opsional), Umpan Balik Peserta, dan Evaluasi Perjalanan Dinas. */
+function SugtFeedbackCards({ s, summary = true }) {
+  return (
+    <>
+      {summary && <Performance title="Umpan balik kelas SUGT" strip={{ feedback: sugtFeedback(s) }}
+        sub="Dari aplikasi SUGT · tekan (i) untuk cara hitungnya"
+        info={{ feedback: "sugtFeedback" }} empty="belum tersedia dari aplikasi SUGT" />}
+      <div className="grid g-2">
+        <FeedbackCard title="Umpan Balik Peserta" info="sugtParticipantFeedback" f={s.participantFeedback}
+          noun="formulir" items={participantRatings(s.participantFeedback)} />
+        <FeedbackCard title="Evaluasi Perjalanan Dinas" info="sugtPerjadinFeedback" f={s.perjadinFeedback}
+          noun="evaluasi" items={perjadinRatings(s.perjadinFeedback)} />
+      </div>
+    </>
+  );
+}
+
+/** Tab SUGT di halaman Umpan Balik: umpan balik yang sama dengan dashboard SUGT, diambil dari aplikasi SUGT. */
+export function SugtFeedbackPanel() {
+  const { data, error, loading, reload } = useApi("/dashboard/sugt");
+  const s = data?.data;
+  return (
+    <>
+      <div className="sugt-head">
+        <div>
+          <h2 className="sugt-title">Umpan balik dari aplikasi SUGT</h2>
+          <div className="card-sub">{s
+            ? <span title={fmtDateTime(s.generatedAt)}>Data diperbarui {fmtRelative(s.generatedAt)}</span>
+            : "Umpan balik peserta dan evaluasi perjalanan dinas dicatat di aplikasi SUGT"}</div>
+        </div>
+        <div className="sugt-actions">
+          <RefreshButton reload={reload} className="btn btn-sm" />
+          <a className="btn btn-sm" href={s?.participantFeedback.detailUrl || SUGT_URL} target="_blank" rel="noopener noreferrer"><Icon name="external" size={15} />Buka detail web SUGT</a>
+        </div>
+      </div>
+      <ErrorNote error={error} onRetry={() => reload()} />
+      {!s ? (
+        error ? (
+          <section className="card">
+            <EmptyState icon="alert" title="Umpan balik SUGT belum bisa ditampilkan">
+              Data lengkap tetap bisa dilihat langsung di aplikasi SUGT.
+            </EmptyState>
+          </section>
+        ) : <div className="grid g-2"><SkeletonCard /><SkeletonCard /></div>
+      ) : <Pending busy={loading}><SugtFeedbackCards s={s} summary={false} /></Pending>}
     </>
   );
 }
