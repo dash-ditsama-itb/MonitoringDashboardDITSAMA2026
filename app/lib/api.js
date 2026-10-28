@@ -53,6 +53,7 @@ const MESSAGES = {
   "Failed to upload SK.": "Gagal mengunggah SK. Coba lagi.",
   "Invalid Excel file format.": "Format file tidak dikenali. Gunakan .xlsx atau .csv.",
   "Excel workbook contains no sheets.": "File tidak berisi sheet apa pun.",
+  "Duplicate data found.": "Ada baris yang sama dengan data tersimpan. Pilih cara mengimpornya.",
   "Uploaded sheet contains no data.": "Tidak ada data yang bisa diimpor dari file ini. Pastikan kolomnya sama dengan file hasil Ekspor.",
   "A file field containing the spreadsheet is required.": "Pilih file spreadsheet dulu.",
   "Report not found.": "Laporan tidak ditemukan (mungkin sudah dihapus). Muat ulang halaman.",
@@ -198,9 +199,10 @@ export async function download(path, query, fallbackName) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-/** Unggah file (multipart). `field` = nama kolom file yang diminta backend. */
-export function upload(path, file, field = "file") {
+/** Unggah file (multipart). `field` = nama kolom file yang diminta backend, `fields` = isian lain. */
+export function upload(path, file, field = "file", fields = {}) {
   const form = new FormData();
   form.append(field, file);
+  Object.entries(fields).forEach(([k, v]) => form.append(k, v));
   return api(path, { method: "POST", form });
 }
