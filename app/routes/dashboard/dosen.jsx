@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ChartCanvas } from "../../components/ChartCanvas.jsx";
 import { RequireAccess } from "../../components/Access.jsx";
 import { Icon } from "../../components/Icon.jsx";
-import { SugtFeedbackPanel } from "../../components/Sugt.jsx";
+import { SugtFeedbackPanel, sugtFeedback, sugtRatedAspects } from "../../components/Sugt.jsx";
 import {
   Bar, EmptyState, ErrorNote, Kpi, PageHead, PageSkeleton, Pending, ProgramTabs, RefreshButton, SearchInput, SelectField, Sheet, Spinner,
 } from "../../components/ui.jsx";
@@ -68,8 +68,10 @@ function DosenPage() {
       {/* SUGT: umpan balik dari aplikasi SUGT, sama dengan di dashboard SUGT */}
       {isSugt && <SugtFeedbackPanel />}
 
-      {noData ? (!isSugt &&
-        <section className="card">
+      {noData ? (isSugt
+        // perbandingan dengan program lain, SUGT disorot
+        ? d?.programFeedback?.length > 0 && <ProgramFeedbackCard list={d.programFeedback} program="SUGT" />
+        : <section className="card">
           <EmptyState icon="message" title={`Belum ada data umpan balik ${program}`}>
             Data tampil otomatis setelah formulir umpan balik {program} (tab Dosen_…) ditambahkan ke spreadsheet umpan balik.
           </EmptyState>
@@ -277,16 +279,20 @@ function ProgramAspectCard({ list, program }) {
   );
 }
 
-// rata-rata feedback tiap program (skala 100), untuk Umpan balik per program
+// rata-rata feedback tiap program (skala 100), untuk Umpan balik per program;
+// SUGT dari aplikasi SUGT (Umpan Balik Peserta + Evaluasi Perjalanan Dinas, skala 1–10 × 10) bila belum ada di spreadsheet
 function ProgramFeedbackCard({ list, program }) {
-  const rows = [...list].filter((p) => p.feedbackScore != null).sort(byLabel((p) => p.program));
+  const s = useApi("/dashboard/sugt").data?.data;
+  const sugt = s && !list.some((p) => /^sugt$/i.test(p.program)) && sugtFeedback(s) != null
+    ? [{ program: "SUGT", feedbackScore: sugtFeedback(s), aspectCount: sugtRatedAspects(s), note: "aplikasi SUGT" }] : [];
+  const rows = [...list.filter((p) => p.feedbackScore != null), ...sugt].sort(byLabel((p) => p.program));
   return (
     <section className="card">
       <div className="card-head"><div><h2 className="card-title">Rata-rata umpan balik program</h2>
-        <div className="card-sub">Rata-rata semua aspek (bobot sama, termasuk narasumber/pengajar) ÷ 5 × 100 · semua penilaian program, tanpa filter</div></div></div>
+        <div className="card-sub">Rata-rata semua aspek (bobot sama, termasuk narasumber/pengajar) ÷ 5 × 100 · semua penilaian program, tanpa filter{sugt.length > 0 && " · SUGT dari aplikasi SUGT (skala 1–10 × 10)"}</div></div></div>
       <ul className="asp">{rows.map((p) => (
         <li key={p.program} className={p.program === program ? "on" : ""}>
-          <span className="asp-lab"><span>{p.program}</span><small>{p.aspects.length} aspek</small></span>
+          <span className="asp-lab"><span>{p.program}</span><small>{p.aspectCount ?? p.aspects.length} aspek{p.note && ` · ${p.note}`}</small></span>
           <Bar value={p.feedbackScore} tone={tone(p.feedbackScore / 20)} />
           <b>{fb100(p.feedbackScore)}</b>
         </li>
