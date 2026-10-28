@@ -736,10 +736,6 @@ dialog.confirm[open]{animation:pop .2s var(--ease)}
 
 /* SUGT */
 .control-note{margin:-4px 0 0;font-size:12.5px;line-height:1.5;color:rgba(228,237,249,.8)}
-.sugt-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 20px;margin:0;padding:18px 20px;align-content:center}
-.sugt-facts dt{font-size:12.5px;font-weight:600;color:var(--muted)}
-.sugt-facts dd{margin:2px 0 0;font-size:20px;font-weight:800;color:var(--navy);font-variant-numeric:tabular-nums}
-.sugt-facts dd .muted{font-size:14px;font-weight:600}
 .sugt-meters .kpi{display:flex;flex-direction:column;gap:2px}
 .sugt-meters .link-btn{margin-top:6px}
 .sugt-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
@@ -1077,7 +1073,7 @@ span.asp-lab{cursor:default}
   .metric-row{grid-template-columns:repeat(2,minmax(0,1fr))}
   .progress-card{grid-template-columns:minmax(0,1fr);padding:0}
   .pc-progress{border-right:0;border-bottom:1px solid var(--line);padding:16px}
-  .pc-last,.sugt-facts{padding:16px}
+  .pc-last{padding:16px}
   .stat-row{grid-template-columns:repeat(2,minmax(0,1fr))}
   .filter-bar .field{max-width:none}
 }

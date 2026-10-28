@@ -100,12 +100,6 @@ export const KPI = {
   },
 
   // ---------------------------------------------------------------- SUGT ---
-  sugtProgress: {
-    title: "Kegiatan Terlaksana SUGT",
-    arti: "Kemajuan program SUGT di seluruh sekolah.",
-    rumus: "Setiap sekolah punya 10 kegiatan: 8 sesi (2 luring, 6 daring), 1 pretest, dan 1 posttest. Terlaksana = sesi yang sudah berjalan + pretest/posttest yang sudah lengkap, dibagi jumlah sekolah × 10.",
-    catatan: "Pretest atau posttest sebuah sekolah baru dihitung terlaksana bila keempat isiannya lengkap (2 jalur × 2 jenis peserta). Angka sama dengan dashboard aplikasi SUGT.",
-  },
   sugtFeedback: {
     title: "Umpan Balik SUGT",
     arti: "Gabungan penilaian peserta dan evaluasi perjalanan dinas SUGT.",
