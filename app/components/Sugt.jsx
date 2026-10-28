@@ -95,6 +95,10 @@ export function sugtFeedback(s) {
   return parts.length ? Math.round((parts.reduce((a, b) => a + b, 0) / parts.length) * 10) : null;
 }
 
+// jumlah aspek SUGT yang sudah dinilai (Umpan Balik Peserta + Evaluasi Perjalanan Dinas)
+export const sugtRatedAspects = (s) =>
+  [...participantRatings(s.participantFeedback), ...perjadinRatings(s.perjadinFeedback)].filter(([, v]) => v != null).length;
+
 // rata-rata persen yang sudah terisi (> 0); null bila belum ada
 const meanPct = (vals) => {
   const v = vals.filter((x) => x > 0);
