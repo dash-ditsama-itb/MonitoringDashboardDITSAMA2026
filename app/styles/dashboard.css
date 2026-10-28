@@ -92,7 +92,7 @@ a{color:var(--blue-ink);text-underline-offset:3px}
 .nav-txt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .nav-badge{font-size:11px;font-weight:800;border-radius:6px;min-width:20px;height:20px;padding:0 6px;
   display:inline-flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums}
-.nav-badge.red{background:var(--crit);color:#fff}
+.nav-badge.green{background:var(--ok);color:#fff}
 .nav-badge.yellow{background:var(--gold);color:var(--gold-ink)}
 .nav-badge.orange{background:var(--late);color:#fff}
 .rail-foot{display:flex;align-items:center;gap:10px;margin-top:8px;padding:12px 10px 4px;border:0;

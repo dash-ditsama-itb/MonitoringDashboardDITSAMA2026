@@ -45,7 +45,7 @@ function ProgramPage({ loaderData }) {
           <ProgramProgress program={program} kpi={d.kpi} last={lastPerformed(d.activities)} />
           {program.api === "sugt" && <SugtSummary />}
           <div className="grid g-2">
-            <MilestoneCard title="Sedang berlangsung" info="ongoing" tone="red" items={d.milestones.ongoing} program={program}
+            <MilestoneCard title="Sedang berlangsung" info="ongoing" tone="green" items={d.milestones.ongoing} program={program}
               empty="Tidak ada kegiatan dalam rentang H-2 sampai hari H." />
             <MilestoneCard title="Telat update" info="late" tone="orange" items={d.milestones.late || []} program={program} bulk
               empty="Semua kegiatan yang sudah lewat sudah ditandai selesai." />
