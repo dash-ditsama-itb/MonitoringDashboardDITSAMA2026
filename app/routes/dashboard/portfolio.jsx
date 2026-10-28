@@ -75,7 +75,6 @@ function PortfolioPage() {
           <ParticipantAnalysis a={d.participantAnalysis}
             rekapTotal={dash.program === "Semua" && dash.month === "Semua" ? REKAP_PESERTA.reduce((s, r) => s + r.value, 0) : null} />
 
-          <Milestones items={d.milestones} calendar={d.calendar} />
 
           <Capaian cap={d.capaian} />
 
@@ -96,7 +95,10 @@ function PortfolioPage() {
           </section>
 
           <Calendar events={d.calendar} />
-          <Issues items={d.issues} />
+          <div className="grid g-2">
+            <Issues items={d.issues} />
+            <Milestones calendar={d.calendar} />
+          </div>
         </Pending>
       )}
     </div>
@@ -228,16 +230,14 @@ function Issues({ items }) {
   );
 }
 
-// aturan sama dengan dashboard program: agenda berstatus Akan Datang (> H+2); yang masuk H-2 tampil sebagai Berlangsung
-function Milestones({ items, calendar }) {
-  const statusById = Object.fromEntries(calendar.map((e) => [e.id, e.status]));
-  const next = items.filter((m) => statusById[m.id] === "upcoming");
-  const past = items.length - next.length;
+// agenda = semua kegiatan berstatus Akan Datang (tanggal lebih dari 2 hari lagi), apa pun jenisnya; sama dengan badge kuning
+function Milestones({ calendar }) {
+  const next = calendar.filter((e) => e.status === "upcoming").sort((a, b) => new Date(a.date) - new Date(b.date));
   return (
     <section className="card">
       <div className="card-head"><div><h2 className="card-title with-info">Agenda mendatang<InfoTip k="upcoming" /></h2>
-        <div className="card-sub">{next.length ? `${next.length} agenda terjadwal` : "Tidak ada agenda terjadwal"}{past > 0 && ` · ${past} agenda sudah berlangsung atau selesai`}</div></div></div>
-      {!next.length ? <EmptyState icon="calendar" title="Belum ada agenda ke depan">Agenda dibuat dari Data Kegiatan dengan jenis “Agenda mendatang”.</EmptyState> : (
+        <div className="card-sub">{next.length ? `${next.length} kegiatan terjadwal, terdekat di atas` : "Tidak ada kegiatan terjadwal"}</div></div></div>
+      {!next.length ? <EmptyState icon="calendar" title="Belum ada agenda ke depan">Kegiatan yang tanggalnya lebih dari 2 hari lagi tampil di sini.</EmptyState> : (
         <SeeMore items={next} limit={4} render={(m) => {
           const dt = new Date(m.date);
           return (

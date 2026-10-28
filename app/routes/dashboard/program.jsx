@@ -8,7 +8,7 @@ import { Icon } from "../../components/Icon.jsx";
 import { InfoTip } from "../../components/InfoTip.jsx";
 import { lastPerformed, ProgramProgress } from "../../components/ProgressSummary.jsx";
 import { ErrorNote, PageHead, PageSkeleton, Pending, ProgramAbout } from "../../components/ui.jsx";
-import { canEditActivity, fmtDate, phaseLabel, programByKey, PROG_COLORS } from "../../lib/format.js";
+import { activityStatus, canEditActivity, fmtDate, phaseLabel, programByKey, PROG_COLORS } from "../../lib/format.js";
 import { RekapPeserta } from "../../components/RekapPeserta.jsx";
 import { SugtSummary } from "../../components/Sugt.jsx";
 import { PHASES } from "../../config.js";
@@ -50,8 +50,8 @@ function ProgramPage({ loaderData }) {
             <MilestoneCard title="Telat update" info="late" tone="orange" items={d.milestones.late || []} program={program}
               empty="Semua kegiatan yang sudah lewat sudah ditandai selesai." />
           </div>
-          <MilestoneCard title="Agenda mendatang" info="upcoming" tone="yellow" items={d.milestones.upcoming} program={program}
-            empty="Belum ada agenda. Tambahkan lewat Data Kegiatan dengan jenis “Agenda mendatang”." />
+          <MilestoneCard title="Agenda mendatang" info="upcoming" tone="yellow" items={upcomingOf(d.activities)} program={program}
+            empty="Belum ada kegiatan yang tanggalnya lebih dari 2 hari lagi." />
           <section className="card">
             <div className="card-head"><div><h2 className="card-title with-info">Linimasa fase kegiatan<InfoTip k="timeline" /></h2><div className="card-sub">Rentang tanggal tiap fase program ini</div></div></div>
             <Gantt rows={d.timeline.map((t) => ({
@@ -66,12 +66,20 @@ function ProgramPage({ loaderData }) {
   );
 }
 
-// daftar kegiatan Berlangsung / Agenda + tombol Isi data / Selesai / Hapus
+// agenda = semua kegiatan berstatus Akan Datang (tanggal > H+2, atau agenda belum bertanggal), terdekat di atas
+const upcomingOf = (activities = []) => activities.filter((a) => activityStatus(a) === "upcoming")
+  .sort((a, b) => (a.date ? new Date(a.date) : Infinity) - (b.date ? new Date(b.date) : Infinity));
+
+const MILESTONE_LIMIT = 8; // sisanya lewat "Lihat semua"
+
+// daftar kegiatan Berlangsung / Telat update / Agenda + tombol Isi data / Selesai / Hapus
 function MilestoneCard({ title, info, tone, items, program, empty }) {
   const session = useAuthStore((s) => s.session);
   const can = canEditActivity(session, program.api);
   const actions = useActivityActions();
   const [form, setForm] = useState(null);
+  const [all, setAll] = useState(false);
+  const shown = all ? items : items.slice(0, MILESTONE_LIMIT);
   return (
     <section className="card">
       <div className="card-head">
@@ -79,7 +87,7 @@ function MilestoneCard({ title, info, tone, items, program, empty }) {
       </div>
       {!items.length ? <div className="empty-inline">{empty}</div> : (
         <ul className="ms-list">
-          {items.map((a) => (
+          {shown.map((a) => (
             <li key={a.id} className={actions.busyId === a.id ? "busy" : ""}>
               <div className="ms-txt"><b>{a.name}</b>
                 <small><Icon name="calendar" size={13} />{a.date ? fmtDate(a.date, { weekday: "short" }) : "Belum dijadwalkan"}{a.phase && " · " + phaseLabel(a.phase)}{a.location && " · " + a.location}</small>
@@ -94,6 +102,11 @@ function MilestoneCard({ title, info, tone, items, program, empty }) {
             </li>
           ))}
         </ul>
+      )}
+      {items.length > MILESTONE_LIMIT && (
+        <button type="button" className="see-more" onClick={() => setAll(!all)}>
+          {all ? "Tampilkan lebih sedikit" : `Lihat semua (${items.length})`}<Icon name={all ? "up" : "down"} size={15} />
+        </button>
       )}
       <ActivityForm open={!!form} activity={form} defaultProgram={program.api} initialMode="ongoing" onClose={() => setForm(null)} />
     </section>
