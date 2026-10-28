@@ -1144,3 +1144,6 @@ span.asp-lab{cursor:default}
 .prog-tabs button.on::before{background:linear-gradient(#5B8FD6,var(--blue));border-color:var(--blue)}
 .prog-tabs button:focus-visible{outline:none}
 .prog-tabs button:focus-visible::before{box-shadow:0 0 0 3px #9EC1E6}
+/* keterangan "sedang berjalan" di Rata-rata umpan balik program */
+.fb-run{padding:1px 7px;border-radius:999px;background:var(--ok-bg);color:var(--ok-ink);font-size:11px;font-weight:700}
+.asp>li>b.muted{color:var(--muted)}
