@@ -10,14 +10,6 @@ import { Bar, EmptyState, ErrorNote, Pending, RefreshButton, SkeletonCard } from
 
 // kegiatan SUGT = 10 per sekolah (8 sesi + pretest + posttest)
 export const sugtUnits = (s) => s.progress.kegiatanTerlaksana;
-export const isSugtDone = (s) => !!s && sugtUnits(s).total > 0 && sugtUnits(s).completed === sugtUnits(s).total;
-
-// status program: [label, nada pill], sama dengan programStatus program lain
-export function sugtStatus(s) {
-  if (isSugtDone(s)) return ["Selesai", "ok"];
-  if (sugtUnits(s).completed > 0) return ["Sedang berlangsung", ""];
-  return ["Belum dilaksanakan", "idle"];
-}
 
 export const sugtTone = (v) => (v >= 80 ? "ok" : v >= 50 ? "" : "warn");
 
@@ -154,10 +146,9 @@ export function SugtSummary() {
               Data lengkap tetap bisa dilihat langsung di aplikasi SUGT.
             </EmptyState>
           </section>
-        ) : <><SkeletonCard lines={3} /><div className="grid g-2"><SkeletonCard /><SkeletonCard /></div></>
+        ) : <div className="grid g-2"><SkeletonCard /><SkeletonCard /></div>
       ) : (
         <Pending busy={loading}>
-          <SugtProgress s={s} />
           <SugtMeters s={s} links />
           <Performance title="Umpan balik kelas SUGT" strip={{ feedback: sugtFeedback(s) }}
             sub="Dari aplikasi SUGT · tekan (i) untuk cara hitungnya"
@@ -171,31 +162,6 @@ export function SugtSummary() {
         </Pending>
       )}
     </>
-  );
-}
-
-function SugtProgress({ s }) {
-  const u = sugtUnits(s);
-  const [label, tone] = sugtStatus(s);
-  const schools = Math.round(u.total / 10);
-  const { offline, online } = s.sessions;
-  const sessions = { delivered: offline.delivered + online.delivered, total: offline.total + online.total };
-  return (
-    <section className="card progress-card sugt-progress">
-      <div className="pc-progress">
-        <span className="kpi-lab"><Icon name="trend" size={15} />Kegiatan Terlaksana<InfoTip k="sugtProgress" /></span>
-        <div className="pc-valrow"><b className="pc-val">{fmtNum(u.completed)}/{fmtNum(u.total)}</b><span className="pc-unit">kegiatan ({u.percent}%)</span>
-          <span className={"pill pc-status " + tone}>{label}</span></div>
-        <Bar value={u.percent} tone={sugtTone(u.percent)} />
-        <span className="pc-note">Per sekolah: 8 sesi, 1 pretest, 1 posttest</span>
-      </div>
-      <dl className="sugt-facts">
-        <div><dt>Sekolah</dt><dd>{fmtNum(schools)}</dd></div>
-        <div><dt>Sesi terlaksana</dt><dd>{fmtNum(sessions.delivered)}<span className="muted">/{fmtNum(sessions.total)}</span></dd></div>
-        <div><dt>Respons peserta</dt><dd>{fmtNum(s.participantFeedback.responseCount)}</dd></div>
-        <div><dt>Evaluasi perjadin</dt><dd>{fmtNum(s.perjadinFeedback.responseCount)}</dd></div>
-      </dl>
-    </section>
   );
 }
 
