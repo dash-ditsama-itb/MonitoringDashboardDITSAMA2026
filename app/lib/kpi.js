@@ -190,8 +190,8 @@ export const KPI = {
   upcoming: {
     title: "Agenda mendatang",
     arti: "Agenda yang belum dimulai, diurutkan dari tanggal terdekat.",
-    rumus: "Kegiatan berjenis Agenda mendatang yang tanggalnya lebih dari 2 hari lagi (< H-2). Begitu masuk H-2, agenda pindah ke Sedang berlangsung.",
-    catatan: "Aturan ini sama di Portofolio Program dan dashboard program. Agenda yang belum bertanggal hanya tampil di dashboard program. Agenda dibuat di Data Kegiatan dengan jenis “Agenda mendatang”.",
+    rumus: "Semua kegiatan (jenis apa pun) yang tanggalnya lebih dari 2 hari lagi (< H-2). Begitu masuk H-2, kegiatan pindah ke Sedang berlangsung.",
+    catatan: "Aturan ini sama di Portofolio Program, dashboard program, dan badge kuning di menu. Agenda yang belum bertanggal (jenis “Agenda mendatang”) hanya tampil di dashboard program."
   },
   timeline: {
     title: "Linimasa Fase Kegiatan",
