@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChartCanvas } from "../../components/ChartCanvas.jsx";
-import { RequireAccess } from "../../components/Access.jsx";
+import { ACCESS, RequireAccess } from "../../components/Access.jsx";
 import { Icon } from "../../components/Icon.jsx";
 import { SugtFeedbackPanel, sugtFeedback, sugtRatedAspects } from "../../components/Sugt.jsx";
 import {
   Bar, EmptyState, ErrorNote, Kpi, PageHead, PageSkeleton, Pending, ProgramTabs, RefreshButton, SearchInput, SelectField, Sheet, Spinner,
 } from "../../components/ui.jsx";
 import { byLabel, fmtNum, PROGRAMS_AZ, sortLabels, withoutAll } from "../../lib/format.js";
+import { useAuthStore } from "../../stores/auth.js";
 import { useApi } from "../../stores/data.js";
 import { useUiStore } from "../../stores/ui.js";
 
@@ -279,22 +280,35 @@ function ProgramAspectCard({ list, program }) {
   );
 }
 
+const same = (a, b) => a.toLowerCase() === b.toLowerCase();
+
 // rata-rata feedback tiap program (skala 100), untuk Umpan balik per program;
-// SUGT dari aplikasi SUGT (Umpan Balik Peserta + Evaluasi Perjalanan Dinas, skala 1–10 × 10) bila belum ada di spreadsheet
+// SUGT dari aplikasi SUGT (Umpan Balik Peserta + Evaluasi Perjalanan Dinas, skala 1–10 × 10) bila belum ada di spreadsheet.
+// Semua program tampil: yang belum ada datanya bernilai "–"; program dengan kegiatan berlangsung diberi keterangan "sedang berjalan".
 function ProgramFeedbackCard({ list, program }) {
   const s = useApi("/dashboard/sugt").data?.data;
-  const sugt = s && !list.some((p) => /^sugt$/i.test(p.program)) && sugtFeedback(s) != null
+  const session = useAuthStore((st) => st.session);
+  const calendar = useApi("/dashboard", {}, { enabled: ACCESS.activities.can(session) }).data?.data?.calendar;
+  const running = new Set((calendar || []).filter((e) => e.status === "ongoing").map((e) => e.program));
+  const sugt = s && !list.some((p) => same(p.program, "SUGT")) && sugtFeedback(s) != null
     ? [{ program: "SUGT", feedbackScore: sugtFeedback(s), aspectCount: sugtRatedAspects(s), note: "aplikasi SUGT" }] : [];
-  const rows = [...list.filter((p) => p.feedbackScore != null), ...sugt].sort(byLabel((p) => p.program));
+  const scored = [...list.filter((p) => p.feedbackScore != null), ...sugt];
+  const rows = [
+    ...PROGRAMS_AZ.map((p) => ({ ...(scored.find((x) => same(x.program, p.label)) || { program: p.label, feedbackScore: null }), api: p.api })),
+    ...scored.filter((x) => !PROGRAMS_AZ.some((p) => same(x.program, p.label))),
+  ].sort(byLabel((p) => p.program));
   return (
     <section className="card">
       <div className="card-head"><div><h2 className="card-title">Rata-rata umpan balik program</h2>
         <div className="card-sub">Rata-rata semua aspek (bobot sama, termasuk narasumber/pengajar) ÷ 5 × 100 · semua penilaian program, tanpa filter{sugt.length > 0 && " · SUGT dari aplikasi SUGT (skala 1–10 × 10)"}</div></div></div>
       <ul className="asp">{rows.map((p) => (
         <li key={p.program} className={p.program === program ? "on" : ""}>
-          <span className="asp-lab"><span>{p.program}</span><small>{p.aspectCount ?? p.aspects.length} aspek{p.note && ` · ${p.note}`}</small></span>
-          <Bar value={p.feedbackScore} tone={tone(p.feedbackScore / 20)} />
-          <b>{fb100(p.feedbackScore)}</b>
+          <span className="asp-lab"><span>{p.program}</span><small>
+            {running.has(p.api) && <span className="fb-run">sedang berjalan</span>}
+            {p.feedbackScore == null ? "belum ada data" : `${p.aspectCount ?? p.aspects.length} aspek${p.note ? ` · ${p.note}` : ""}`}
+          </small></span>
+          <Bar value={p.feedbackScore ?? 0} tone={p.feedbackScore == null ? "" : tone(p.feedbackScore / 20)} />
+          <b className={p.feedbackScore == null ? "muted" : ""}>{fb100(p.feedbackScore)}</b>
         </li>
       ))}</ul>
     </section>
