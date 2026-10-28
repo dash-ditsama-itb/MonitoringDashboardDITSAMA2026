@@ -681,13 +681,7 @@ dialog.confirm.wide{width:min(540px,calc(100vw - 32px))}
 .rp-row.on .rp-name{color:var(--navy)}
 .rp-row.on .rp-bar span{background:var(--navy)}
 /* tab program (halaman Peserta) */
-.pst-tabs{display:flex;gap:2px;overflow-x:auto;border-bottom:1px solid var(--line);margin:0 0 14px;scrollbar-width:thin}
-.pst-tabs button{flex:none;border:0;background:none;padding:10px 16px;font:inherit;font-size:14px;font-weight:600;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-1px;cursor:pointer;white-space:nowrap}
-.pst-tabs button:hover{color:var(--ink)}
-.pst-tabs button.on{color:var(--navy);font-weight:800;border-bottom-color:var(--navy)}
 /* tab tanpa sheet peserta: ditandai lewat teks "belum ada data" dan bobot lebih ringan, bukan abu-abu pucat */
-.pst-tabs button.empty{font-weight:500}
-.pst-tabs button small{margin-left:6px;font-size:11px;font-weight:600;color:var(--muted)}
 @container (max-width:460px){ .rp-row,.rp-axis{grid-template-columns:96px minmax(0,1fr);gap:8px} .rp-name{font-size:12.5px} }
 .lv-counts{display:flex;gap:4px}
 .issue-row{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;text-align:left;border:1px solid var(--line);
@@ -1136,3 +1130,17 @@ span.asp-lab{cursor:default}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
 }
+
+/* tab program bergaya map (Peserta, Umpan Balik): tab aktif biru, lainnya biru muda, garis biru di bawah */
+.prog-tabs{position:relative;display:flex;align-items:flex-end;gap:0;overflow-x:auto;overflow-y:hidden;padding:6px 14px 0;margin:0 0 14px;
+  border-bottom:5px solid var(--blue);scrollbar-width:thin}
+.prog-tabs button{position:relative;flex:none;border:0;background:none;margin:0 -2px;padding:11px 26px 9px;font:inherit;font-size:12.5px;
+  font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--navy);cursor:pointer;white-space:nowrap;z-index:1}
+.prog-tabs button::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:10px 10px 0 0;
+  background:linear-gradient(#F4F8FD,#D6E4F5);border:1px solid #C3D5EC;border-bottom:0;
+  transform:perspective(14px) rotateX(1.6deg);transform-origin:bottom;transition:background .15s}
+.prog-tabs button:hover::before{background:linear-gradient(#FFFFFF,#E4EEF9)}
+.prog-tabs button.on{color:#fff;z-index:2}
+.prog-tabs button.on::before{background:linear-gradient(#5B8FD6,var(--blue));border-color:var(--blue)}
+.prog-tabs button:focus-visible{outline:none}
+.prog-tabs button:focus-visible::before{box-shadow:0 0 0 3px #9EC1E6}

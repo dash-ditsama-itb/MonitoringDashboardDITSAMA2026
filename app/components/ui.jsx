@@ -249,6 +249,24 @@ export function Segmented({ value, options, onChange, label }) {
 }
 
 // tampilkan `limit` item pertama + tombol "Lihat semua (n)"
+/** Tab program bergaya map (Peserta, Umpan Balik). items = [[nilai, label]]; tab aktif biru, lainnya biru muda. */
+export function ProgramTabs({ items, value, onChange, label = "Program" }) {
+  const ref = useRef(null);
+  // tab aktif selalu terlihat walau daftar tab digulir (layar sempit)
+  useEffect(() => {
+    const box = ref.current, on = box?.querySelector(".on");
+    if (on) box.scrollLeft = Math.max(0, on.offsetLeft - (box.clientWidth - on.offsetWidth) / 2);
+  }, [value]);
+  return (
+    <div ref={ref} className="prog-tabs" role="tablist" aria-label={label}>
+      {items.map(([v, text]) => (
+        <button key={v} type="button" role="tab" aria-selected={v === value} className={v === value ? "on" : ""}
+          onClick={() => v !== value && onChange(v)}>{text}</button>
+      ))}
+    </div>
+  );
+}
+
 export function SeeMore({ items, limit = 3, render }) {
   const [open, setOpen] = useState(false);
   return (

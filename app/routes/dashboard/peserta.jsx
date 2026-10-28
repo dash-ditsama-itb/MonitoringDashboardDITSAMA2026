@@ -3,8 +3,8 @@ import { ChartCanvas } from "../../components/ChartCanvas.jsx";
 import { RequireAccess } from "../../components/Access.jsx";
 import { Icon } from "../../components/Icon.jsx";
 import {
-  Bar, EmptyState, ErrorNote, Kpi, PageHead, PageSkeleton, Pagination, Pending, RefreshButton, SearchInput, Segmented, SelectField, Sheet, Spinner,
-  TableSkeleton, usePending,
+  Bar, EmptyState, ErrorNote, Kpi, PageHead, PageSkeleton, Pagination, Pending, ProgramTabs, RefreshButton, SearchInput, Segmented, SelectField,
+  Sheet, Spinner, TableSkeleton, usePending,
 } from "../../components/ui.jsx";
 import { RekapPeserta } from "../../components/RekapPeserta.jsx";
 import { PROGRAMS, REKAP_PESERTA } from "../../config.js";
@@ -233,7 +233,7 @@ function PesertaPage() {
   const tabKey = (fo?.programs || []).join("|");
   useEffect(() => { if (tabKey) setSavedSheets(tabKey.split("|")); }, [tabKey]);
   const sheets = tabKey ? tabKey.split("|") : savedSheets;
-  // semua program tetap jadi tab; yang belum punya sheet peserta ditandai "belum ada data"
+  // semua program tetap jadi tab; yang belum punya sheet peserta menampilkan keterangan "Belum ada data peserta"
   const emptyTabs = sheets.length ? PROGRAMS.filter((p) => !sheets.some((x) => rekapProgramApi(x) === p.api)).map((p) => p.label) : [];
   const tabs = sheets.length ? sortTabs([...sheets, ...emptyTabs]) : [];
   // backend menampilkan semua program bila sheet program tidak ada, jadi datanya tidak ditampilkan
@@ -261,17 +261,7 @@ function PesertaPage() {
         <RefreshButton reload={dash.reload} />
       </PageHead>
 
-      {tabs.length > 0 && <div className="pst-tabs" role="tablist" aria-label="Program">
-        {tabs.map((p) => {
-          const empty = emptyTabs.includes(p);
-          return (
-            <button key={p} type="button" role="tab" aria-selected={p === program} className={(p === program ? "on" : "") + (empty ? " empty" : "")}
-              onClick={() => p !== program && openTab(p)} title={empty ? `Belum ada data peserta ${sheetLabel(p)}` : undefined}>
-              {sheetLabel(p)}{empty && <small>belum ada data</small>}
-            </button>
-          );
-        })}
-      </div>}
+      {tabs.length > 0 && <ProgramTabs items={tabs.map((p) => [p, sheetLabel(p)])} value={program} onChange={openTab} />}
 
       <RekapPeserta highlight={rekapProgramApi(program)} highlightLabel={sheetLabel(program)} scope="semua program" />
 

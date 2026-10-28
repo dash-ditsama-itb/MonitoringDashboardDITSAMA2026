@@ -1,11 +1,12 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router";
 import { ChartCanvas } from "../../components/ChartCanvas.jsx";
 import { RequireAccess } from "../../components/Access.jsx";
 import { Icon } from "../../components/Icon.jsx";
 import {
-  Bar, EmptyState, ErrorNote, Kpi, PageHead, PageSkeleton, Pending, RefreshButton, SearchInput, SelectField, Sheet, Spinner,
+  Bar, EmptyState, ErrorNote, Kpi, PageHead, PageSkeleton, Pending, ProgramTabs, RefreshButton, SearchInput, SelectField, Sheet, Spinner,
 } from "../../components/ui.jsx";
-import { byLabel, fmtNum, sortLabels, withoutAll } from "../../lib/format.js";
+import { byLabel, fmtNum, PROGRAMS_AZ, sortLabels, withoutAll } from "../../lib/format.js";
 import { useApi } from "../../stores/data.js";
 import { useUiStore } from "../../stores/ui.js";
 
@@ -14,6 +15,8 @@ const METODE_COL = { Luring: "#204074", Hibrida: "#9EC1E6", Daring: "#E08A2E" };
 // format Riset (Dosen_RISET): "Mata kuliah" & "Kelas" = Kelas Peserta, tanpa metode
 const FILTERS = [["program", "programs", "Program"], ["mapel", "mapels", "Mata kuliah / kelas peserta"], ["metode", "metodes", "Metode"],
   ["kelas", "kelas", "Kelas"], ["bahasa", "bahasas", "Bahasa"]];
+// program dipilih lewat tab di atas (sama dengan Peserta), bukan dropdown; tidak ada tampilan semua program
+const FILTER_BAR = FILTERS.filter(([k]) => k !== "program");
 const score = (v) => (v == null ? "–" : Number(v).toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 const tone = (v) => (v >= 4.5 ? "ok" : v >= 4 ? "" : v >= 3 ? "warn" : "crit");
 // "Dr. Budi Santoso, S.Si., M.Si." -> "Budi Santoso"
@@ -28,14 +31,28 @@ export default function Dosen() {
 function DosenPage() {
   const ui = useUiStore((s) => s.dsn);
   const patch = useUiStore((s) => s.patch);
-  const filters = { ...withoutAll(Object.fromEntries(FILTERS.map(([k]) => [k, ui[k]]))), ...(ui.minResp !== "1" ? { minResp: ui.minResp } : {}) };
+  // daftar program yang punya data umpan balik, disimpan agar tab tidak hilang saat tab berikutnya dimuat
+  const [savedProgs, setSavedProgs] = useState([]);
+  // semua program jadi tab (A–Z, sama dengan Peserta); program lain dari sheet (mis. TN) menyusul di akhir
+  const tabs = [...PROGRAMS_AZ.map((p) => p.label), ...sortLabels(savedProgs.filter((x) => !PROGRAMS_AZ.some((p) => p.label === x)))];
+  const firstTab = tabs.find((t) => savedProgs.includes(t)) || tabs[0];
+  const program = ui.program !== ALL && tabs.includes(ui.program) ? ui.program : firstTab;
+  const filters = {
+    ...withoutAll(Object.fromEntries(FILTERS.map(([k]) => [k, k === "program" ? program : ui[k]]))),
+    ...(ui.minResp !== "1" ? { minResp: ui.minResp } : {}),
+  };
   const { data, error, loading, reload } = useApi("/dashboard/dosen", filters);
   const d = data?.data;
   const fo = d?.filterOptions;
+  const progKey = (fo?.programs || []).join("|");
+  useEffect(() => { if (progKey) setSavedProgs(progKey.split("|")); }, [progKey]);
+  // backend menampilkan semua program bila program tidak ada datanya, jadi datanya tidak ditampilkan
+  const noData = savedProgs.length > 0 && !savedProgs.includes(program);
   const select = (key) => patch("dsn", { sel: key });
-  const active = FILTERS.some(([k]) => ui[k] !== ALL) || ui.minResp !== "1";
+  const openTab = (p) => patch("dsn", { ...Object.fromEntries(FILTER_BAR.map(([k]) => [k, ALL])), program: p, sel: "", search: "" });
+  const active = FILTER_BAR.some(([k]) => ui[k] !== ALL) || ui.minResp !== "1";
   // Dosen_OSN: mata kuliah = Bidang (Geografi, Fisika, …)
-  const isOsn = /^osn$/i.test(ui.program);
+  const isOsn = /^osn$/i.test(program);
   const q = ui.search.trim().toLowerCase();
   const lecturers = (d?.lecturers || []).filter((l) => !q || l.name.toLowerCase().includes(q));
 
@@ -45,16 +62,31 @@ function DosenPage() {
         <RefreshButton reload={reload} />
       </PageHead>
 
+      <ProgramTabs items={tabs.map((t) => [t, t])} value={program} onChange={openTab} />
+
+      {noData ? (
+        <section className="card">
+          {/^sugt$/i.test(program) ? (
+            <EmptyState icon="message" title="Umpan balik SUGT ada di dashboard SUGT">
+              Umpan balik peserta dan evaluasi perjalanan dinas SUGT diambil dari aplikasi SUGT. <Link to="/dashboard/sugt">Buka dashboard SUGT</Link>
+            </EmptyState>
+          ) : (
+            <EmptyState icon="message" title={`Belum ada data umpan balik ${program}`}>
+              Data tampil otomatis setelah formulir umpan balik {program} (tab Dosen_…) ditambahkan ke spreadsheet umpan balik.
+            </EmptyState>
+          )}
+        </section>
+      ) : <>
       <section className="card filter-bar">
-        {FILTERS.map(([k, optKey, label]) => {
+        {FILTER_BAR.map(([k, optKey, label]) => {
           const list = fo?.[optKey] || [];
           // filter tanpa pilihan untuk program ini (mis. OSN tanpa metode, kelas, bahasa) disembunyikan
-          if (k !== "program" && list.length <= 1 && ui[k] === ALL) return null;
+          if (list.length <= 1 && ui[k] === ALL) return null;
           return <SelectField key={k} label={k === "mapel" && isOsn ? "Bidang" : label} value={list.includes(ui[k]) ? ui[k] : ALL}
-            options={[[ALL, "Semua " + (k === "mapel" && isOsn ? "bidang" : label.toLowerCase())], ...(k === "program" ? sortLabels(list) : list)]} onChange={(v) => patch("dsn", { [k]: v })} />;
+            options={[[ALL, "Semua " + (k === "mapel" && isOsn ? "bidang" : label.toLowerCase())], ...list]} onChange={(v) => patch("dsn", { [k]: v })} />;
         })}
         <SelectField label="Minimal penilaian" value={ui.minResp} options={[["1", "Semua"], ["5", "≥ 5"], ["10", "≥ 10"], ["30", "≥ 30"]]} onChange={(v) => patch("dsn", { minResp: v })} />
-        {active && <button type="button" className="btn btn-sm filter-reset" onClick={() => patch("dsn", { ...Object.fromEntries(FILTERS.map(([k]) => [k, ALL])), minResp: "1" })}>Reset filter</button>}
+        {active && <button type="button" className="btn btn-sm filter-reset" onClick={() => patch("dsn", { ...Object.fromEntries(FILTER_BAR.map(([k]) => [k, ALL])), minResp: "1" })}>Reset filter</button>}
       </section>
 
       <ErrorNote error={error} onRetry={() => reload()} />
@@ -67,7 +99,7 @@ function DosenPage() {
       ) : (
         <Pending busy={loading}>
           <SectionHead icon="message" title="Umpan balik program" sub="Rata-rata semua aspek formulir umpan balik tiap program, termasuk narasumber/pengajar" />
-          <ProgramFeedback d={d} program={ui.program} />
+          <ProgramFeedback d={d} program={program} />
 
           <SectionHead icon="grad" title="Umpan balik narasumber/pengajar" sub="Hasil evaluasi narasumber/pengajar oleh peserta · klik nama untuk melihat portofolio" />
           <div className="kpi-row six">
@@ -126,6 +158,7 @@ function DosenPage() {
           </section>
         </Pending>
       )}
+      </>}
       <LecturerDetail lecturerKey={ui.sel} filters={filters} onClose={() => select("")} />
     </div>
   );
