@@ -710,6 +710,13 @@ dialog.confirm.wide{width:min(540px,calc(100vw - 32px))}
 .ms-list li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
 .ms-list li:last-child{border-bottom:0}
 .ms-list li.busy{opacity:.5}
+/* pilih banyak + tandai selesai sekaligus (Telat update) */
+.ms-bulk{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 10px;margin-bottom:4px;
+  background:var(--subtle);border:1px solid var(--line);border-radius:var(--r-sm)}
+.ms-pick{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--ink-2);cursor:pointer}
+.ms-pick input,.ms-check{width:17px;height:17px;accent-color:var(--navy);cursor:pointer;flex:none}
+.ms-list li.pickable{justify-content:flex-start}
+.ms-list li.pickable .ms-txt{flex:1}
 /* Pendidikan Persiapan: laporan Power BI */
 .report-frame{position:relative;background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;
   height:calc(100dvh - 170px);min-height:440px}

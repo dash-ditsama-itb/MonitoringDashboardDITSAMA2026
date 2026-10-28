@@ -47,7 +47,7 @@ function ProgramPage({ loaderData }) {
           <div className="grid g-2">
             <MilestoneCard title="Sedang berlangsung" info="ongoing" tone="red" items={d.milestones.ongoing} program={program}
               empty="Tidak ada kegiatan dalam rentang H-2 sampai hari H." />
-            <MilestoneCard title="Telat update" info="late" tone="orange" items={d.milestones.late || []} program={program}
+            <MilestoneCard title="Telat update" info="late" tone="orange" items={d.milestones.late || []} program={program} bulk
               empty="Semua kegiatan yang sudah lewat sudah ditandai selesai." />
           </div>
           <MilestoneCard title="Agenda mendatang" info="upcoming" tone="yellow" items={upcomingOf(d.activities)} program={program}
@@ -72,23 +72,43 @@ const upcomingOf = (activities = []) => activities.filter((a) => activityStatus(
 
 const MILESTONE_LIMIT = 8; // sisanya lewat "Lihat semua"
 
-// daftar kegiatan Berlangsung / Telat update / Agenda + tombol Isi data / Selesai / Hapus
-function MilestoneCard({ title, info, tone, items, program, empty }) {
+// daftar kegiatan Berlangsung / Telat update / Agenda + tombol Isi data / Selesai / Hapus;
+// bulk: kotak centang + Pilih semua + Tandai selesai sekaligus (dipakai di Telat update)
+function MilestoneCard({ title, info, tone, items, program, empty, bulk }) {
   const session = useAuthStore((s) => s.session);
   const can = canEditActivity(session, program.api);
   const actions = useActivityActions();
   const [form, setForm] = useState(null);
   const [all, setAll] = useState(false);
+  const [picked, setPicked] = useState(() => new Set());
   const shown = all ? items : items.slice(0, MILESTONE_LIMIT);
+  const multi = bulk && can && items.length > 0;
+  // pilihan hanya untuk kegiatan yang masih ada di daftar
+  const chosen = items.filter((a) => picked.has(a.id));
+  const allPicked = items.length > 0 && chosen.length === items.length;
+  const pick = (id) => setPicked((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const markChosen = async () => { if (await actions.markDoneMany(chosen)) setPicked(new Set()); };
   return (
     <section className="card">
       <div className="card-head">
         <div className="card-title-row"><h2 className="card-title with-info">{title}<InfoTip k={info} /></h2><span className={"nav-badge " + tone}>{items.length}</span></div>
       </div>
+      {multi && (
+        <div className="ms-bulk">
+          <label className="ms-pick">
+            <input type="checkbox" checked={allPicked} onChange={() => setPicked(allPicked ? new Set() : new Set(items.map((a) => a.id)))} />
+            Pilih semua ({items.length})
+          </label>
+          <button type="button" className="btn btn-sm btn-primary" disabled={!chosen.length || actions.busyId === "bulk"} onClick={markChosen}>
+            <Icon name="check" size={15} />{actions.busyId === "bulk" ? "Menandai…" : `Tandai selesai (${chosen.length})`}
+          </button>
+        </div>
+      )}
       {!items.length ? <div className="empty-inline">{empty}</div> : (
         <ul className="ms-list">
           {shown.map((a) => (
-            <li key={a.id} className={actions.busyId === a.id ? "busy" : ""}>
+            <li key={a.id} className={(actions.busyId === a.id || (actions.busyId === "bulk" && picked.has(a.id)) ? "busy" : "") + (multi ? " pickable" : "")}>
+              {multi && <input type="checkbox" className="ms-check" checked={picked.has(a.id)} onChange={() => pick(a.id)} aria-label={"Pilih " + a.name} />}
               <div className="ms-txt"><b>{a.name}</b>
                 <small><Icon name="calendar" size={13} />{a.date ? fmtDate(a.date, { weekday: "short" }) : "Belum dijadwalkan"}{a.phase && " · " + phaseLabel(a.phase)}{a.location && " · " + a.location}</small>
               </div>
