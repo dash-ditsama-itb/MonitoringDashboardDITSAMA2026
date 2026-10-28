@@ -4,12 +4,11 @@ import { FinanceTable } from "../../components/Finance.jsx";
 import { RequireAccess } from "../../components/Access.jsx";
 import { Icon } from "../../components/Icon.jsx";
 import { Bar, ErrorNote, Kpi, PageHead, PageSkeleton, Pending, SelectField } from "../../components/ui.jsx";
-import { byLabel, FIN_PROGRAMS_AZ, finProgramLabel, fmtRupiah, fmtRupiahShort, MONTHS, progColor } from "../../lib/format.js";
+import { byLabel, FIN_PROGRAMS_AZ, finProgramLabel, fmtRupiah, fmtRupiahShort, moneyScale, MONTHS, progColor } from "../../lib/format.js";
 import { useApi } from "../../stores/data.js";
 import { useUiStore } from "../../stores/ui.js";
 
 const monthName = (ym) => { const [y, m] = ym.split("-"); return MONTHS[Number(m) - 1].slice(0, 3) + " " + y; };
-const jt = (v) => Math.round((Number(v) || 0) / 1e5) / 10;   // juta, 1 desimal
 
 export default function Financial() {
   return <RequireAccess area="finance" page="Keuangan"><FinancialPage /></RequireAccess>;
@@ -79,64 +78,71 @@ function FinCharts({ d }) {
     const months = d.monthlyRealization.map((m) => m.month);
     const azFin = byLabel(finProgramLabel);
     const progs = [...new Set(d.monthlyRealization.flatMap((m) => m.programs.filter((p) => p.realization).map((p) => p.program)))].sort(azFin);
-    const yJt = { beginAtZero: true, ticks: { callback: (v) => v + " jt" } };
-    const tipRp = { callbacks: { label: (c) => `${c.dataset.label}: ${fmtRupiah((c.parsed.y ?? c.parsed.x) * 1e6)}` } };
+    // sumbu Y: angka saja (format Indonesia), satuan di judul sumbu dalam kurung; tooltip nominal rupiah lengkap
+    const axis = (sc, extra) => ({ beginAtZero: true, ...extra, title: { display: true, text: `(${sc.unit})`, color: "#5d6879", font: { size: 11 } },
+      ticks: { callback: (v) => Number(v).toLocaleString("id-ID", { maximumFractionDigits: 2 }) } });
+    const tip = (sc) => ({ callbacks: { label: (c) => `${c.dataset.label}: ${fmtRupiah((c.parsed.y ?? c.parsed.x) * sc.div)}` } });
+    const val = (v, sc) => (v == null ? null : (Number(v) || 0) / sc.div);
+    // realisasi ditumpuk: satuan dari total tertinggi per bulan
+    const rScale = moneyScale(Math.max(0, ...d.monthlyRealization.map((m) => m.programs.reduce((s, x) => s + (Number(x.realization) || 0), 0))));
     const realisasi = {
       type: "bar",
       data: {
         labels: months.length ? months.map(monthName) : ["(belum ada pengajuan)"],
         datasets: progs.map((p) => ({
           label: finProgramLabel(p), backgroundColor: progColor(p), borderRadius: 3, maxBarThickness: 34, stack: "s",
-          data: d.monthlyRealization.map((m) => jt(m.programs.find((x) => x.program === p)?.realization)),
+          data: d.monthlyRealization.map((m) => val(m.programs.find((x) => x.program === p)?.realization ?? 0, rScale)),
         })),
       },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "top", align: "end" }, tooltip: tipRp },
-        scales: { x: { stacked: true, grid: { display: false } }, y: { ...yJt, stacked: true } } },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "top", align: "end" }, tooltip: tip(rScale) },
+        scales: { x: { stacked: true, grid: { display: false } }, y: axis(rScale, { stacked: true }) } },
     };
     const bProgs = [...new Set(d.monthlyBalance.flatMap((m) => m.programs.filter((p) => p.balance).map((p) => p.program)))].sort(azFin);
+    const sScale = moneyScale(Math.max(0, ...d.monthlyBalance.flatMap((m) => m.programs.map((x) => Math.abs(Number(x.balance) || 0)))));
     const saldo = {
       type: "line",
       data: {
         labels: d.monthlyBalance.length ? d.monthlyBalance.map((m) => monthName(m.month)) : ["(belum ada data)"],
         datasets: bProgs.map((p) => ({
           label: finProgramLabel(p), borderColor: progColor(p), backgroundColor: progColor(p), tension: 0.3, spanGaps: true, pointRadius: 3,
-          data: d.monthlyBalance.map((m) => { const v = m.programs.find((x) => x.program === p); return v ? jt(v.balance) : null; }),
+          data: d.monthlyBalance.map((m) => { const v = m.programs.find((x) => x.program === p); return v ? val(v.balance, sScale) : null; }),
         })),
       },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "top", align: "end" }, tooltip: tipRp },
-        scales: { x: { grid: { display: false } }, y: { ticks: { callback: (v) => v + " jt" } } } },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "top", align: "end" }, tooltip: tip(sScale) },
+        scales: { x: { grid: { display: false } }, y: axis(sScale, { beginAtZero: false }) } },
     };
     const cmp = d.programComparison.filter((p) => p.pksValue || p.realization).sort(byLabel((p) => finProgramLabel(p.program)));
+    const cScale = moneyScale(Math.max(0, ...cmp.flatMap((p) => [Number(p.pksValue) || 0, Number(p.realization) || 0])));
     const banding = {
       type: "bar",
       data: {
         labels: cmp.length ? cmp.map((p) => finProgramLabel(p.program)) : ["(belum ada data)"],
         datasets: [
-          { label: "Nilai PKS", data: cmp.map((p) => jt(p.pksValue)), backgroundColor: "#BCD3EE", borderRadius: 4, maxBarThickness: 40 },
-          { label: "Realisasi", data: cmp.map((p) => jt(p.realization)), backgroundColor: "#3a6db0", borderRadius: 4, maxBarThickness: 40 },
+          { label: "Nilai PKS", data: cmp.map((p) => val(p.pksValue ?? 0, cScale)), backgroundColor: "#BCD3EE", borderRadius: 4, maxBarThickness: 40 },
+          { label: "Realisasi", data: cmp.map((p) => val(p.realization ?? 0, cScale)), backgroundColor: "#3a6db0", borderRadius: 4, maxBarThickness: 40 },
         ],
       },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "top", align: "end" }, tooltip: tipRp },
-        scales: { x: { grid: { display: false } }, y: yJt } },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "top", align: "end" }, tooltip: tip(cScale) },
+        scales: { x: { grid: { display: false } }, y: axis(cScale) } },
     };
-    return { realisasi, saldo, banding };
+    return { realisasi, saldo, banding, units: { realisasi: rScale.unit, saldo: sScale.unit, banding: cScale.unit } };
   }, [d]);
 
   return (
     <>
       <div className="grid g-2">
-        <section className="card"><div className="card-head"><div><h2 className="card-title">Realisasi bulanan</h2><div className="card-sub">Pengajuan per bulan, ditumpuk per program (juta Rp)</div></div></div>
+        <section className="card"><div className="card-head"><div><h2 className="card-title">Realisasi bulanan</h2><div className="card-sub">Pengajuan per bulan, ditumpuk per program · nilai dalam {charts.units.realisasi}</div></div></div>
           <ChartCanvas config={charts.realisasi} height={260} /></section>
-        <section className="card"><div className="card-head"><div><h2 className="card-title">Saldo per bulan</h2><div className="card-sub">Saldo akhir bulan tiap program (juta Rp)</div></div></div>
+        <section className="card"><div className="card-head"><div><h2 className="card-title">Saldo per bulan</h2><div className="card-sub">Saldo akhir bulan tiap program · nilai dalam {charts.units.saldo}</div></div></div>
           <ChartCanvas config={charts.saldo} height={260} /></section>
       </div>
-      <section className="card"><div className="card-head"><div><h2 className="card-title">Nilai PKS vs realisasi</h2><div className="card-sub">Per program (juta Rp)</div></div></div>
+      <section className="card"><div className="card-head"><div><h2 className="card-title">Nilai PKS vs realisasi</h2><div className="card-sub">Per program · nilai dalam {charts.units.banding}</div></div></div>
         <ChartCanvas config={charts.banding} height={240} /></section>
     </>
   );
 }
 
-// kartu sempit: nominal diringkas (Rp 1,07 M)
+// kartu sempit: nominal diringkas (Rp 1,07 miliar)
 const Money = ({ v }) => <><span className="sm-hide">{fmtRupiah(v)}</span><span className="sm-only">{fmtRupiahShort(v)}</span></>;
 
 function Summary({ rows }) {

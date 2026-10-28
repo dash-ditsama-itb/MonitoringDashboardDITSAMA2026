@@ -6,15 +6,17 @@ export const fmtNum = (n) => (n === null || n === undefined || n === "" ? "–" 
 // nilai ujian: maksimal 2 angka di belakang koma (80.2962… -> 80,3; 49 -> 49)
 export const fmtScore = (n) => (n === null || n === undefined || n === "" ? "–" : Number(n).toLocaleString("id-ID", { maximumFractionDigits: 2 }));
 export const fmtRupiah =(n) => "Rp " + Math.round(Number(n) || 0).toLocaleString("id-ID");
-// ringkas untuk KPI & grafik: Rp 1,07 M · Rp 365,2 jt
+// ringkas untuk KPI: satuan ditulis lengkap agar tidak tertukar ("M"/"jt") — Rp 1,07 miliar · Rp 365,2 juta
 export function fmtRupiahShort(n) {
   const v = Number(n) || 0, a = Math.abs(v);
   const f = (x, d) => x.toLocaleString("id-ID", { maximumFractionDigits: d });
-  if (a >= 1e12) return "Rp " + f(v / 1e12, 2) + " T";
-  if (a >= 1e9) return "Rp " + f(v / 1e9, 2) + " M";
-  if (a >= 1e6) return "Rp " + f(v / 1e6, 1) + " jt";
+  if (a >= 1e12) return "Rp " + f(v / 1e12, 2) + " triliun";
+  if (a >= 1e9) return "Rp " + f(v / 1e9, 2) + " miliar";
+  if (a >= 1e6) return "Rp " + f(v / 1e6, 1) + " juta";
   return fmtRupiah(v);
 }
+// satuan sumbu grafik rupiah dari nilai terbesar: miliar rupiah bila >= 1 miliar, selain itu juta rupiah
+export const moneyScale = (max) => (Math.abs(max) >= 1e9 ? { div: 1e9, unit: "miliar rupiah" } : { div: 1e6, unit: "juta rupiah" });
 // buang filter bernilai "Semua" (= default backend) agar kunci cache sama dengan permintaan tanpa filter
 export const withoutAll = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== "Semua"));
 export const pct = (part, whole) => (whole > 0 ? Math.round((part / whole) * 100) : 0);
