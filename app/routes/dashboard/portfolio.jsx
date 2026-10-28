@@ -139,7 +139,7 @@ function withProgramFeedback(strip, portfolio, sugt) {
 function portfolioRows(items, sugt, programs = PROGRAMS_AZ) {
   return programs.map((pr) => {
     const p = {
-      pics: [], completedActivities: 0, ongoingActivities: 0, totalActivities: 0,
+      pics: [], completedActivities: 0, ongoingActivities: 0, lateActivities: 0, totalActivities: 0,
       ...items.find((x) => x.program === pr.api), program: pr.api, label: pr.label,
     };
     return p.program === "sugt" ? withSugt(p, sugt) : p;

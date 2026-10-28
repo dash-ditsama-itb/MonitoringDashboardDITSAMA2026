@@ -36,14 +36,15 @@ function Shell({ session }) {
   const matches = useMatches();
   const withControl = matches.some((m) => m.handle?.control);
 
-  // badge jumlah Berlangsung (merah) & Akan Datang (kuning) per program dari kalender dashboard utama
+  // badge jumlah Berlangsung (merah), Telat update (oren) & Akan Datang (kuning) per program dari kalender dashboard utama
   const canActivities = ACCESS.activities.can(session);
   const { data } = useApi("/dashboard", {}, { enabled: canActivities });
   const badges = useMemo(() => {
     const out = {};
     (data?.data?.calendar || []).forEach((e) => {
-      const b = (out[e.program] = out[e.program] || { on: 0, up: 0 });
+      const b = (out[e.program] = out[e.program] || { on: 0, late: 0, up: 0 });
       if (e.status === "ongoing") b.on++;
+      if (e.status === "late") b.late++;
       if (e.status === "upcoming") b.up++;
     });
     return out;
@@ -85,6 +86,7 @@ function Shell({ session }) {
                 <span className="nav-dot" style={{ background: progColor(p.api) }} aria-hidden="true" />
                 <span className="nav-txt">{p.label}</span>
                 {b?.on > 0 && <span className="nav-badge red" title={`${b.on} kegiatan berlangsung`}>{b.on}</span>}
+                {b?.late > 0 && <span className="nav-badge orange" title={`${b.late} kegiatan telat update`}>{b.late}</span>}
                 {b?.up > 0 && <span className="nav-badge yellow" title={`${b.up} kegiatan akan datang`}>{b.up}</span>}
               </NavItem>
             );

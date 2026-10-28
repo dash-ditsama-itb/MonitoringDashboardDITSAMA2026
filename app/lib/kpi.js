@@ -4,8 +4,9 @@
 
 const STATUS_KEGIATAN = [
   ["Akan Datang", "lebih dari 2 hari sebelum tanggal kegiatan (< H-2)"],
-  ["Berlangsung", "H-2 sampai H+7 dari tanggal kegiatan"],
-  ["Selesai", "lewat H+7, atau ditandai lewat tombol Tandai selesai"],
+  ["Berlangsung", "H-2 sampai hari H (tanggal kegiatan)"],
+  ["Telat update", "tanggal kegiatan sudah lewat tetapi belum ditandai selesai"],
+  ["Selesai", "ditandai lewat tombol Tandai selesai (setelah data kegiatan diisi)"],
 ];
 
 export const KPI = {
@@ -183,8 +184,14 @@ export const KPI = {
   ongoing: {
     title: "Sedang berlangsung",
     arti: "Kegiatan program yang berstatus Berlangsung.",
-    rumus: "Tanggal kegiatan berada di rentang H-2 sampai H+7 dari hari ini, dan belum ditandai selesai.",
-    catatan: "Kegiatan tanpa tanggal (bukan agenda) juga dihitung Berlangsung.",
+    rumus: "Tanggal kegiatan berada di rentang H-2 sampai hari H, dan belum ditandai selesai.",
+    catatan: "Kegiatan tanpa tanggal (bukan agenda) juga dihitung Berlangsung. Lewat hari H tanpa ditandai selesai, kegiatan pindah ke Telat update.",
+  },
+  late: {
+    title: "Telat update",
+    arti: "Kegiatan yang tanggalnya sudah lewat tetapi datanya belum dilengkapi atau belum ditandai selesai.",
+    rumus: "Tanggal kegiatan sebelum hari ini dan belum ditandai selesai. Tetap di daftar ini sampai PIC menekan Tandai selesai.",
+    catatan: "Lengkapi data lewat Isi data (kehadiran, nilai capaian, umpan balik, isu), lalu tandai selesai.",
   },
   upcoming: {
     title: "Agenda mendatang",

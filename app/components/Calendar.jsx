@@ -62,7 +62,7 @@ export function Calendar({ events }) {
         })}
       </div>
       <div className="legend">
-        {["upcoming", "ongoing", "done"].map((s) => <span key={s}><i className={"ev-" + s} />{statusLabel(s)}</span>)}
+        {["upcoming", "ongoing", "late", "done"].map((s) => <span key={s}><i className={"ev-" + s} />{statusLabel(s)}</span>)}
       </div>
 
       <Sheet open={!!detail} onClose={() => setDetail(null)} title={detail ? fmtDateLong(detail.date) : ""} sub={detail && `${detail.list.length} kegiatan`}>

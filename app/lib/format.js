@@ -71,7 +71,7 @@ export const progressLabel = lookup(PROGRESS);
 export const levelLabel = lookup(ISSUE_LEVELS);
 export const grantLabel = lookup(GRANTS);
 export const roleName = (s) => s?.role?.name || "–";
-export const statusLabel = lookup([["upcoming", "Akan Datang"], ["ongoing", "Berlangsung"], ["done", "Selesai"]]);
+export const statusLabel = lookup([["upcoming", "Akan Datang"], ["ongoing", "Berlangsung"], ["late", "Telat update"], ["done", "Selesai"]]);
 export const finTypeLabel = lookup([["initial_pks", "PKS Awal"], ["addition_pks", "Penambahan PKS"], ["submission", "Pengajuan"]]);
 export const isPks = (r) => r.type === "initial_pks" || r.type === "addition_pks";
 
@@ -95,7 +95,8 @@ export function progColor(api) {
   return PROG_COLORS[(i < 0 ? 0 : i) % PROG_COLORS.length];
 }
 
-// status otomatis dari tanggal (sama dengan backend): Akan Datang < H-2 · Berlangsung H-2..H+7 · Selesai > H+7
+// status dari tanggal (sama dengan backend): Akan Datang < H-2 · Berlangsung H-2..hari H ·
+// Telat update setelah hari H sampai ditandai selesai · Selesai hanya lewat tombol Tandai selesai
 export function activityStatus(a) {
   if (a.status) return a.status;
   if (a.isDone) return "done";
@@ -103,8 +104,7 @@ export function activityStatus(a) {
   const now = new Date(); now.setHours(0, 0, 0, 0);
   const d = new Date(a.date); d.setHours(0, 0, 0, 0);
   const from = new Date(d); from.setDate(from.getDate() - 2);
-  const to = new Date(d); to.setDate(to.getDate() + 7);
-  return now < from ? "upcoming" : now > to ? "done" : "ongoing";
+  return now < from ? "upcoming" : now > d ? "late" : "ongoing";
 }
 
 // isu terberat sebuah kegiatan: "high" | "medium" | "low" | ""

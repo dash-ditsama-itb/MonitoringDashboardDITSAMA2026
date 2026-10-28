@@ -46,10 +46,12 @@ function ProgramPage({ loaderData }) {
           {program.api === "sugt" && <SugtSummary />}
           <div className="grid g-2">
             <MilestoneCard title="Sedang berlangsung" info="ongoing" tone="red" items={d.milestones.ongoing} program={program}
-              empty="Tidak ada kegiatan dalam rentang H-2 sampai H+7." />
-            <MilestoneCard title="Agenda mendatang" info="upcoming" tone="yellow" items={d.milestones.upcoming} program={program}
-              empty="Belum ada agenda. Tambahkan lewat Data Kegiatan dengan jenis “Agenda mendatang”." />
+              empty="Tidak ada kegiatan dalam rentang H-2 sampai hari H." />
+            <MilestoneCard title="Telat update" info="late" tone="orange" items={d.milestones.late || []} program={program}
+              empty="Semua kegiatan yang sudah lewat sudah ditandai selesai." />
           </div>
+          <MilestoneCard title="Agenda mendatang" info="upcoming" tone="yellow" items={d.milestones.upcoming} program={program}
+            empty="Belum ada agenda. Tambahkan lewat Data Kegiatan dengan jenis “Agenda mendatang”." />
           <section className="card">
             <div className="card-head"><div><h2 className="card-title with-info">Linimasa fase kegiatan<InfoTip k="timeline" /></h2><div className="card-sub">Rentang tanggal tiap fase program ini</div></div></div>
             <Gantt rows={d.timeline.map((t) => ({
