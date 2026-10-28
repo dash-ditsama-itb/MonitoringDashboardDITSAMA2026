@@ -42,7 +42,7 @@ export function ProgressSummary({ label, info, progress, value, unit, note, stat
   return (
     <section className="card progress-card">
       <div className="pc-progress">
-        <span className="kpi-lab"><Icon name="trend" size={15} />{label}<InfoTip k={info} now={kpi && `Saat ini: ${kpi.totalDone} selesai dari ${kpi.totalActivities} kegiatan (${kpi.totalOngoing} berlangsung, ${kpi.totalUpcoming} akan datang).`} /></span>
+        <span className="kpi-lab"><Icon name="trend" size={15} />{label}<InfoTip k={info} now={kpi && `Saat ini: ${kpi.totalDone} selesai dari ${kpi.totalActivities} kegiatan (${kpi.totalOngoing} berlangsung, ${kpi.totalLate ?? 0} telat update, ${kpi.totalUpcoming} akan datang).`} /></span>
         <div className="pc-valrow"><b className="pc-val">{value ?? progress + "%"}</b>{unit && <span className="pc-unit">{unit}</span>}
           {status && <span className={"pill pc-status " + status[1]}>{status[0]}</span>}</div>
         <Bar value={progress} tone={progress >= 80 ? "ok" : progress >= 50 ? "" : "warn"} />
@@ -116,7 +116,7 @@ export const isProgramDone = (p) => p.totalActivities > 0 && p.completedActiviti
 // status program dari kegiatannya: [label, nada pill]
 export function programStatus(p) {
   if (isProgramDone(p)) return ["Selesai", "ok"];
-  if (p.completedActivities > 0 || p.ongoingActivities > 0) return ["Sedang berlangsung", ""];
+  if (p.completedActivities > 0 || p.ongoingActivities > 0 || p.lateActivities > 0) return ["Sedang berlangsung", ""];
   return ["Belum dilaksanakan", "idle"];
 }
 
@@ -125,7 +125,7 @@ export function ProgramProgress({ program, kpi, last, showProgram }) {
   const note = kpi.totalActivities
     ? `${fmtNum(kpi.totalDone)} dari ${fmtNum(kpi.totalActivities)} total kegiatan program selesai (${kpi.progress}%)`
     : "Belum ada kegiatan tercatat";
-  const status = programStatus({ completedActivities: kpi.totalDone, ongoingActivities: kpi.totalOngoing, totalActivities: kpi.totalActivities });
+  const status = programStatus({ completedActivities: kpi.totalDone, ongoingActivities: kpi.totalOngoing, lateActivities: kpi.totalLate, totalActivities: kpi.totalActivities });
   return <ProgressSummary label={"Kemajuan " + program.label} info="programProgress" kpi={kpi} progress={kpi.progress}
     value={`${kpi.totalDone}/${kpi.totalActivities}`} unit={`kegiatan (${kpi.progress}%)`} note={note} status={status}
     last={last} showProgram={showProgram} />;
