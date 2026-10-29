@@ -23,6 +23,8 @@ const newSdm = (h = {}) => ({
 });
 const newIssue = (i = {}) => ({ uid: uid(), id: i.id, level: i.level || "medium", name: i.name || "", to: i.to || "", problemSolving: i.problemSolving || "" });
 const posOf = (s) => (s.posSel === LAINNYA ? s.posCustom.trim() : s.posSel);
+// baris peserta dengan jumlah terisi tapi tanpa kategori: tidak bisa disimpan (dulu terbuang diam-diam saat simpan)
+const noCategory = (p) => !p.category.trim() && (p.registered !== "" || p.present !== "");
 const numOrNull = (v) => (v === "" || v === null || v === undefined ? null : Number(v));
 
 function formFrom(a, session, program) {
@@ -66,6 +68,7 @@ function validate(f) {
     const n = Number(f[k]);
     if (!Number.isInteger(n) || n < 0 || n > 100) return `${label} harus bilangan bulat 0–100.`;
   }
+  if (f.mode === "ongoing" && f.participants.some(noCategory)) return "Isi kategori peserta (mis. SMA) pada baris yang jumlah terdaftar/hadirnya sudah diisi.";
   for (const p of f.participants) {
     if (!p.category.trim()) continue;
     if ([p.registered, p.present].some((v) => v !== "" && (!Number.isInteger(Number(v)) || Number(v) < 0))) return `Jumlah peserta "${p.category}" harus bilangan bulat ≥ 0.`;
@@ -238,7 +241,7 @@ export function ActivityForm({ open, activity, defaultProgram, initialMode, onCl
               <div className="dyn-head"><span>Kategori</span><span>Terdaftar</span><span>Hadir</span><span /></div>
               {f.participants.map((p) => (
                 <div className="dyn-row" key={p.uid}>
-                  <input aria-label="Kategori peserta" placeholder="mis. SMA" value={p.category} onChange={(e) => updRow("participants", p.uid, { category: e.target.value })} />
+                  <input aria-label="Kategori peserta" placeholder="Ketik kategori, mis. SMA" aria-invalid={noCategory(p) || undefined} value={p.category} onChange={(e) => updRow("participants", p.uid, { category: e.target.value })} />
                   <input aria-label="Jumlah terdaftar" type="number" min="0" inputMode="numeric" placeholder="0" value={p.registered} onChange={(e) => updRow("participants", p.uid, { registered: e.target.value })} />
                   <input aria-label="Jumlah hadir" type="number" min="0" inputMode="numeric" placeholder="0" value={p.present} onChange={(e) => updRow("participants", p.uid, { present: e.target.value })} />
                   <button type="button" className="icon-btn danger" aria-label="Hapus baris peserta" onClick={() => delRow("participants", p.uid)}><Icon name="x" size={16} /></button>
