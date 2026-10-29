@@ -34,58 +34,65 @@ function NavItems({ items, session }) {
 function NavFolder({ group, session }) {
   const { pathname } = useLocation();
   const holdsActive = flattenReports(group).some((r) => pathname.endsWith(reportPath(r.id)));
-  // subbagian terbuka sejak awal agar semua laporan terlihat; bisa ditutup dengan klik.
-  // Membuka laporan di dalamnya (mis. dari tautan) membuka subbagiannya lagi.
+  return (
+    <Folder name={group.name} id={group.key} holdsActive={holdsActive}>
+      <NavItems items={group.items} session={session} />
+    </Folder>
+  );
+}
+
+// kelompok menu yang bisa dibuka-tutup (panah). Terbuka sejak awal agar semua menu terlihat;
+// membuka halaman di dalamnya (mis. dari tautan) membuka kelompoknya lagi.
+function Folder({ name, id: key, holdsActive, children }) {
   const [open, setOpen] = useState(true);
   useEffect(() => { if (holdsActive) setOpen(true); }, [holdsActive]);
-  const id = "nav-folder-" + group.key.replace(/[^a-z0-9]+/gi, "-");
+  const id = "nav-folder-" + key.replace(/[^a-z0-9]+/gi, "-");
   return (
     <div className={"nav-folder" + (open ? " open" : "")}>
       <button type="button" className={"nav-item nav-folder-btn" + (holdsActive && !open ? " holds-active" : "")}
         aria-expanded={open} aria-controls={id} onClick={() => setOpen(!open)}>
-        <Icon name="right" className="nav-chev" /><span className="nav-txt nav-txt-2" title={group.name}>{group.name}</span>
+        <Icon name="right" className="nav-chev" /><span className="nav-txt nav-txt-2" title={name}>{name}</span>
       </button>
-      {open && <div className="nav-sub" id={id}><NavItems items={group.items} session={session} /></div>}
+      {open && <div className="nav-sub" id={id}>{children}</div>}
     </div>
   );
 }
 
+// menu Pembinaan Karakter TPB; Mapping Banner bagian dari Kampanye Etika Mahasiswa
+const KARAKTER_NAV = [
+  { to: KARAKTER_BASE, label: "Beranda program", end: true },
+  ...KARAKTER_PROGRAMS.flatMap((p) => [
+    { to: `${KARAKTER_BASE}/${p.key}`, label: p.short },
+    ...(p.key === "kampanye" ? [{ to: `${KARAKTER_BASE}/mapping`, label: "Mapping Banner", sub: true }] : []),
+  ]),
+  { to: `${KARAKTER_BASE}/dokumentasi`, label: "Dokumentasi Kegiatan" },
+];
+
+const navLink = (session, { to, label, end }) => (
+  <NavItem key={to} session={session} to={to} end={end}><Icon name="trend" /><span className="nav-txt nav-txt-2" title={label}>{label}</span></NavItem>
+);
+
 function Shell({ session }) {
+  const { pathname } = useLocation();
   const { reports, error } = useReports();
-  const groups = buildTree(reports).items.map((it) => it.group);
-  // Kelola laporan sejajar dengan menu laporan (Pemetaan Kesiapan Akademik, Akademik TPB) di bagian terakhir
-  const manage = <NavItem session={session} area="reports" to="/pendidikan-persiapan/kelola"><Icon name="layers" /><span className="nav-txt nav-txt-2">Kelola laporan</span></NavItem>;
+  const tree = buildTree(reports).items;
+  // satu bagian laporan (Layanan): isinya langsung di kelompok Data TPB; lebih dari satu: tiap bagian jadi subkelompok
+  const reportItems = tree.length === 1 ? tree[0].group.items : tree;
   return (
     <AppShell session={session} dashboard={DASHBOARD}
       nav={(
         <>
-          {!reports && !error && <div className="nav-note">Memuat laporan…</div>}
-          {reports && !reports.length && <div className="nav-note">Belum ada laporan.</div>}
-          {groups.map((group, i) => (
-            <div key={group.key} className="nav-group">
-              <div className="nav-label">{group.name}</div>
-              <NavItems items={group.items} session={session} />
-              {i === groups.length - 1 && manage}
-            </div>
-          ))}
-          {!groups.length && manage}
-          <div className="nav-group">
-            <div className="nav-label">Pembinaan Karakter TPB</div>
-            <NavItem session={session} to={KARAKTER_BASE} end><Icon name="home" /><span className="nav-txt">Beranda program</span></NavItem>
-            {/* halaman program = anak Beranda program (menjorok, garis pandu seperti subbagian laporan) */}
-            <div className="nav-sub">
-              {KARAKTER_PROGRAMS.map((p) => [
-                <NavItem key={p.key} session={session} to={`${KARAKTER_BASE}/${p.key}`}><Icon name={p.icon} /><span className="nav-txt nav-txt-2">{p.short}</span></NavItem>,
-                // Mapping Banner bagian dari Kampanye Etika Mahasiswa
-                p.key === "kampanye" && (
-                  <div key="mapping" className="nav-sub">
-                    <NavItem session={session} to={`${KARAKTER_BASE}/mapping`}><Icon name="pin" /><span className="nav-txt nav-txt-2">Mapping Banner</span></NavItem>
-                  </div>
-                ),
-              ])}
-              <NavItem session={session} to={`${KARAKTER_BASE}/dokumentasi`}><Icon name="folder" /><span className="nav-txt nav-txt-2">Dokumentasi Kegiatan</span></NavItem>
-            </div>
-          </div>
+          <div className="nav-label">Layanan</div>
+          <Folder name="Data Tahap Persiapan Bersama" id="data-tpb"
+            holdsActive={pathname.includes("/pendidikan-persiapan/laporan/") || pathname.endsWith("/pendidikan-persiapan/kelola")}>
+            {!reports && !error && <div className="nav-note">Memuat laporan…</div>}
+            {reports && !reports.length && <div className="nav-note">Belum ada laporan.</div>}
+            <NavItems items={reportItems} session={session} />
+            <NavItem session={session} area="reports" to="/pendidikan-persiapan/kelola"><Icon name="layers" /><span className="nav-txt nav-txt-2">Kelola laporan</span></NavItem>
+          </Folder>
+          <Folder name="Pembinaan Karakter TPB" id="karakter" holdsActive={pathname.includes(KARAKTER_BASE)}>
+            {KARAKTER_NAV.map((it) => (it.sub ? <div key={it.to} className="nav-sub">{navLink(session, it)}</div> : navLink(session, it)))}
+          </Folder>
         </>
       )}
       profile={(
