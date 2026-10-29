@@ -138,14 +138,15 @@ function Beranda({ year, picker }) {
         <h2 className="card-title">Tentang program</h2>
         <p className="kr-about">{KARAKTER_ABOUT}</p>
       </section>
+      {/* kartu bukan tautan: hanya judul & "Buka program" yang bisa diklik (label ringkas tidak) */}
       <div className="kr-progs">
         {KARAKTER_PROGRAMS.map((p) => (
-          <Link key={p.key} to={`${KARAKTER_BASE}/${p.key}`} className={"kr-prog " + p.tone}>
-            <span className="kr-prog-head"><span className="kr-ic"><Icon name={p.icon} size={20} /></span><b>{p.title}</b></span>
+          <div key={p.key} className={"kr-prog " + p.tone}>
+            <Link to={`${KARAKTER_BASE}/${p.key}`} className="kr-prog-head"><span className="kr-ic"><Icon name={p.icon} size={20} /></span><b>{p.title}</b></Link>
             <span className="kr-prog-desc">{p.desc}</span>
             <span className="kr-chips">{p.chips.map((c) => <span key={c}>{c}</span>)}</span>
-            <span className="kr-go">Buka program<Icon name="right" size={15} /></span>
-          </Link>
+            <Link to={`${KARAKTER_BASE}/${p.key}`} className="kr-go">Buka program<Icon name="right" size={15} /></Link>
+          </div>
         ))}
       </div>
     </>
