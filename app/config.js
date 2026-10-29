@@ -116,7 +116,7 @@ export const DASHBOARDS = [
     desc: "Pemantauan program, kegiatan, peserta, pengajar, dan keuangan Pra-Universitas." },
   { key: "persiapan", to: "/pendidikan-persiapan", label: "Pendidikan Persiapan", icon: "book",
     title: "Dashboard Pendidikan Persiapan DITSAMA 2026",
-    desc: "Data Tahap Persiapan Bersama (TPB) dan pendidikan persiapan mahasiswa ITB." },
+    desc: "Data akademik TPB dan pembinaan karakter mahasiswa." },
 ];
 
 // Struktur Organisasi Ditsama (dari "2026_Summary Ditsama", slide Struktur Organisasi), tampil di tab Struktur Organisasi halaman masuk.
