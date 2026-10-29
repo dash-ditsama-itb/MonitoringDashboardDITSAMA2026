@@ -42,14 +42,14 @@ function NavFolder({ group, session }) {
 }
 
 // kelompok menu yang bisa dibuka-tutup (panah). Terbuka sejak awal agar semua menu terlihat;
-// membuka halaman di dalamnya (mis. dari tautan) membuka kelompoknya lagi.
-function Folder({ name, id: key, holdsActive, children }) {
+// membuka halaman di dalamnya (mis. dari tautan) membuka kelompoknya lagi. top: kelompok utama (tulisan lebih besar & tebal)
+function Folder({ name, id: key, holdsActive, top, children }) {
   const [open, setOpen] = useState(true);
   useEffect(() => { if (holdsActive) setOpen(true); }, [holdsActive]);
   const id = "nav-folder-" + key.replace(/[^a-z0-9]+/gi, "-");
   return (
     <div className={"nav-folder" + (open ? " open" : "")}>
-      <button type="button" className={"nav-item nav-folder-btn" + (holdsActive && !open ? " holds-active" : "")}
+      <button type="button" className={"nav-item nav-folder-btn" + (top ? " nav-folder-top" : "") + (holdsActive && !open ? " holds-active" : "")}
         aria-expanded={open} aria-controls={id} onClick={() => setOpen(!open)}>
         <Icon name="right" className="nav-chev" /><span className="nav-txt nav-txt-2" title={name}>{name}</span>
       </button>
@@ -83,14 +83,14 @@ function Shell({ session }) {
       nav={(
         <>
           <div className="nav-label">Layanan</div>
-          <Folder name="Data Tahap Persiapan Bersama" id="data-tpb"
+          <Folder top name="Data Tahap Persiapan Bersama" id="data-tpb"
             holdsActive={pathname.includes("/pendidikan-persiapan/laporan/") || pathname.endsWith("/pendidikan-persiapan/kelola")}>
             {!reports && !error && <div className="nav-note">Memuat laporan…</div>}
             {reports && !reports.length && <div className="nav-note">Belum ada laporan.</div>}
             <NavItems items={reportItems} session={session} />
             <NavItem session={session} area="reports" to="/pendidikan-persiapan/kelola"><Icon name="layers" /><span className="nav-txt nav-txt-2">Kelola laporan</span></NavItem>
           </Folder>
-          <Folder name="Pembinaan Karakter TPB" id="karakter" holdsActive={pathname.includes(KARAKTER_BASE)}>
+          <Folder top name="Pembinaan Karakter TPB" id="karakter" holdsActive={pathname.includes(KARAKTER_BASE)}>
             {KARAKTER_NAV.map((it) => (it.sub ? <div key={it.to} className="nav-sub">{navLink(session, it)}</div> : navLink(session, it)))}
           </Folder>
         </>
