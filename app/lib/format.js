@@ -97,17 +97,25 @@ export function progColor(api) {
   return PROG_COLORS[(i < 0 ? 0 : i) % PROG_COLORS.length];
 }
 
-// status dari tanggal (sama dengan backend): Akan Datang < H-2 · Berlangsung H-2..hari H ·
-// Telat update setelah hari H sampai ditandai selesai · Selesai hanya lewat tombol Tandai selesai
-export function activityStatus(a) {
-  if (a.status) return a.status;
-  if (a.isDone) return "done";
-  if (!a.date) return a.mode === "upcoming" ? "upcoming" : "ongoing";
-  const now = new Date(); now.setHours(0, 0, 0, 0);
-  const d = new Date(a.date); d.setHours(0, 0, 0, 0);
-  const from = new Date(d); from.setDate(from.getDate() - 2);
-  return now < from ? "upcoming" : now > d ? "late" : "ongoing";
+// selisih hari tanggal kegiatan terhadap hari ini: 0 = hari ini, 1 = besok, -1 = kemarin.
+// Tanggal kegiatan disimpan sebagai tengah malam UTC tanggal tersebut; hari ini = tanggal lokal (WIB).
+export function daysFromToday(date) {
+  const day = (iso) => Date.parse(iso + "T00:00:00Z");
+  return Math.round((day(new Date(date).toISOString().slice(0, 10)) - day(toDateInput(new Date()))) / 864e5);
 }
+
+// status dari tanggal (sama dengan backend): Akan Datang setelah hari ini · Berlangsung hari H ·
+// Telat update setelah hari H sampai ditandai selesai · Selesai hanya lewat tombol Tandai selesai.
+// Dihitung ulang dari tanggal agar tetap sesuai aturan ini walau status dari server masih aturan lama.
+export function activityStatus(a) {
+  if (a.isDone || a.status === "done") return "done";
+  if (!a.date) return a.status || (a.mode === "upcoming" ? "upcoming" : "ongoing");
+  const d = daysFromToday(a.date);
+  return d > 0 ? "upcoming" : d < 0 ? "late" : "ongoing";
+}
+
+// badge oranye di menu: kegiatan Telat update sampai 14 hari setelah tanggalnya (H+1 sampai H+14)
+export const LATE_BADGE_DAYS = 14;
 
 // isu terberat sebuah kegiatan: "high" | "medium" | "low" | ""
 export function topIssueLevel(issues) {

@@ -3,8 +3,8 @@
 // title · arti · rumus · skor ([pilihan, nilai][]) · catatan
 
 const STATUS_KEGIATAN = [
-  ["Akan Datang", "lebih dari 2 hari sebelum tanggal kegiatan (< H-2)"],
-  ["Berlangsung", "H-2 sampai hari H (tanggal kegiatan)"],
+  ["Akan Datang", "tanggal kegiatan setelah hari ini"],
+  ["Berlangsung", "hari H (tanggal kegiatan = hari ini)"],
   ["Telat update", "tanggal kegiatan sudah lewat tetapi belum ditandai selesai"],
   ["Selesai", "ditandai lewat tombol Tandai selesai (setelah data kegiatan diisi)"],
 ];
@@ -178,20 +178,20 @@ export const KPI = {
   ongoing: {
     title: "Sedang berlangsung",
     arti: "Kegiatan program yang berstatus Berlangsung.",
-    rumus: "Tanggal kegiatan berada di rentang H-2 sampai hari H, dan belum ditandai selesai.",
+    rumus: "Tanggal kegiatan hari ini (hari H) dan belum ditandai selesai.",
     catatan: "Kegiatan tanpa tanggal (bukan agenda) juga dihitung Berlangsung. Lewat hari H tanpa ditandai selesai, kegiatan pindah ke Telat update.",
   },
   late: {
     title: "Telat update",
     arti: "Kegiatan yang tanggalnya sudah lewat tetapi datanya belum dilengkapi atau belum ditandai selesai.",
     rumus: "Tanggal kegiatan sebelum hari ini dan belum ditandai selesai. Tetap di daftar ini sampai PIC menekan Tandai selesai.",
-    catatan: "Lengkapi data lewat Isi data (kehadiran, nilai capaian, umpan balik, isu), lalu tandai selesai.",
+    catatan: "Lengkapi data lewat Isi data (kehadiran, nilai capaian, umpan balik, isu), lalu tandai selesai. Badge oranye di menu hanya menghitung yang tanggalnya 1–14 hari lalu; daftar ini tetap memuat semuanya.",
   },
   upcoming: {
     title: "Agenda mendatang",
     arti: "Agenda yang belum dimulai, diurutkan dari tanggal terdekat.",
-    rumus: "Semua kegiatan (jenis apa pun) yang tanggalnya lebih dari 2 hari lagi (< H-2). Begitu masuk H-2, kegiatan pindah ke Sedang berlangsung.",
-    catatan: "Aturan ini sama di Portofolio Program, dashboard program, dan badge kuning di menu. Agenda yang belum bertanggal (jenis “Agenda mendatang”) hanya tampil di dashboard program."
+    rumus: "Semua kegiatan (jenis apa pun) yang tanggalnya setelah hari ini. Pada hari H, kegiatan pindah ke Sedang berlangsung.",
+    catatan: "Aturan ini sama di Portofolio Program, dashboard program, dan badge kuning di menu. Agenda yang belum bertanggal (jenis “Agenda mendatang”) tampil di dashboard program dan ikut dihitung di badge kuning."
   },
   timeline: {
     title: "Linimasa Fase Kegiatan",

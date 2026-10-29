@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { fmtDateLong, MONTHS, statusLabel } from "../lib/format.js";
+import { activityStatus, fmtDateLong, MONTHS, statusLabel } from "../lib/format.js";
 import { useUiStore } from "../stores/ui.js";
 import { Icon } from "./Icon.jsx";
 import { InfoTip } from "./InfoTip.jsx";
@@ -54,9 +54,9 @@ export function Calendar({ events }) {
             <button type="button" className={cls} key={d} onClick={() => setDetail({ list: ev, date: new Date(y, m, d) })}
               aria-label={`${d} ${MONTHS[m]}: ${ev.length} kegiatan, ${ev.map((e) => e.name).join(", ")}`}>
               <span className="cal-num">{d}</span>
-              {ev.slice(0, 2).map((e) => <span className={"cal-ev ev-" + e.status} key={e.id} title={e.name}>{e.name}</span>)}
+              {ev.slice(0, 2).map((e) => <span className={"cal-ev ev-" + activityStatus(e)} key={e.id} title={e.name}>{e.name}</span>)}
               {ev.length > 2 && <span className="cal-more">+{ev.length - 2} lagi</span>}
-              <span className="cal-dots">{ev.slice(0, 4).map((e) => <i key={e.id} className={"ev-" + e.status} />)}</span>
+              <span className="cal-dots">{ev.slice(0, 4).map((e) => <i key={e.id} className={"ev-" + activityStatus(e)} />)}</span>
             </button>
           );
         })}
@@ -68,7 +68,7 @@ export function Calendar({ events }) {
       <Sheet open={!!detail} onClose={() => setDetail(null)} title={detail ? fmtDateLong(detail.date) : ""} sub={detail && `${detail.list.length} kegiatan`}>
         {detail && detail.list.map((e) => (
           <div className="cal-item" key={e.id}>
-            <div className="cal-item-top"><b>{e.name}</b><StatusBadge status={e.status} /></div>
+            <div className="cal-item-top"><b>{e.name}</b><StatusBadge status={activityStatus(e)} /></div>
             <div className="row-meta"><span className="ptag">{e.programLabel}</span>{e.pic && <span>PIC {e.pic}</span>}{e.location && <span>{e.location}</span>}</div>
           </div>
         ))}
