@@ -52,20 +52,23 @@ function NavFolder({ group, session }) {
 
 function Shell({ session }) {
   const { reports, error } = useReports();
+  const groups = buildTree(reports).items.map((it) => it.group);
+  // Kelola laporan sejajar dengan menu laporan (Pemetaan Kesiapan Akademik, Akademik TPB) di bagian terakhir
+  const manage = <NavItem session={session} area="reports" to="/pendidikan-persiapan/kelola"><Icon name="layers" /><span className="nav-txt nav-txt-2">Kelola laporan</span></NavItem>;
   return (
     <AppShell session={session} dashboard={DASHBOARD}
       nav={(
         <>
           {!reports && !error && <div className="nav-note">Memuat laporan…</div>}
           {reports && !reports.length && <div className="nav-note">Belum ada laporan.</div>}
-          {buildTree(reports).items.map(({ group }) => (
+          {groups.map((group, i) => (
             <div key={group.key} className="nav-group">
               <div className="nav-label">{group.name}</div>
               <NavItems items={group.items} session={session} />
+              {i === groups.length - 1 && manage}
             </div>
           ))}
-          <div className="nav-label">Pengaturan</div>
-          <NavItem session={session} area="reports" to="/pendidikan-persiapan/kelola"><Icon name="layers" />Kelola laporan</NavItem>
+          {!groups.length && manage}
           <div className="nav-group">
             <div className="nav-label">Pembinaan Karakter TPB</div>
             <NavItem session={session} to={KARAKTER_BASE} end><Icon name="home" /><span className="nav-txt">Beranda program</span></NavItem>
