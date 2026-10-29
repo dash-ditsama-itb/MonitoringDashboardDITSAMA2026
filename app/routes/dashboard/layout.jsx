@@ -6,7 +6,10 @@ import { AppShell, Gate, NavItem } from "../../components/AppShell.jsx";
 import { Icon } from "../../components/Icon.jsx";
 import { Refreshing, SelectField } from "../../components/ui.jsx";
 import { DASHBOARDS, PROGRAMS } from "../../config.js";
-import { byLabel, canEditFinance, canEditHumanResources, canManageUsers, editablePrograms, levelLabel, monthKeyLabel, progColor, sortLabels, withoutAll } from "../../lib/format.js";
+import {
+  activityStatus, byLabel, canEditFinance, canEditHumanResources, canManageUsers, daysFromToday, editablePrograms, LATE_BADGE_DAYS, levelLabel,
+  monthKeyLabel, progColor, sortLabels, withoutAll,
+} from "../../lib/format.js";
 import { useApi } from "../../stores/data.js";
 import { useUiStore } from "../../stores/ui.js";
 import dashboardCss from "../../styles/dashboard.css?url";
@@ -36,17 +39,21 @@ function Shell({ session }) {
   const matches = useMatches();
   const withControl = matches.some((m) => m.handle?.control);
 
-  // badge jumlah Berlangsung (hijau), Telat update (oren) & Akan Datang (kuning) per program dari kalender dashboard utama
+  // badge per program dari dashboard utama: hijau = kegiatan hari ini (hari H), oranye = Telat update yang tanggalnya
+  // 1–14 hari lalu, kuning = isi Agenda mendatang (tanggal setelah hari ini + agenda belum bertanggal)
   const canActivities = ACCESS.activities.can(session);
   const { data } = useApi("/dashboard", {}, { enabled: canActivities });
   const badges = useMemo(() => {
     const out = {};
+    const of = (p) => (out[p] = out[p] || { on: 0, late: 0, up: 0 });
     (data?.data?.calendar || []).forEach((e) => {
-      const b = (out[e.program] = out[e.program] || { on: 0, late: 0, up: 0 });
-      if (e.status === "ongoing") b.on++;
-      if (e.status === "late") b.late++;
-      if (e.status === "upcoming") b.up++;
+      const b = of(e.program), s = activityStatus(e);
+      if (s === "ongoing") b.on++;
+      if (s === "late" && daysFromToday(e.date) >= -LATE_BADGE_DAYS) b.late++;
+      if (s === "upcoming") b.up++;
     });
+    // jumlah Akan Datang dari server juga menghitung agenda tanpa tanggal (tidak ada di kalender)
+    (data?.data?.portfolio || []).forEach((r) => { if (r.upcomingActivities != null) of(r.program).up = r.upcomingActivities; });
     return out;
   }, [data]);
 
@@ -86,8 +93,8 @@ function Shell({ session }) {
                 <span className="nav-dot" style={{ background: progColor(p.api) }} aria-hidden="true" />
                 <span className="nav-txt">{p.label}</span>
                 {b?.on > 0 && <span className="nav-badge green" title={`${b.on} kegiatan berlangsung`}>{b.on}</span>}
-                {b?.late > 0 && <span className="nav-badge orange" title={`${b.late} kegiatan telat update`}>{b.late}</span>}
-                {b?.up > 0 && <span className="nav-badge yellow" title={`${b.up} kegiatan akan datang`}>{b.up}</span>}
+                {b?.late > 0 && <span className="nav-badge orange" title={`${b.late} kegiatan telat update (${LATE_BADGE_DAYS} hari terakhir)`}>{b.late}</span>}
+                {b?.up > 0 && <span className="nav-badge yellow" title={`${b.up} agenda mendatang`}>{b.up}</span>}
               </NavItem>
             );
           })}

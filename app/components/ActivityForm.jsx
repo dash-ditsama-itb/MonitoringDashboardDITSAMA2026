@@ -229,7 +229,7 @@ export function ActivityForm({ open, activity, defaultProgram, initialMode, onCl
             <span><b>Tandai selesai</b>
               <small>{f.isDone
                 ? "Kegiatan dihitung Selesai, apa pun tanggalnya."
-                : "Tanpa tanda ini, status mengikuti tanggal: Akan Datang sebelum H-2, Berlangsung H-2 sampai hari H, lalu Telat update sampai ditandai selesai."}</small>
+                : "Tanpa tanda ini, status mengikuti tanggal: Akan Datang sebelum hari H, Berlangsung pada hari H, lalu Telat update sampai ditandai selesai."}</small>
             </span>
           </label>
         </div>

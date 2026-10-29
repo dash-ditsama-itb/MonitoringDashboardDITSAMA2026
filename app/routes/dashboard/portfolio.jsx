@@ -15,7 +15,7 @@ import {
 } from "../../components/ui.jsx";
 import { PROGRAMS, REKAP_PESERTA, TOTAL_PROGRAMS } from "../../config.js";
 import {
-  byLabel, canSeeActivities, fmtDate, fmtNum, levelLabel, monthKeyLabel, pct, phaseLabel, progColor, programLabel, PROGRAMS_AZ, withoutAll,
+  activityStatus, byLabel, canSeeActivities, fmtDate, fmtNum, levelLabel, monthKeyLabel, pct, phaseLabel, progColor, programLabel, PROGRAMS_AZ, withoutAll,
 } from "../../lib/format.js";
 import { useAuthStore } from "../../stores/auth.js";
 import { useApi } from "../../stores/data.js";
@@ -230,14 +230,14 @@ function Issues({ items }) {
   );
 }
 
-// agenda = semua kegiatan berstatus Akan Datang (tanggal lebih dari 2 hari lagi), apa pun jenisnya; sama dengan badge kuning
+// agenda = semua kegiatan berstatus Akan Datang (tanggal setelah hari ini), apa pun jenisnya; sama dengan badge kuning
 function Milestones({ calendar }) {
-  const next = calendar.filter((e) => e.status === "upcoming").sort((a, b) => new Date(a.date) - new Date(b.date));
+  const next = calendar.filter((e) => activityStatus(e) === "upcoming").sort((a, b) => new Date(a.date) - new Date(b.date));
   return (
     <section className="card">
       <div className="card-head"><div><h2 className="card-title with-info">Agenda mendatang<InfoTip k="upcoming" /></h2>
         <div className="card-sub">{next.length ? `${next.length} kegiatan terjadwal, terdekat di atas` : "Tidak ada kegiatan terjadwal"}</div></div></div>
-      {!next.length ? <EmptyState icon="calendar" title="Belum ada agenda ke depan">Kegiatan yang tanggalnya lebih dari 2 hari lagi tampil di sini.</EmptyState> : (
+      {!next.length ? <EmptyState icon="calendar" title="Belum ada agenda ke depan">Kegiatan yang tanggalnya setelah hari ini tampil di sini.</EmptyState> : (
         <SeeMore items={next} limit={4} render={(m) => {
           const dt = new Date(m.date);
           return (

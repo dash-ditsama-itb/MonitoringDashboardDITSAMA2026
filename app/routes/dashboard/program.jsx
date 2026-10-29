@@ -45,13 +45,13 @@ function ProgramPage({ loaderData }) {
           <ProgramProgress program={program} kpi={d.kpi} last={lastPerformed(d.activities)} />
           {program.api === "sugt" && <SugtSummary />}
           <div className="grid g-2">
-            <MilestoneCard title="Sedang berlangsung" info="ongoing" tone="green" items={d.milestones.ongoing} program={program}
-              empty="Tidak ada kegiatan dalam rentang H-2 sampai hari H." />
-            <MilestoneCard title="Telat update" info="late" tone="orange" items={d.milestones.late || []} program={program} bulk
+            <MilestoneCard title="Sedang berlangsung" info="ongoing" tone="green" items={byStatus(d.activities, "ongoing")} program={program}
+              empty="Tidak ada kegiatan hari ini." />
+            <MilestoneCard title="Telat update" info="late" tone="orange" items={byStatus(d.activities, "late")} program={program} bulk
               empty="Semua kegiatan yang sudah lewat sudah ditandai selesai." />
           </div>
-          <MilestoneCard title="Agenda mendatang" info="upcoming" tone="yellow" items={upcomingOf(d.activities)} program={program}
-            empty="Belum ada kegiatan yang tanggalnya lebih dari 2 hari lagi." />
+          <MilestoneCard title="Agenda mendatang" info="upcoming" tone="yellow" items={byStatus(d.activities, "upcoming")} program={program}
+            empty="Belum ada kegiatan yang tanggalnya setelah hari ini." />
           <section className="card">
             <div className="card-head"><div><h2 className="card-title with-info">Linimasa fase kegiatan<InfoTip k="timeline" /></h2><div className="card-sub">Rentang tanggal tiap fase program ini</div></div></div>
             <Gantt rows={d.timeline.map((t) => ({
@@ -66,8 +66,9 @@ function ProgramPage({ loaderData }) {
   );
 }
 
-// agenda = semua kegiatan berstatus Akan Datang (tanggal > H+2, atau agenda belum bertanggal), terdekat di atas
-const upcomingOf = (activities = []) => activities.filter((a) => activityStatus(a) === "upcoming")
+// kegiatan per status, urut tanggal (terlama di atas; Telat update = yang paling lama belum diupdate di atas).
+// Agenda = Akan Datang: tanggal setelah hari ini, atau agenda belum bertanggal (di bawah)
+const byStatus = (activities = [], status) => activities.filter((a) => activityStatus(a) === status)
   .sort((a, b) => (a.date ? new Date(a.date) : Infinity) - (b.date ? new Date(b.date) : Infinity));
 
 const MILESTONE_LIMIT = 8; // sisanya lewat "Lihat semua"
