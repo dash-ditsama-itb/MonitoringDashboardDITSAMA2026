@@ -284,12 +284,14 @@ const same = (a, b) => a.toLowerCase() === b.toLowerCase();
 
 // rata-rata feedback tiap program (skala 100), untuk Umpan balik per program;
 // SUGT dari aplikasi SUGT (Umpan Balik Peserta + Evaluasi Perjalanan Dinas, skala 1–10 × 10) bila belum ada di spreadsheet.
-// Semua program tampil: yang belum ada datanya bernilai "–"; program dengan kegiatan berlangsung diberi keterangan "sedang berjalan".
+// Semua program tampil. Program tanpa nilai di spreadsheet bernilai "–": bila kolom Feedback di data kegiatannya
+// sudah ada isinya, program dianggap "sedang berjalan"; bila semuanya "–", "belum ada data".
 function ProgramFeedbackCard({ list, program }) {
   const s = useApi("/dashboard/sugt").data?.data;
   const session = useAuthStore((st) => st.session);
-  const calendar = useApi("/dashboard", {}, { enabled: ACCESS.activities.can(session) }).data?.data?.calendar;
-  const running = new Set((calendar || []).filter((e) => e.status === "ongoing").map((e) => e.program));
+  const portfolio = useApi("/dashboard", {}, { enabled: ACCESS.activities.can(session) }).data?.data?.portfolio;
+  // performanceStrip.feedback = rata-rata kolom Feedback kegiatan program (0 bila semua "–")
+  const running = new Set((portfolio || []).filter((r) => r.performanceStrip?.feedback > 0).map((r) => r.program));
   const sugt = s && !list.some((p) => same(p.program, "SUGT")) && sugtFeedback(s) != null
     ? [{ program: "SUGT", feedbackScore: sugtFeedback(s), aspectCount: sugtRatedAspects(s), note: "aplikasi SUGT" }] : [];
   const scored = [...list.filter((p) => p.feedbackScore != null), ...sugt];
@@ -304,8 +306,7 @@ function ProgramFeedbackCard({ list, program }) {
       <ul className="asp">{rows.map((p) => (
         <li key={p.program} className={p.program === program ? "on" : ""}>
           <span className="asp-lab"><span>{p.program}</span><small>
-            {running.has(p.api) && <span className="fb-run">sedang berjalan</span>}
-            {p.feedbackScore == null ? "belum ada data" : `${p.aspectCount ?? p.aspects.length} aspek${p.note ? ` · ${p.note}` : ""}`}
+            {p.feedbackScore == null ? (running.has(p.api) ? <span className="fb-run">sedang berjalan</span> : "belum ada data") : `${p.aspectCount ?? p.aspects.length} aspek${p.note ? ` · ${p.note}` : ""}`}
           </small></span>
           <Bar value={p.feedbackScore ?? 0} tone={p.feedbackScore == null ? "" : tone(p.feedbackScore / 20)} />
           <b className={p.feedbackScore == null ? "muted" : ""}>{fb100(p.feedbackScore)}</b>
