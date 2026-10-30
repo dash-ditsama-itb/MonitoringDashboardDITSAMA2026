@@ -4,7 +4,7 @@ import { FinanceTable } from "../../components/Finance.jsx";
 import { RequireAccess } from "../../components/Access.jsx";
 import { Icon } from "../../components/Icon.jsx";
 import { Bar, ErrorNote, Kpi, PageHead, PageSkeleton, Pending, SelectField } from "../../components/ui.jsx";
-import { FIN_GROUPS_AZ, finGroupOf, finMitra, fmtRupiah, fmtRupiahShort, moneyScale, MONTHS, progColor } from "../../lib/format.js";
+import { FIN_GROUPS_AZ, finGroupOf, finMitra, finRecipients, fmtRupiah, recipientText, fmtRupiahShort, moneyScale, MONTHS, progColor } from "../../lib/format.js";
 import { useApi } from "../../stores/data.js";
 import { useUiStore } from "../../stores/ui.js";
 
@@ -213,9 +213,17 @@ function Summary({ rows, period }) {
               <><span className="port-dot" style={{ background: groupColor(g) }} />{g.label}
                 {mitras.length > 0 && <span className="fin-mitra">Mitra: {mitras.join(", ")}</span>}</>
             );
+            // pengajuan mitra yang membiayai beberapa program (TN, Freeport) dirinci per program penerima
+            const split = (p) => (finRecipients(p.api).length > 1 ? [...(p.values.recipients || [])]
+              .sort((a, b) => (a.program ? finRecipients(p.api).indexOf(a.program) : 99) - (b.program ? finRecipients(p.api).indexOf(b.program) : 99))
+              .map((x) => (
+                <tr key={p.api + (x.program || "bersama")} className="fin-sub fin-rec">
+                  <td>{recipientText(p.api, x.program)}</td><td colSpan={5}>Pengajuan {fmtRupiah(x.submission)}</td>
+                </tr>
+              )) : []);
             return [
               line(g.key, name, t),
-              ...(parts.length > 1 ? parts.map((p) => line(p.api, `Mitra ${finMitra(p.api) || "–"}`, p.values, true)) : []),
+              ...(parts.length > 1 ? parts.flatMap((p) => [line(p.api, `Mitra ${finMitra(p.api) || "–"}`, p.values, true), ...split(p)]) : split(parts[0])),
             ];
           })}</tbody>
         </table></div>

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { PKS_TYPES } from "../config.js";
 import { api, errorText } from "../lib/api.js";
 import {
-  canEditFinance, FIN_PROGRAMS_AZ, finSourceLabel, finTypeLabel, fmtDate, fmtDateTime, fmtRelative, fmtRupiah, fromDateInput, isPks, toDateInput,
+  canEditFinance, FIN_PROGRAMS_AZ, finRecipients, finSourceLabel, finTypeLabel, recipientLabel, recipientText, fmtDate, fmtDateTime, fmtRelative, fmtRupiah, fromDateInput, isPks, toDateInput,
 } from "../lib/format.js";
 import { useAuthStore } from "../stores/auth.js";
 import { invalidate, useApi } from "../stores/data.js";
@@ -152,7 +152,7 @@ export function FinanceTable({ filters, ui, update }) {
                     <td className="c-type"><TypeChip r={r} /></td>
                     <td className="c-name">
                       <div className="cell-strong">{detailOf(r) || <span className="muted">Tanpa keterangan</span>}</div>
-                      <div className="row-meta">{showProgram && <span className="ptag">{finSourceLabel(r.program)}</span>}{subOf(r) && <span>{subOf(r)}</span>}</div>
+                      <div className="row-meta">{showProgram && <span className="ptag">{finSourceLabel(r.program)}</span>}<RecipientTag r={r} />{subOf(r) && <span>{subOf(r)}</span>}</div>
                     </td>
                     <td className={"num c-amt " + (isPks(r) ? "pos" : "neg")}>{isPks(r) ? "+" : "−"}{fmtRupiah(amountOf(r))}</td>
                     <td className="num c-dpks">{isPks(r) ? <>{fmtRupiah(r.dpks)}<span className="muted"> · {r.dpksPercentage ?? 0}%</span></> : <span className="muted">–</span>}</td>
@@ -180,7 +180,7 @@ export function FinanceTable({ filters, ui, update }) {
                 <button type="button" className="rec-main" disabled={!canEdit} onClick={() => setForm({ kind: isPks(r) ? "pks" : "submission", record: r })}>
                   <span className="rec-top"><span className="rec-name">{detailOf(r) || finTypeLabel(r.type)}</span>
                     <span className={"rec-amt " + (isPks(r) ? "pos" : "neg")}>{isPks(r) ? "+" : "−"}{fmtRupiah(amountOf(r))}</span></span>
-                  <span className="rec-meta"><TypeChip r={r} /><span>{fmtDate(r.date)}</span>{showProgram && <span>{finSourceLabel(r.program)}</span>}</span>
+                  <span className="rec-meta"><TypeChip r={r} /><span>{fmtDate(r.date)}</span>{showProgram && <span>{finSourceLabel(r.program)}</span>}<RecipientTag r={r} /></span>
                   <span className="rec-meta"><span>Saldo {fmtRupiah(r.balance)}</span>{subOf(r) && <span>{subOf(r)}</span>}</span>
                 </button>
               </li>
@@ -212,15 +212,21 @@ function MoneyInput({ value, onChange, placeholder, label }) {
 
 const today = () => toDateInput(new Date());
 
+// program penerima pengajuan dari mitra yang membiayai lebih dari satu program (TN, Freeport)
+function RecipientTag({ r }) {
+  if (isPks(r) || finRecipients(r.program).length < 2 || !("recipientProgram" in r)) return null;
+  return <span className={"rtag" + (r.recipientProgram ? "" : " shared")}>{recipientText(r.program, r.recipientProgram)}</span>;
+}
+
 function formFrom(kind, r, program, session) {
   if (!r) {
     return kind === "pks"
       ? { program, type: "initial_pks", pksType: "Pm", value: "", date: today(), text: "", pic: session?.name || "" }
-      : { program, date: today(), invoiceNumber: "", submissionType: "", text: "", value: "", pic: session?.name || "" };
+      : { program, date: today(), invoiceNumber: "", submissionType: "", text: "", value: "", pic: session?.name || "", recipient: "" };
   }
   return isPks(r)
     ? { program: r.program, type: r.type, pksType: r.pksType || "Pm", value: String(r.pksValue ?? ""), date: toDateInput(r.date), text: r.information || "", pic: r.pic || "" }
-    : { program: r.program, date: toDateInput(r.date), invoiceNumber: r.invoiceNumber || "", submissionType: r.submissionType || "", text: r.description || "", value: String(r.submissionValue ?? ""), pic: r.pic || "" };
+    : { program: r.program, date: toDateInput(r.date), invoiceNumber: r.invoiceNumber || "", submissionType: r.submissionType || "", text: r.description || "", value: String(r.submissionValue ?? ""), pic: r.pic || "", recipient: r.recipientProgram || "" };
 }
 
 function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) {
@@ -249,7 +255,8 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
           : { program: f.program, date, submissionValue: value,
               ...(f.invoiceNumber.trim() ? { invoiceNumber: f.invoiceNumber.trim() } : {}),
               ...(f.submissionType.trim() ? { submissionType: f.submissionType.trim() } : {}),
-              ...(f.text.trim() ? { description: f.text.trim() } : {}) };
+              ...(f.text.trim() ? { description: f.text.trim() } : {}),
+              ...(finRecipients(f.program).length > 1 ? { recipientProgram: f.recipient || null } : {}) };
         if (f.pic.trim()) body.pic = f.pic.trim();
         const out = await api(isPksForm ? "/financial/pks" : "/financial/submission", { method: "POST", body });
         toast(`${isPksForm ? "PKS" : "Pengajuan"} tersimpan. Saldo ${finSourceLabel(f.program)} kini ${fmtRupiah(out.data?.balance)}.`);
@@ -268,6 +275,7 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
           set("invoiceNumber", f.invoiceNumber.trim(), r.invoiceNumber);
           set("submissionType", f.submissionType.trim(), r.submissionType);
           set("description", f.text.trim(), r.description);
+          if (finRecipients(f.program).length > 1 && (f.recipient || null) !== (r.recipientProgram ?? null)) body.recipientProgram = f.recipient || null;
         }
         // backend tidak menerima string kosong -> lewati kolom teks yang dikosongkan
         Object.keys(body).forEach((k) => { if (body[k] === "") delete body[k]; });
@@ -304,9 +312,21 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
             </div>
           )}
           <div className="form-grid">
-            <label className="field"><span className="field-lab">Program</span>
-              <select {...field("program")}>{FIN_PROGRAMS_AZ.map((p) => <option key={p.api} value={p.api}>{finSourceLabel(p.api)}</option>)}</select>
+            <label className="field"><span className="field-lab">{isPksForm ? "Program" : "Mitra / sumber dana"}</span>
+              <select value={f.program} onChange={(e) => setF({ ...f, program: e.target.value, recipient: "" })}>
+                {FIN_PROGRAMS_AZ.map((p) => <option key={p.api} value={p.api}>{finSourceLabel(p.api)}</option>)}
+              </select>
             </label>
+            {!isPksForm && (
+              <label className="field"><span className="field-lab">Program penerima</span>
+                {finRecipients(f.program).length > 1 ? (
+                  <select {...field("recipient")}>
+                    <option value="">{recipientLabel(f.program, null)}</option>
+                    {finRecipients(f.program).map((p) => <option key={p} value={p}>{recipientLabel(f.program, p)}</option>)}
+                  </select>
+                ) : <select disabled value=""><option value="">{recipientLabel(f.program, finRecipients(f.program)[0])}</option></select>}
+              </label>
+            )}
             <label className="field"><span className="field-lab">{isPksForm ? "Tanggal PKS" : "Tanggal pengajuan"}</span>
               <input type="date" required {...field("date")} />
             </label>

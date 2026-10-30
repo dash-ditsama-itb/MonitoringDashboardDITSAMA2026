@@ -92,6 +92,12 @@ export const FIN_GROUPS_AZ = [...new Set(FIN_PROGRAMS.map((p) => p.label))].sort
   return { key: apis.join(","), label, apis, mitras: apis.map(finMitra).filter(Boolean) };
 });
 export const finGroupOf = (api) => FIN_GROUPS_AZ.find((g) => g.apis.includes(api));
+// program penerima pengajuan per sumber dana; null = "Bersama" (dipakai semua program mitra itu)
+export const finRecipients = (api) => FIN_PROGRAMS.find((p) => p.api === api)?.programs || [];
+const listLabel = (xs) => (xs.length > 1 ? xs.slice(0, -1).join(", ") + " & " + xs[xs.length - 1] : xs.join(""));
+export const recipientLabel = (fin, prog) => (prog ? programByApi(prog)?.label ?? prog : `Bersama (${listLabel(finRecipients(fin).map((p) => programByApi(p)?.label ?? p))})`);
+// "untuk SIAP ITB" / "Bersama (SIAP ITB & INSPIRASI EduQuest)"
+export const recipientText = (fin, prog) => (prog ? "untuk " : "") + recipientLabel(fin, prog);
 
 export const programByApi = (api) => PROGRAMS.find((p) => p.api === api);
 export const programByKey = (key) => PROGRAMS.find((p) => p.key === key);
