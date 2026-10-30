@@ -58,7 +58,7 @@ export const FIN_PROGRAMS = [
   { api: "wit",                label: "WIT", programs: ["wit"] },
   { api: "maung",              label: "MAUNG", programs: ["maung"] },
   { api: "sugt",               label: "SUGT", programs: ["sugt"] },
-  { api: "freeport",           label: "EduQuest & SIAP ITB", mitra: "Freeport", programs: ["siap_itb", "inspirasi_eduquest"] },
+  { api: "freeport",           label: "INSPIRASI EduQuest & SIAP ITB", mitra: "Freeport", programs: ["siap_itb", "inspirasi_eduquest"] },
 ];
 
 // Hak akses (grant) yang bisa diberikan ke peran; satu peran boleh punya beberapa grant (haknya digabung).
