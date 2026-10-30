@@ -81,7 +81,6 @@ function Shell({ session }) {
     <AppShell session={session} dashboard={DASHBOARD}
       nav={(
         <>
-          <div className="nav-label">Layanan</div>
           <Folder top name="Data Tahap Persiapan Bersama" id="data-tpb"
             holdsActive={pathname.includes("/pendidikan-persiapan/laporan/") || pathname.endsWith("/pendidikan-persiapan/kelola")}>
             {!reports && !error && <div className="nav-note">Memuat laporan…</div>}
