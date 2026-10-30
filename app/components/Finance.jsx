@@ -29,8 +29,12 @@ const subOf = (r) => (isPks(r)
   ? [r.pksType && `Jenis ${r.pksType}`].filter(Boolean)
   : [r.submissionType, r.invoiceNumber && `Invoice ${r.invoiceNumber}`].filter(Boolean)).join(" · ");
 
-/** filters: { programs, year, month, submissionType } dari halaman Keuangan. */
-export function FinanceTable({ filters, ui, update }) {
+/** pageFilters: { programs, year, month, submissionType } dari halaman Keuangan. */
+export function FinanceTable({ filters: pageFilters, ui, update }) {
+  // filter Program khusus tabel Transaksi: per sumber dana/mitra, di dalam filter Program halaman
+  const sources = pageFilters.programs[0] === "all" ? FIN_PROGRAMS_AZ.map((p) => p.api) : FIN_PROGRAMS_AZ.map((p) => p.api).filter((a) => pageFilters.programs.includes(a));
+  const source = sources.includes(ui.source) ? ui.source : "";
+  const filters = source ? { ...pageFilters, programs: [source] } : pageFilters;
   const session = useAuthStore((s) => s.session);
   const canEdit = canEditFinance(session);
   const [sortBy, sortOrder] = ui.sort.split(":");
@@ -102,6 +106,12 @@ export function FinanceTable({ filters, ui, update }) {
 
       <div className="tbl-toolbar">
         <SearchInput value={ui.search} onChange={(v) => update({ search: v, page: 1 })} placeholder="Cari uraian, keterangan, invoice, atau PIC" />
+        {sources.length > 1 && (
+          <select className="tb-select" value={source} onChange={(e) => update({ source: e.target.value, page: 1 })} aria-label="Program">
+            <option value="">Semua program</option>
+            {sources.map((a) => <option key={a} value={a}>{finSourceLabel(a)}</option>)}
+          </select>
+        )}
         <select className="tb-select" value={ui.sort} onChange={(e) => update({ sort: e.target.value, page: 1 })} aria-label="Urutkan">
           {SORTS.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
         </select>
