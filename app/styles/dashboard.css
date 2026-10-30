@@ -1151,5 +1151,3 @@ span.asp-lab{cursor:default}
 .asp>li>b.muted{color:var(--muted)}
 /* kolom form yang wajib diisi tapi masih kosong (mis. kategori peserta) */
 .form-sec .dyn-row input[aria-invalid="true"]{border-color:var(--crit);background:var(--crit-bg)}
-/* kelompok utama menu Pendidikan Persiapan (Data Tahap Persiapan Bersama, Pembinaan Karakter TPB) */
-.nav-folder-top{font-size:15px;font-weight:800;color:#fff;letter-spacing:.01em}
