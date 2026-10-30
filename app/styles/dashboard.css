@@ -87,7 +87,9 @@ a{color:var(--blue-ink);text-underline-offset:3px}
 .nav-folder.open>.nav-folder-btn .nav-chev{transform:rotate(90deg)}
 .nav-folder-btn.holds-active{background:rgba(255,255,255,.09);color:#fff}
 .nav-sub{display:flex;flex-direction:column;gap:2px;margin:2px 0 4px 21px;padding-left:8px;border-left:1px solid rgba(255,255,255,.18)}
-.nav-sub .nav-item{font-size:13.5px;min-height:36px;padding-top:7px;padding-bottom:7px}
+.nav-sub .nav-item{font-size:13.5px;min-height:36px;padding:7px 8px;gap:8px}
+/* tingkat lebih dalam lebih rapat agar judul laporan tetap terbaca (garis pandu tetap di bawah panah subbagian) */
+.nav-sub .nav-sub{margin-left:17px;padding-left:6px}
 @media (prefers-reduced-motion:reduce){ .nav-folder-btn .nav-chev{transition:none} }
 .nav-txt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .nav-badge{font-size:11px;font-weight:800;border-radius:6px;min-width:20px;height:20px;padding:0 6px;

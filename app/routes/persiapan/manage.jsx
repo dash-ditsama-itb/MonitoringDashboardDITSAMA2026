@@ -75,6 +75,31 @@ function ManagePage() {
     finally { setBusy(null); }
   }
 
+  // keluarkan dari bagian (tepat setelah bagian itu) atau masukkan ke subbagian di sebelahnya; laporan di dalamnya ikut pindah
+  async function relocate(parentKey, index, dir, busyKey) {
+    const fresh = buildTree(reports);
+    const parent = parentKey ? findGroup(fresh, parentKey) : fresh;
+    const item = parent.items[index];
+    const near = dir === "in" && neighbourGroup(parent.items, index);
+    const target = dir === "out" ? parent.parent : near.group;
+    parent.items.splice(index, 1);
+    if (dir === "out") target.items.splice(target.items.findIndex((it) => it.group === parent) + 1, 0, item);
+    else if (near.above) target.items.push(item);
+    else target.items.unshift(item);
+    const changes = item.report
+      ? [{ id: item.report.id, body: { section: joinSection(target.parts) } }]
+      : flattenReports(item.group).map((r) => ({ id: r.id, body: { section: joinSection([...target.parts, ...splitSection(r.section).slice(item.group.parts.length - 1)]) } }));
+    setBusy(busyKey);
+    const failed = await patchReports(changes);
+    if (failed) toast(`${failed} laporan belum dipindahkan. Coba lagi.`, "err");
+    else {
+      try { await saveOrder(flattenReports(fresh).map((r) => r.id)); refresh(); } catch { /* urutan bisa diatur ulang dengan panah */ }
+      const name = item.report ? item.report.title : item.group.name;
+      toast(dir === "out" ? `"${name}" dikeluarkan dari ${parent.name}.` : `"${name}" dimasukkan ke ${target.name}.`);
+    }
+    setBusy(null);
+  }
+
   async function remove(r) {
     const ok = await confirmAction({
       title: `Hapus laporan "${r.title}"?`, danger: true, confirmText: "Hapus laporan",
@@ -97,7 +122,7 @@ function ManagePage() {
     else toast(`"${s.prefix}" sekarang menjadi subbagian dengan ${s.items.length} laporan.`);
   }
 
-  const ctx = { busy, moveItem, remove, editReport: (r) => setForm({ report: r }), addReport: (g) => setForm({ report: null, groupKey: g.key }), editGroup: (g) => setGroupForm({ group: g }) };
+  const ctx = { busy, moveItem, relocate, remove, editReport: (r) => setForm({ report: r }), addReport: (g) => setForm({ report: null, groupKey: g.key }), editGroup: (g) => setGroupForm({ group: g }) };
 
   return (
     <div className="page">
@@ -123,8 +148,8 @@ function ManagePage() {
             </EmptyState>
           ) : (
             <>
-              <Tree items={tree.items} parentKey="" ctx={ctx} />
-              <p className="hint"><Icon name="info" size={14} />Urutan di sini sama dengan urutan di menu. Pindahkan laporan ke bagian lain lewat tombol Ubah.</p>
+              <Tree parent={tree} ctx={ctx} />
+              <p className="hint"><Icon name="info" size={14} />Urutan di sini sama dengan urutan di menu. Panah naik/turun mengubah urutan; tombol keluarkan/masukkan memindahkan ke luar bagian atau ke subbagian di sebelahnya. Bagian lain bisa dipilih lewat tombol Ubah.</p>
             </>
           )}
         </section>
@@ -146,7 +171,34 @@ function OrderButtons({ index, count, label, onMove, disabled }) {
   );
 }
 
-function Tree({ items, parentKey, ctx }) {
+/** subbagian terdekat di sebelah isi ke-index (di atas dulu, lalu di bawah): tujuan tombol "Masukkan ke …" */
+function neighbourGroup(items, index) {
+  for (let i = index - 1; i >= 0; i--) if (items[i].group) return { group: items[i].group, above: true };
+  for (let i = index + 1; i < items.length; i++) if (items[i].group) return { group: items[i].group, above: false };
+  return null;
+}
+
+// keluarkan dari bagian / masukkan ke subbagian di sebelahnya. Laporan selalu tetap di dalam salah satu bagian.
+function NestButtons({ parent, index, label, disabled, onMove }) {
+  const item = parent.items[index];
+  const canOut = item.report ? parent.depth >= 1 : parent.depth >= 0;
+  const near = neighbourGroup(parent.items, index);
+  return (
+    <>
+      <button type="button" className="icon-btn" disabled={!canOut || disabled} onClick={() => onMove("out")}
+        title={canOut ? `Keluarkan dari ${parent.name}` : "Sudah di tingkat teratas"} aria-label={`Keluarkan ${label}${canOut ? ` dari ${parent.name}` : ""}`}>
+        <Icon name="outdent" size={16} />
+      </button>
+      <button type="button" className="icon-btn" disabled={!near || disabled} onClick={() => onMove("in")}
+        title={near ? `Masukkan ke ${near.group.name}` : "Tidak ada subbagian di sebelahnya"} aria-label={`Masukkan ${label}${near ? ` ke ${near.group.name}` : ""}`}>
+        <Icon name="indent" size={16} />
+      </button>
+    </>
+  );
+}
+
+function Tree({ parent, ctx }) {
+  const { items, key: parentKey } = parent;
   return (
     <ul className="rep-tree">
       {items.map((it, i) => (it.report ? (
@@ -158,6 +210,8 @@ function Tree({ items, parentKey, ctx }) {
             <div className="row-meta"><span className="trunc">{it.report.url}</span></div>
           </div>
           <div className="row-actions">
+            <NestButtons parent={parent} index={i} label={it.report.title} disabled={!!ctx.busy}
+              onMove={(dir) => ctx.relocate(parentKey, i, dir, it.report.id)} />
             <button type="button" className="icon-btn" title="Ubah" aria-label={`Ubah ${it.report.title}`} disabled={!!ctx.busy} onClick={() => ctx.editReport(it.report)}><Icon name="pencil" size={16} /></button>
             <button type="button" className="icon-btn danger" title="Hapus" aria-label={`Hapus ${it.report.title}`} disabled={!!ctx.busy} onClick={() => ctx.remove(it.report)}><Icon name="trash" size={16} /></button>
           </div>
@@ -173,11 +227,13 @@ function Tree({ items, parentKey, ctx }) {
               <div className="row-meta"><span>{flattenReports(it.group).length} laporan</span>{allGroups(it.group).length > 0 && <span>{allGroups(it.group).length} subbagian</span>}</div>
             </div>
             <div className="row-actions">
+              <NestButtons parent={parent} index={i} label={`bagian ${it.group.name}`} disabled={!!ctx.busy}
+                onMove={(dir) => ctx.relocate(parentKey, i, dir, it.group.key)} />
               <button type="button" className="icon-btn" title="Tambah laporan di bagian ini" aria-label={`Tambah laporan di ${it.group.name}`} disabled={!!ctx.busy} onClick={() => ctx.addReport(it.group)}><Icon name="plus" size={16} /></button>
               <button type="button" className="icon-btn" title="Ubah nama atau pindahkan bagian" aria-label={`Ubah bagian ${it.group.name}`} disabled={!!ctx.busy} onClick={() => ctx.editGroup(it.group)}><Icon name="pencil" size={16} /></button>
             </div>
           </div>
-          <Tree items={it.group.items} parentKey={it.group.key} ctx={ctx} />
+          <Tree parent={it.group} ctx={ctx} />
         </li>
       )))}
     </ul>

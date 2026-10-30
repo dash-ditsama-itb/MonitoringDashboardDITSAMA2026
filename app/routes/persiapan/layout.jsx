@@ -75,9 +75,8 @@ const navLink = (session, { to, label, end }) => (
 function Shell({ session }) {
   const { pathname } = useLocation();
   const { reports, error } = useReports();
-  const tree = buildTree(reports).items;
-  // satu bagian laporan (Layanan): isinya langsung di kelompok Data TPB; lebih dari satu: tiap bagian jadi subkelompok
-  const reportItems = tree.length === 1 ? tree[0].group.items : tree;
+  // bagian laporan tampil persis seperti di Kelola laporan (termasuk bagian teratas), di dalam kelompok Data TPB
+  const reportItems = buildTree(reports).items;
   return (
     <AppShell session={session} dashboard={DASHBOARD}
       nav={(

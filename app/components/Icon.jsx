@@ -51,6 +51,8 @@ const PATHS = {
   book: <><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z" /><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5" /></>,
   layers: <><path d="m12 2 10 5-10 5L2 7z" /><path d="m2 17 10 5 10-5" /><path d="m2 12 10 5 10-5" /></>,
   expand: <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />,
+  indent: <><path d="M21 6H11M21 12H11M21 18H11" /><path d="m3 8 4 4-4 4" /></>,
+  outdent: <><path d="M21 6H11M21 12H11M21 18H11" /><path d="m7 8-4 4 4 4" /></>,
   swap: <><path d="m17 3 4 4-4 4" /><path d="M21 7H8" /><path d="m7 21-4-4 4-4" /><path d="M3 17h13" /></>,
   spinner: <path d="M21 12a9 9 0 1 1-6.2-8.6" />,
 };
