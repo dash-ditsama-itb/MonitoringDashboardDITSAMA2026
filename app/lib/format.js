@@ -81,12 +81,21 @@ export const isPks = (r) => r.type === "initial_pks" || r.type === "addition_pks
 export const byLabel = (get = (x) => x) => (a, b) => String(get(a)).localeCompare(String(get(b)), "id", { sensitivity: "base" });
 export const sortLabels = (list) => [...(list || [])].sort(byLabel());
 export const PROGRAMS_AZ = [...PROGRAMS].sort(byLabel((p) => p.label));
-export const FIN_PROGRAMS_AZ = [...FIN_PROGRAMS].sort(byLabel((p) => p.label));
+export const finProgramLabel = (api) => FIN_PROGRAMS.find((p) => p.api === api)?.label ?? api;
+export const finMitra = (api) => FIN_PROGRAMS.find((p) => p.api === api)?.mitra || "";
+// program + mitra, untuk memilih/menandai satu sumber dana (mis. "INSPIRASI SCD · mitra YPK")
+export const finSourceLabel = (api) => (finMitra(api) ? `${finProgramLabel(api)} · mitra ${finMitra(api)}` : finProgramLabel(api));
+export const FIN_PROGRAMS_AZ = [...FIN_PROGRAMS].sort(byLabel((p) => finSourceLabel(p.api)));
+// kelompok program Keuangan (sumber dana berlabel sama digabung). key = api digabung koma, dipakai langsung sebagai filter programs
+export const FIN_GROUPS_AZ = [...new Set(FIN_PROGRAMS.map((p) => p.label))].sort(byLabel((l) => l)).map((label) => {
+  const apis = FIN_PROGRAMS.filter((p) => p.label === label).map((p) => p.api);
+  return { key: apis.join(","), label, apis, mitras: apis.map(finMitra).filter(Boolean) };
+});
+export const finGroupOf = (api) => FIN_GROUPS_AZ.find((g) => g.apis.includes(api));
 
 export const programByApi = (api) => PROGRAMS.find((p) => p.api === api);
 export const programByKey = (key) => PROGRAMS.find((p) => p.key === key);
 export const programLabel = (api) => programByApi(api)?.label ?? api;
-export const finProgramLabel = (api) => FIN_PROGRAMS.find((p) => p.api === api)?.label ?? api;
 
 // palet warna per program (indeks stabil sesuai urutan PROGRAMS / FIN_PROGRAMS)
 export const PROG_COLORS = ["#3a6db0", "#16A34A", "#E08A2E", "#8B5CF6", "#DC2626", "#0EA5E9", "#DB2777", "#65A30D", "#9333EA", "#0D9488", "#B45309"];
