@@ -47,17 +47,18 @@ export const TOTAL_PROGRAMS = PROGRAMS.length;
 // Daftar sumber dana menu Keuangan. label = nama program penerima yang tampil di dashboard;
 // mitra = pemberi dana (tampil sebagai rincian). Sumber dengan label sama digabung (YPK + Toraja = INSPIRASI SCD).
 // Nilai api tetap nama sumber dana di data (TN, YPK, ...), jadi input, impor, dan ekspor tidak berubah.
+// programs = program yang dibiayai (pilihan "Program penerima" pengajuan; lebih dari satu = bisa juga "Bersama").
 export const FIN_PROGRAMS = [
-  { api: "siap_itb",           label: "SIAP ITB" },
-  { api: "inspirasi_eduquest", label: "INSPIRASI EduQuest" },
-  { api: "toraja",             label: "INSPIRASI SCD", mitra: "Toraja" },
-  { api: "ypk",                label: "INSPIRASI SCD", mitra: "YPK" },
-  { api: "tn",                 label: "Riset, OPSI & OSN", mitra: "TN (Taruna Nusantara)" },
-  { api: "bti",                label: "BTI" },
-  { api: "wit",                label: "WIT" },
-  { api: "maung",              label: "MAUNG" },
-  { api: "sugt",               label: "SUGT" },
-  { api: "freeport",           label: "EduQuest & SIAP ITB", mitra: "Freeport" },
+  { api: "siap_itb",           label: "SIAP ITB", programs: ["siap_itb"] },
+  { api: "inspirasi_eduquest", label: "INSPIRASI EduQuest", programs: ["inspirasi_eduquest"] },
+  { api: "toraja",             label: "INSPIRASI SCD", mitra: "Toraja", programs: ["inspirasi_scd"] },
+  { api: "ypk",                label: "INSPIRASI SCD", mitra: "YPK", programs: ["inspirasi_scd"] },
+  { api: "tn",                 label: "Riset, OPSI & OSN", mitra: "TN (Taruna Nusantara)", programs: ["riset", "opsi", "osn"] },
+  { api: "bti",                label: "BTI", programs: ["bti"] },
+  { api: "wit",                label: "WIT", programs: ["wit"] },
+  { api: "maung",              label: "MAUNG", programs: ["maung"] },
+  { api: "sugt",               label: "SUGT", programs: ["sugt"] },
+  { api: "freeport",           label: "EduQuest & SIAP ITB", mitra: "Freeport", programs: ["siap_itb", "inspirasi_eduquest"] },
 ];
 
 // Hak akses (grant) yang bisa diberikan ke peran; satu peran boleh punya beberapa grant (haknya digabung).
