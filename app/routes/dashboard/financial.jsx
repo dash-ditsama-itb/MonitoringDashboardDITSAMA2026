@@ -32,6 +32,11 @@ function FinancialPage() {
   const fo = d?.filterOptions;
   const months = (fo?.months || []).filter((m) => !ui.year || String(m.year) === ui.year);
   const setFilter = (v) => update({ ...v, page: 1 });
+  // bulan selalu bersama tahun (saldo = akhir bulan itu); tanpa tahun dipilih, pakai tahun terbaru yang punya bulan tsb.
+  const pickMonth = (v) => setFilter(v && !ui.year
+    ? { month: v, year: String(Math.max(...(fo?.months || []).filter((m) => String(m.month) === v).map((m) => m.year))) }
+    : { month: v });
+  const period = ui.month && ui.year ? `${MONTHS[Number(ui.month) - 1]} ${ui.year}` : ui.year || "";
   const active = !!(group || ui.year || ui.month || ui.submissionType);
 
   return (
@@ -43,7 +48,7 @@ function FinancialPage() {
           options={[["all", "Semua program"], ...FIN_GROUPS_AZ.map((g) => [g.key, g.label])]} />
         <SelectField label="Tahun" value={ui.year} onChange={(v) => setFilter({ year: v, month: "" })}
           options={[["", "Semua tahun"], ...(fo?.years || []).map((y) => [String(y), String(y)])]} />
-        <SelectField label="Bulan" value={ui.month} onChange={(v) => setFilter({ month: v })}
+        <SelectField label="Bulan" value={ui.month} onChange={pickMonth}
           options={[["", "Semua bulan"], ...[...new Set(months.map((m) => m.month))].sort((a, b) => a - b).map((m) => [String(m), MONTHS[m - 1]])]} />
         <SelectField label="Jenis pengajuan" value={ui.submissionType} onChange={(v) => setFilter({ submissionType: v })}
           options={[["", "Semua jenis"], ...(fo?.submissionTypes || []).map((t) => [t, t])]} />
@@ -55,18 +60,19 @@ function FinancialPage() {
       {!d ? <PageSkeleton kpis={5} /> : (
         <Pending busy={loading}>
           <div className="kpi-row five">
-            <Kpi label="Total nilai PKS" value={fmtRupiahShort(d.kpi.totalPks)} hint={fmtRupiah(d.kpi.totalPks)} icon="wallet" />
+            {/* PKS & saldo mengikuti periode filter: tahun, atau 1 Jan s.d. akhir bulan terpilih */}
+            <Kpi label={ui.month ? `Nilai PKS s.d. ${period}` : ui.year ? `Nilai PKS ${ui.year}` : "Total nilai PKS"} value={fmtRupiahShort(d.kpi.totalPks)} hint={fmtRupiah(d.kpi.totalPks)} icon="wallet" />
             <Kpi label="Total DPKS" value={fmtRupiahShort(d.kpi.totalDpks)} hint={fmtRupiah(d.kpi.totalDpks)} />
-            <Kpi label="Total pengajuan" value={fmtRupiahShort(d.kpi.totalSubmission)} hint={fmtRupiah(d.kpi.totalSubmission)} />
-            <Kpi label="Saldo saat ini" value={fmtRupiahShort(d.kpi.currentBalance)} hint={fmtRupiah(d.kpi.currentBalance)} tone={d.kpi.currentBalance < 0 ? "t-neg" : ""} />
+            <Kpi label={period ? `Pengajuan ${period}` : "Total pengajuan"} value={fmtRupiahShort(d.kpi.totalSubmission)} hint={fmtRupiah(d.kpi.totalSubmission)} />
+            <Kpi label={ui.month ? `Saldo akhir ${period}` : ui.year ? `Saldo ${ui.year}` : "Saldo saat ini"} value={fmtRupiahShort(d.kpi.currentBalance)} hint={fmtRupiah(d.kpi.currentBalance)} tone={d.kpi.currentBalance < 0 ? "t-neg" : ""} />
             <div className="kpi">
-              <div className="kpi-lab">Serapan anggaran</div>
+              <div className="kpi-lab">{ui.month ? `Serapan s.d. ${period}` : "Serapan anggaran"}</div>
               <div className="kpi-val">{d.kpi.absorptionPercentage}%</div>
               <Bar value={d.kpi.absorptionPercentage} tone={d.kpi.absorptionPercentage > 95 ? "crit" : ""} />
             </div>
           </div>
-          <FinCharts d={d} />
-          <Summary rows={d.summary} />
+          <FinCharts d={d} period={ui.month ? period : ""} />
+          <Summary rows={d.summary} period={ui.month ? period : ""} />
         </Pending>
       )}
 
@@ -90,7 +96,7 @@ function byGroup(items, apiOf, valuesOf) {
 const sumOf = (parts, k) => parts.reduce((s, p) => s + (Number(p.values[k]) || 0), 0);
 const groupColor = (g) => progColor(g.apis[0]);
 
-function FinCharts({ d }) {
+function FinCharts({ d, period }) {
   const charts = useMemo(() => {
     const months = d.monthlyRealization.map((m) => m.month);
     // sumbu Y: angka saja (format Indonesia), satuan di judul sumbu dalam kurung; tooltip nominal rupiah lengkap
@@ -169,7 +175,7 @@ function FinCharts({ d }) {
         <section className="card"><div className="card-head"><div><h2 className="card-title">Saldo per bulan</h2><div className="card-sub">Saldo akhir bulan tiap program · nilai dalam {charts.units.saldo}</div></div></div>
           <ChartCanvas config={charts.saldo} height={260} /></section>
       </div>
-      <section className="card"><div className="card-head"><div><h2 className="card-title">Nilai PKS vs realisasi</h2><div className="card-sub">Per program · nilai dalam {charts.units.banding}</div></div></div>
+      <section className="card"><div className="card-head"><div><h2 className="card-title">Nilai PKS vs realisasi</h2><div className="card-sub">Per program{period && ` · realisasi s.d. akhir ${period}`} · nilai dalam {charts.units.banding}</div></div></div>
         <ChartCanvas config={charts.banding} height={240} /></section>
     </>
   );
@@ -181,7 +187,7 @@ const Money = ({ v }) => <><span className="sm-hide">{fmtRupiah(v)}</span><span 
 const absorption = (pks, dpks, sub) => (pks - dpks > 0 ? Math.round((sub / (pks - dpks)) * 100) : 0);
 
 // ringkasan per kelompok program; kelompok bermitra menampilkan mitranya, dan rincian per mitra bila lebih dari satu
-function Summary({ rows }) {
+function Summary({ rows, period }) {
   const used = byGroup(rows.filter((r) => r.totalPks || r.totalSubmission), (r) => r.program, (r) => r);
   const idle = FIN_GROUPS_AZ.filter((g) => rows.some((r) => g.apis.includes(r.program))).length - used.length;
   const line = (key, label, v, sub) => (
@@ -198,7 +204,7 @@ function Summary({ rows }) {
         <div className="card-sub">{idle > 0 ? `${idle} program belum punya transaksi dan tidak ditampilkan` : "Semua program"}</div></div></div>
       {!used.length ? <div className="empty-inline">Belum ada transaksi untuk filter ini.</div> : (
         <div className="tbl-scroll"><table className="tbl compact">
-          <thead><tr><th>Program</th><th className="num">Nilai PKS</th><th className="num sm-hide">DPKS</th><th className="num sm-hide">Pengajuan</th><th className="num">Saldo</th><th className="c-abs">Serapan</th></tr></thead>
+          <thead><tr><th>Program</th><th className="num">Nilai PKS</th><th className="num sm-hide">DPKS</th><th className="num sm-hide">{period ? `Pengajuan ${period}` : "Pengajuan"}</th><th className="num">{period ? "Saldo akhir bulan" : "Saldo"}</th><th className="c-abs">{period ? "Serapan s.d. bulan" : "Serapan"}</th></tr></thead>
           <tbody>{used.map(({ group: g, parts }) => {
             const t = Object.fromEntries(["totalPks", "totalDpks", "totalSubmission", "balance"].map((k) => [k, sumOf(parts, k)]));
             t.absorptionPercentage = absorption(t.totalPks, t.totalDpks, t.totalSubmission);
@@ -214,7 +220,7 @@ function Summary({ rows }) {
           })}</tbody>
         </table></div>
       )}
-      <p className="hint"><Icon name="info" size={14} />Serapan = pengajuan ÷ (nilai PKS − DPKS). Nama program menggantikan nama sumber dana; mitra = pemberi dana (mis. YPK, TN, Freeport).</p>
+      <p className="hint"><Icon name="info" size={14} />Serapan = pengajuan ÷ (nilai PKS − DPKS). Filter tahun/bulan: PKS, saldo, dan serapan dihitung dari 1 Januari sampai akhir periode; saldo memakai semua jenis pengajuan. Nama program menggantikan nama sumber dana; mitra = pemberi dana (mis. YPK, TN, Freeport).</p>
     </section>
   );
 }
