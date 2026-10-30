@@ -4,7 +4,7 @@ import { FinanceTable } from "../../components/Finance.jsx";
 import { RequireAccess } from "../../components/Access.jsx";
 import { Icon } from "../../components/Icon.jsx";
 import { Bar, ErrorNote, Kpi, PageHead, PageSkeleton, Pending, SelectField } from "../../components/ui.jsx";
-import { byLabel, FIN_PROGRAMS_AZ, finProgramLabel, fmtRupiah, fmtRupiahShort, moneyScale, MONTHS, progColor } from "../../lib/format.js";
+import { FIN_GROUPS_AZ, finGroupOf, finMitra, fmtRupiah, fmtRupiahShort, moneyScale, MONTHS, progColor } from "../../lib/format.js";
 import { useApi } from "../../stores/data.js";
 import { useUiStore } from "../../stores/ui.js";
 
@@ -19,8 +19,10 @@ function FinancialPage() {
   const patch = useUiStore((s) => s.patch);
   const update = (v) => patch("fin", v);
 
+  // filter Program = kelompok program (mis. INSPIRASI SCD = YPK + Toraja); nilai lama berupa satu sumber dana ikut kelompoknya
+  const group = ui.program && ui.program !== "all" ? FIN_GROUPS_AZ.find((g) => g.key === ui.program) || finGroupOf(ui.program) : null;
   const filters = {
-    programs: [ui.program || "all"],
+    programs: group ? group.apis : ["all"],
     ...(ui.year ? { year: Number(ui.year) } : {}),
     ...(ui.month ? { month: Number(ui.month) } : {}),
     ...(ui.submissionType ? { submissionType: ui.submissionType } : {}),
@@ -30,15 +32,15 @@ function FinancialPage() {
   const fo = d?.filterOptions;
   const months = (fo?.months || []).filter((m) => !ui.year || String(m.year) === ui.year);
   const setFilter = (v) => update({ ...v, page: 1 });
-  const active = !!(ui.program !== "all" || ui.year || ui.month || ui.submissionType);
+  const active = !!(group || ui.year || ui.month || ui.submissionType);
 
   return (
     <div className="page">
       <PageHead title="Keuangan" sub="PKS, pengajuan dana, dan saldo per program" />
 
       <section className="card filter-bar">
-        <SelectField label="Program" value={ui.program} onChange={(v) => setFilter({ program: v })}
-          options={[["all", "Semua program"], ...FIN_PROGRAMS_AZ.map((p) => [p.api, p.label])]} />
+        <SelectField label="Program" value={group ? group.key : "all"} onChange={(v) => setFilter({ program: v })}
+          options={[["all", "Semua program"], ...FIN_GROUPS_AZ.map((g) => [g.key, g.label])]} />
         <SelectField label="Tahun" value={ui.year} onChange={(v) => setFilter({ year: v, month: "" })}
           options={[["", "Semua tahun"], ...(fo?.years || []).map((y) => [String(y), String(y)])]} />
         <SelectField label="Bulan" value={ui.month} onChange={(v) => setFilter({ month: v })}
@@ -73,56 +75,87 @@ function FinancialPage() {
   );
 }
 
+// nilai per sumber dana -> per kelompok program, urut A–Z; rincian mitra disimpan untuk tooltip & ringkasan
+function byGroup(items, apiOf, valuesOf) {
+  const out = new Map();
+  for (const it of items) {
+    const g = finGroupOf(apiOf(it));
+    if (!g) continue;
+    const cur = out.get(g.key) || { group: g, parts: [] };
+    cur.parts.push({ api: apiOf(it), values: valuesOf(it) });
+    out.set(g.key, cur);
+  }
+  return FIN_GROUPS_AZ.filter((g) => out.has(g.key)).map((g) => out.get(g.key));
+}
+const sumOf = (parts, k) => parts.reduce((s, p) => s + (Number(p.values[k]) || 0), 0);
+const groupColor = (g) => progColor(g.apis[0]);
+
 function FinCharts({ d }) {
   const charts = useMemo(() => {
     const months = d.monthlyRealization.map((m) => m.month);
-    const azFin = byLabel(finProgramLabel);
-    const progs = [...new Set(d.monthlyRealization.flatMap((m) => m.programs.filter((p) => p.realization).map((p) => p.program)))].sort(azFin);
     // sumbu Y: angka saja (format Indonesia), satuan di judul sumbu dalam kurung; tooltip nominal rupiah lengkap
     const axis = (sc, extra) => ({ beginAtZero: true, ...extra, title: { display: true, text: `(${sc.unit})`, color: "#5d6879", font: { size: 11 } },
       ticks: { callback: (v) => Number(v).toLocaleString("id-ID", { maximumFractionDigits: 2 }) } });
-    const tip = (sc) => ({ callbacks: { label: (c) => `${c.dataset.label}: ${fmtRupiah((c.parsed.y ?? c.parsed.x) * sc.div)}` } });
+    // tooltip: nominal kelompok + rincian per mitra bila kelompoknya punya mitra (mis. INSPIRASI SCD: YPK, Toraja)
+    const tip = (sc, detail) => ({ callbacks: {
+      label: (c) => `${c.dataset.label}: ${fmtRupiah((c.parsed.y ?? c.parsed.x) * sc.div)}`,
+      afterLabel: (c) => (detail ? detail(c) : []),
+    } });
     const val = (v, sc) => (v == null ? null : (Number(v) || 0) / sc.div);
-    // realisasi ditumpuk: satuan dari total tertinggi per bulan
+    const mitraLines = (parts, k) => (parts.some((p) => finMitra(p.api))
+      ? parts.filter((p) => p.values[k]).map((p) => `   · mitra ${finMitra(p.api) || "–"}: ${fmtRupiah(p.values[k])}`) : []);
+
+    // realisasi ditumpuk per kelompok program: satuan dari total tertinggi per bulan
+    const rApis = [...new Set(d.monthlyRealization.flatMap((m) => m.programs.filter((p) => p.realization).map((p) => p.program)))];
+    const rGroups = byGroup(rApis, (a) => a, (a) => Object.fromEntries(d.monthlyRealization.map((m, i) => [i, m.programs.find((x) => x.program === a)?.realization ?? 0])));
     const rScale = moneyScale(Math.max(0, ...d.monthlyRealization.map((m) => m.programs.reduce((s, x) => s + (Number(x.realization) || 0), 0))));
     const realisasi = {
       type: "bar",
       data: {
         labels: months.length ? months.map(monthName) : ["(belum ada pengajuan)"],
-        datasets: progs.map((p) => ({
-          label: finProgramLabel(p), backgroundColor: progColor(p), borderRadius: 3, maxBarThickness: 34, stack: "s",
-          data: d.monthlyRealization.map((m) => val(m.programs.find((x) => x.program === p)?.realization ?? 0, rScale)),
+        datasets: rGroups.map(({ group: g, parts }) => ({
+          label: g.label, backgroundColor: groupColor(g), borderRadius: 3, maxBarThickness: 34, stack: "s",
+          data: d.monthlyRealization.map((_, i) => val(sumOf(parts, i), rScale)),
         })),
       },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "top", align: "end" }, tooltip: tip(rScale) },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "top", align: "end" },
+        tooltip: tip(rScale, (c) => mitraLines(rGroups[c.datasetIndex].parts, c.dataIndex)) },
         scales: { x: { stacked: true, grid: { display: false } }, y: axis(rScale, { stacked: true }) } },
     };
-    const bProgs = [...new Set(d.monthlyBalance.flatMap((m) => m.programs.filter((p) => p.balance).map((p) => p.program)))].sort(azFin);
+
+    // saldo akhir bulan per kelompok = jumlah saldo sumber dananya (bulan tanpa data: kosong)
+    const bApis = [...new Set(d.monthlyBalance.flatMap((m) => m.programs.filter((p) => p.balance).map((p) => p.program)))];
+    const bOf = (a, m) => m.programs.find((x) => x.program === a)?.balance;
+    const bGroups = byGroup(bApis, (a) => a, (a) => Object.fromEntries(d.monthlyBalance.map((m, i) => [i, bOf(a, m)])));
     const sScale = moneyScale(Math.max(0, ...d.monthlyBalance.flatMap((m) => m.programs.map((x) => Math.abs(Number(x.balance) || 0)))));
     const saldo = {
       type: "line",
       data: {
         labels: d.monthlyBalance.length ? d.monthlyBalance.map((m) => monthName(m.month)) : ["(belum ada data)"],
-        datasets: bProgs.map((p) => ({
-          label: finProgramLabel(p), borderColor: progColor(p), backgroundColor: progColor(p), tension: 0.3, spanGaps: true, pointRadius: 3,
-          data: d.monthlyBalance.map((m) => { const v = m.programs.find((x) => x.program === p); return v ? val(v.balance, sScale) : null; }),
+        datasets: bGroups.map(({ group: g, parts }) => ({
+          label: g.label, borderColor: groupColor(g), backgroundColor: groupColor(g), tension: 0.3, spanGaps: true, pointRadius: 3,
+          data: d.monthlyBalance.map((_, i) => (parts.some((p) => p.values[i] != null) ? val(sumOf(parts, i), sScale) : null)),
         })),
       },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "top", align: "end" }, tooltip: tip(sScale) },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "top", align: "end" },
+        tooltip: tip(sScale, (c) => mitraLines(bGroups[c.datasetIndex].parts, c.dataIndex)) },
         scales: { x: { grid: { display: false } }, y: axis(sScale, { beginAtZero: false }) } },
     };
-    const cmp = d.programComparison.filter((p) => p.pksValue || p.realization).sort(byLabel((p) => finProgramLabel(p.program)));
-    const cScale = moneyScale(Math.max(0, ...cmp.flatMap((p) => [Number(p.pksValue) || 0, Number(p.realization) || 0])));
+
+    const cGroups = byGroup(d.programComparison.filter((p) => p.pksValue || p.realization), (p) => p.program,
+      (p) => ({ pks: p.pksValue ?? 0, real: p.realization ?? 0 }));
+    const cScale = moneyScale(Math.max(0, ...cGroups.flatMap(({ parts }) => [sumOf(parts, "pks"), sumOf(parts, "real")])));
     const banding = {
       type: "bar",
       data: {
-        labels: cmp.length ? cmp.map((p) => finProgramLabel(p.program)) : ["(belum ada data)"],
+        labels: cGroups.length ? cGroups.map(({ group: g }) => g.label) : ["(belum ada data)"],
         datasets: [
-          { label: "Nilai PKS", data: cmp.map((p) => val(p.pksValue ?? 0, cScale)), backgroundColor: "#BCD3EE", borderRadius: 4, maxBarThickness: 40 },
-          { label: "Realisasi", data: cmp.map((p) => val(p.realization ?? 0, cScale)), backgroundColor: "#3a6db0", borderRadius: 4, maxBarThickness: 40 },
+          { label: "Nilai PKS", data: cGroups.map(({ parts }) => val(sumOf(parts, "pks"), cScale)), backgroundColor: "#BCD3EE", borderRadius: 4, maxBarThickness: 40 },
+          { label: "Realisasi", data: cGroups.map(({ parts }) => val(sumOf(parts, "real"), cScale)), backgroundColor: "#3a6db0", borderRadius: 4, maxBarThickness: 40 },
         ],
       },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "top", align: "end" }, tooltip: tip(cScale) },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "top", align: "end" },
+        tooltip: tip(cScale, (c) => mitraLines(cGroups[c.dataIndex].parts, c.datasetIndex ? "real" : "pks")) },
         scales: { x: { grid: { display: false } }, y: axis(cScale) } },
     };
     return { realisasi, saldo, banding, units: { realisasi: rScale.unit, saldo: sScale.unit, banding: cScale.unit } };
@@ -145,9 +178,20 @@ function FinCharts({ d }) {
 // kartu sempit: nominal diringkas (Rp 1,07 miliar)
 const Money = ({ v }) => <><span className="sm-hide">{fmtRupiah(v)}</span><span className="sm-only">{fmtRupiahShort(v)}</span></>;
 
+const absorption = (pks, dpks, sub) => (pks - dpks > 0 ? Math.round((sub / (pks - dpks)) * 100) : 0);
+
+// ringkasan per kelompok program; kelompok bermitra menampilkan mitranya, dan rincian per mitra bila lebih dari satu
 function Summary({ rows }) {
-  const used = rows.filter((r) => r.totalPks || r.totalSubmission).sort(byLabel((r) => finProgramLabel(r.program)));
-  const idle = rows.length - used.length;
+  const used = byGroup(rows.filter((r) => r.totalPks || r.totalSubmission), (r) => r.program, (r) => r);
+  const idle = FIN_GROUPS_AZ.filter((g) => rows.some((r) => g.apis.includes(r.program))).length - used.length;
+  const line = (key, label, v, sub) => (
+    <tr key={key} className={sub ? "fin-sub" : ""}>
+      <td className={sub ? "" : "cell-strong"}>{label}</td>
+      <td className="num"><Money v={v.totalPks} /></td><td className="num sm-hide">{fmtRupiah(v.totalDpks)}</td>
+      <td className="num sm-hide">{fmtRupiah(v.totalSubmission)}</td><td className={"num" + (sub ? "" : " cell-strong") + (v.balance < 0 ? " neg" : "")}><Money v={v.balance} /></td>
+      <td className="c-abs"><span className="att-cell"><Bar value={v.absorptionPercentage} />{v.absorptionPercentage}%</span></td>
+    </tr>
+  );
   return (
     <section className="card">
       <div className="card-head"><div><h2 className="card-title">Ringkasan per program</h2>
@@ -155,17 +199,22 @@ function Summary({ rows }) {
       {!used.length ? <div className="empty-inline">Belum ada transaksi untuk filter ini.</div> : (
         <div className="tbl-scroll"><table className="tbl compact">
           <thead><tr><th>Program</th><th className="num">Nilai PKS</th><th className="num sm-hide">DPKS</th><th className="num sm-hide">Pengajuan</th><th className="num">Saldo</th><th className="c-abs">Serapan</th></tr></thead>
-          <tbody>{used.map((r) => (
-            <tr key={r.program}>
-              <td className="cell-strong"><span className="port-dot" style={{ background: progColor(r.program) }} />{finProgramLabel(r.program)}</td>
-              <td className="num"><Money v={r.totalPks} /></td><td className="num sm-hide">{fmtRupiah(r.totalDpks)}</td>
-              <td className="num sm-hide">{fmtRupiah(r.totalSubmission)}</td><td className={"num cell-strong" + (r.balance < 0 ? " neg" : "")}><Money v={r.balance} /></td>
-              <td className="c-abs"><span className="att-cell"><Bar value={r.absorptionPercentage} />{r.absorptionPercentage}%</span></td>
-            </tr>
-          ))}</tbody>
+          <tbody>{used.map(({ group: g, parts }) => {
+            const t = Object.fromEntries(["totalPks", "totalDpks", "totalSubmission", "balance"].map((k) => [k, sumOf(parts, k)]));
+            t.absorptionPercentage = absorption(t.totalPks, t.totalDpks, t.totalSubmission);
+            const mitras = parts.map((p) => finMitra(p.api)).filter(Boolean);
+            const name = (
+              <><span className="port-dot" style={{ background: groupColor(g) }} />{g.label}
+                {mitras.length > 0 && <span className="fin-mitra">Mitra: {mitras.join(", ")}</span>}</>
+            );
+            return [
+              line(g.key, name, t),
+              ...(parts.length > 1 ? parts.map((p) => line(p.api, `Mitra ${finMitra(p.api) || "–"}`, p.values, true)) : []),
+            ];
+          })}</tbody>
         </table></div>
       )}
-      <p className="hint"><Icon name="info" size={14} />Serapan = pengajuan ÷ (nilai PKS − DPKS).</p>
+      <p className="hint"><Icon name="info" size={14} />Serapan = pengajuan ÷ (nilai PKS − DPKS). Nama program menggantikan nama sumber dana; mitra = pemberi dana (mis. YPK, TN, Freeport).</p>
     </section>
   );
 }

@@ -44,18 +44,20 @@ export const PROGRAMS = [
 // Total program DITSAMA (termasuk SUGT)
 export const TOTAL_PROGRAMS = PROGRAMS.length;
 
-// Daftar program KHUSUS menu Keuangan (boleh beda dari program monitoring)
+// Daftar sumber dana menu Keuangan. label = nama program penerima yang tampil di dashboard;
+// mitra = pemberi dana (tampil sebagai rincian). Sumber dengan label sama digabung (YPK + Toraja = INSPIRASI SCD).
+// Nilai api tetap nama sumber dana di data (TN, YPK, ...), jadi input, impor, dan ekspor tidak berubah.
 export const FIN_PROGRAMS = [
   { api: "siap_itb",           label: "SIAP ITB" },
   { api: "inspirasi_eduquest", label: "INSPIRASI EduQuest" },
-  { api: "toraja",             label: "Toraja" },
-  { api: "ypk",                label: "YPK" },
-  { api: "tn",                 label: "TN (Taruna Nusantara)" },
+  { api: "toraja",             label: "INSPIRASI SCD", mitra: "Toraja" },
+  { api: "ypk",                label: "INSPIRASI SCD", mitra: "YPK" },
+  { api: "tn",                 label: "Riset, OPSI & OSN", mitra: "TN (Taruna Nusantara)" },
   { api: "bti",                label: "BTI" },
   { api: "wit",                label: "WIT" },
   { api: "maung",              label: "MAUNG" },
   { api: "sugt",               label: "SUGT" },
-  { api: "freeport",           label: "Freeport" },
+  { api: "freeport",           label: "EduQuest & SIAP ITB", mitra: "Freeport" },
 ];
 
 // Hak akses (grant) yang bisa diberikan ke peran; satu peran boleh punya beberapa grant (haknya digabung).

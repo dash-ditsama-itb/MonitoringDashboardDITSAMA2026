@@ -1,7 +1,7 @@
 // Tombol Impor (unggah .xlsx/.csv) dan Ekspor (unduh .xlsx) untuk tabel data.
 import { useEffect, useRef, useState } from "react";
 import { download, errorText, upload } from "../lib/api.js";
-import { finProgramLabel, finTypeLabel, fmtDate, programByApi } from "../lib/format.js";
+import { finSourceLabel, finTypeLabel, fmtDate, programByApi } from "../lib/format.js";
 import { toast } from "./feedback.jsx";
 import { Icon } from "./Icon.jsx";
 import { Spinner } from "./ui.jsx";
@@ -75,7 +75,7 @@ export function ImportButton({ path, onDone, describe, hint }) {
 }
 
 const LIMIT = 5;
-const programName = (api) => programByApi(api)?.label ?? finProgramLabel(api);
+const programName = (api) => programByApi(api)?.label ?? finSourceLabel(api);
 
 // pilihan untuk baris tanpa ID yang sama dengan data tersimpan atau baris lain di file
 function DuplicateDialog({ duplicates, onChoose }) {

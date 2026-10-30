@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { PKS_TYPES } from "../config.js";
 import { api, errorText } from "../lib/api.js";
 import {
-  canEditFinance, FIN_PROGRAMS_AZ, finProgramLabel, finTypeLabel, fmtDate, fmtDateTime, fmtRelative, fmtRupiah, fromDateInput, isPks, toDateInput,
+  canEditFinance, FIN_PROGRAMS_AZ, finSourceLabel, finTypeLabel, fmtDate, fmtDateTime, fmtRelative, fmtRupiah, fromDateInput, isPks, toDateInput,
 } from "../lib/format.js";
 import { useAuthStore } from "../stores/auth.js";
 import { invalidate, useApi } from "../stores/data.js";
@@ -152,7 +152,7 @@ export function FinanceTable({ filters, ui, update }) {
                     <td className="c-type"><TypeChip r={r} /></td>
                     <td className="c-name">
                       <div className="cell-strong">{detailOf(r) || <span className="muted">Tanpa keterangan</span>}</div>
-                      <div className="row-meta">{showProgram && <span className="ptag">{finProgramLabel(r.program)}</span>}{subOf(r) && <span>{subOf(r)}</span>}</div>
+                      <div className="row-meta">{showProgram && <span className="ptag">{finSourceLabel(r.program)}</span>}{subOf(r) && <span>{subOf(r)}</span>}</div>
                     </td>
                     <td className={"num c-amt " + (isPks(r) ? "pos" : "neg")}>{isPks(r) ? "+" : "−"}{fmtRupiah(amountOf(r))}</td>
                     <td className="num c-dpks">{isPks(r) ? <>{fmtRupiah(r.dpks)}<span className="muted"> · {r.dpksPercentage ?? 0}%</span></> : <span className="muted">–</span>}</td>
@@ -180,7 +180,7 @@ export function FinanceTable({ filters, ui, update }) {
                 <button type="button" className="rec-main" disabled={!canEdit} onClick={() => setForm({ kind: isPks(r) ? "pks" : "submission", record: r })}>
                   <span className="rec-top"><span className="rec-name">{detailOf(r) || finTypeLabel(r.type)}</span>
                     <span className={"rec-amt " + (isPks(r) ? "pos" : "neg")}>{isPks(r) ? "+" : "−"}{fmtRupiah(amountOf(r))}</span></span>
-                  <span className="rec-meta"><TypeChip r={r} /><span>{fmtDate(r.date)}</span>{showProgram && <span>{finProgramLabel(r.program)}</span>}</span>
+                  <span className="rec-meta"><TypeChip r={r} /><span>{fmtDate(r.date)}</span>{showProgram && <span>{finSourceLabel(r.program)}</span>}</span>
                   <span className="rec-meta"><span>Saldo {fmtRupiah(r.balance)}</span>{subOf(r) && <span>{subOf(r)}</span>}</span>
                 </button>
               </li>
@@ -252,7 +252,7 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
               ...(f.text.trim() ? { description: f.text.trim() } : {}) };
         if (f.pic.trim()) body.pic = f.pic.trim();
         const out = await api(isPksForm ? "/financial/pks" : "/financial/submission", { method: "POST", body });
-        toast(`${isPksForm ? "PKS" : "Pengajuan"} tersimpan. Saldo ${finProgramLabel(f.program)} kini ${fmtRupiah(out.data?.balance)}.`);
+        toast(`${isPksForm ? "PKS" : "Pengajuan"} tersimpan. Saldo ${finSourceLabel(f.program)} kini ${fmtRupiah(out.data?.balance)}.`);
       } else {
         const r = record, body = {};
         const set = (k, v, old) => { if ((v ?? "") !== (old ?? "")) body[k] = v; };
@@ -305,7 +305,7 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
           )}
           <div className="form-grid">
             <label className="field"><span className="field-lab">Program</span>
-              <select {...field("program")}>{FIN_PROGRAMS_AZ.map((p) => <option key={p.api} value={p.api}>{p.label}</option>)}</select>
+              <select {...field("program")}>{FIN_PROGRAMS_AZ.map((p) => <option key={p.api} value={p.api}>{finSourceLabel(p.api)}</option>)}</select>
             </label>
             <label className="field"><span className="field-lab">{isPksForm ? "Tanggal PKS" : "Tanggal pengajuan"}</span>
               <input type="date" required {...field("date")} />
