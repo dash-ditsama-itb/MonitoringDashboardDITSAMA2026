@@ -20,6 +20,16 @@ export const moneyScale = (max) => (Math.abs(max) >= 1e9 ? { div: 1e9, unit: "mi
 // buang filter bernilai "Semua" (= default backend) agar kunci cache sama dengan permintaan tanpa filter
 export const withoutAll = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== "Semua"));
 export const pct = (part, whole) => (whole > 0 ? Math.round((part / whole) * 100) : 0);
+// persen tampilan: bulat, kecuali mendekati 0% atau 100% (0,3% / <0,1% / 99,5%) agar
+// pemakaian kecil tidak terbaca 0% dan yang belum habis tidak terbaca 100%
+export const fmtPct = (v) => {
+  const n = Number(v) || 0;
+  const one = (x) => x.toLocaleString("id-ID", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  if (n > 0 && n < 0.05) return "<0,1%";
+  if (n > 0 && n < 1) return one(Math.round(n * 10) / 10) + "%";
+  if (n > 99 && n < 100) return one(Math.floor(n * 10) / 10) + "%";
+  return Math.round(n).toLocaleString("id-ID") + "%";
+};
 
 // -------------------------------------------------------------- tanggal ---
 const toDate = (v) => { if (!v) return null; const d = new Date(v); return isNaN(d) ? null : d; };

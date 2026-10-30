@@ -4,7 +4,7 @@ import { FinanceTable } from "../../components/Finance.jsx";
 import { RequireAccess } from "../../components/Access.jsx";
 import { Icon } from "../../components/Icon.jsx";
 import { Bar, ErrorNote, Kpi, PageHead, PageSkeleton, Pending, SelectField } from "../../components/ui.jsx";
-import { FIN_GROUPS_AZ, finGroupOf, finMitra, finRecipients, fmtRupiah, recipientText, fmtRupiahShort, moneyScale, MONTHS, progColor } from "../../lib/format.js";
+import { FIN_GROUPS_AZ, finGroupOf, finMitra, finRecipients, fmtPct, fmtRupiah, recipientText, fmtRupiahShort, moneyScale, MONTHS, progColor } from "../../lib/format.js";
 import { useApi } from "../../stores/data.js";
 import { useUiStore } from "../../stores/ui.js";
 
@@ -67,7 +67,7 @@ function FinancialPage() {
             <Kpi label={ui.month ? `Saldo akhir ${period}` : ui.year ? `Saldo ${ui.year}` : "Saldo saat ini"} value={fmtRupiahShort(d.kpi.currentBalance)} hint={fmtRupiah(d.kpi.currentBalance)} tone={d.kpi.currentBalance < 0 ? "t-neg" : ""} />
             <div className="kpi">
               <div className="kpi-lab">{ui.month ? `Serapan s.d. ${period}` : "Serapan anggaran"}</div>
-              <div className="kpi-val">{d.kpi.absorptionPercentage}%</div>
+              <div className="kpi-val">{fmtPct(d.kpi.absorptionPercentage)}</div>
               <Bar value={d.kpi.absorptionPercentage} tone={d.kpi.absorptionPercentage > 95 ? "crit" : ""} />
             </div>
           </div>
@@ -184,7 +184,9 @@ function FinCharts({ d, period }) {
 // kartu sempit: nominal diringkas (Rp 1,07 miliar)
 const Money = ({ v }) => <><span className="sm-hide">{fmtRupiah(v)}</span><span className="sm-only">{fmtRupiahShort(v)}</span></>;
 
-const absorption = (pks, dpks, sub) => (pks - dpks > 0 ? Math.round((sub / (pks - dpks)) * 100) : 0);
+// serapan satu desimal; absorbed = pengajuan s.d. akhir periode dari server (fallback: pengajuan periode)
+const absorption = (pks, dpks, sub) => (pks - dpks > 0 ? Math.round((sub / (pks - dpks)) * 1000) / 10 : 0);
+const absorbedOf = (v) => v.absorbed ?? v.totalSubmission;
 
 // ringkasan per kelompok program; kelompok bermitra menampilkan mitranya, dan rincian per mitra bila lebih dari satu
 function Summary({ rows, period }) {
@@ -195,7 +197,7 @@ function Summary({ rows, period }) {
       <td className={sub ? "" : "cell-strong"}>{label}</td>
       <td className="num"><Money v={v.totalPks} /></td><td className="num sm-hide">{fmtRupiah(v.totalDpks)}</td>
       <td className="num sm-hide">{fmtRupiah(v.totalSubmission)}</td><td className={"num" + (sub ? "" : " cell-strong") + (v.balance < 0 ? " neg" : "")}><Money v={v.balance} /></td>
-      <td className="c-abs"><span className="att-cell"><Bar value={v.absorptionPercentage} />{v.absorptionPercentage}%</span></td>
+      <td className="c-abs"><span className="att-cell"><Bar value={v.absorptionPercentage} />{fmtPct(v.absorptionPercentage)}</span></td>
     </tr>
   );
   return (
@@ -207,7 +209,7 @@ function Summary({ rows, period }) {
           <thead><tr><th>Program</th><th className="num">Nilai PKS</th><th className="num sm-hide">DPKS</th><th className="num sm-hide">{period ? `Pengajuan ${period}` : "Pengajuan"}</th><th className="num">{period ? "Saldo akhir bulan" : "Saldo"}</th><th className="c-abs">{period ? "Serapan s.d. bulan" : "Serapan"}</th></tr></thead>
           <tbody>{used.map(({ group: g, parts }) => {
             const t = Object.fromEntries(["totalPks", "totalDpks", "totalSubmission", "balance"].map((k) => [k, sumOf(parts, k)]));
-            t.absorptionPercentage = absorption(t.totalPks, t.totalDpks, t.totalSubmission);
+            t.absorptionPercentage = absorption(t.totalPks, t.totalDpks, parts.reduce((s, p) => s + (Number(absorbedOf(p.values)) || 0), 0));
             const mitras = parts.map((p) => finMitra(p.api)).filter(Boolean);
             const name = (
               <><span className="port-dot" style={{ background: groupColor(g) }} />{g.label}
