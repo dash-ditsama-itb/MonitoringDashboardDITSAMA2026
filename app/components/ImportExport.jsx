@@ -1,7 +1,7 @@
 // Tombol Impor (unggah .xlsx/.csv) dan Ekspor (unduh .xlsx) untuk tabel data.
 import { useEffect, useRef, useState } from "react";
 import { download, errorText, upload } from "../lib/api.js";
-import { finSourceLabel, finTypeLabel, fmtDate, programByApi } from "../lib/format.js";
+import { finSourceLabel, finTypeLabel, fmtDate, fmtRupiah, programByApi } from "../lib/format.js";
 import { toast } from "./feedback.jsx";
 import { Icon } from "./Icon.jsx";
 import { Spinner } from "./ui.jsx";
@@ -47,21 +47,32 @@ export function ImportButton({ path, onDone, describe, hint }) {
   const ref = useRef(null);
   const [busy, setBusy] = useState(false);
   const [dup, setDup] = useState(null);
-  const send = async (file, duplicateAction) => {
+  const [odd, setOdd] = useState(null);   // nilai mencurigakan (Keuangan): ditanya sebelum disimpan
+  // opts: { duplicateAction, confirmSuspicious } — dibawa terus sampai impor selesai
+  const send = async (file, opts = {}) => {
     setBusy(true);
     try {
-      const out = await upload(path, file, "file", duplicateAction ? { duplicateAction } : {});
+      const out = await upload(path, file, "file", {
+        ...(opts.duplicateAction ? { duplicateAction: opts.duplicateAction } : {}),
+        ...(opts.confirmSuspicious ? { confirmSuspicious: "true" } : {}),
+      });
       toast(describe ? describe(out.data || {}) : "Impor selesai.");
       onDone?.(out.data);
     } catch (e) {
-      if (e.status === 409 && e.raw?.data?.duplicates) setDup({ file, duplicates: e.raw.data.duplicates });
+      if (e.status === 409 && e.raw?.data?.suspicious) setOdd({ file, opts, rows: e.raw.data.suspicious });
+      else if (e.status === 409 && e.raw?.data?.duplicates) setDup({ file, opts, duplicates: e.raw.data.duplicates });
       else toast(errorText(e), "err");
     } finally { setBusy(false); if (ref.current) ref.current.value = ""; }
   };
   const choose = (action) => {
-    const file = dup.file;
+    const { file, opts } = dup;
     setDup(null);
-    if (action) send(file, action);
+    if (action) send(file, { ...opts, duplicateAction: action });
+  };
+  const confirmOdd = (go) => {
+    const { file, opts } = odd;
+    setOdd(null);
+    if (go) send(file, { ...opts, confirmSuspicious: true });
   };
   return (
     <>
@@ -70,12 +81,52 @@ export function ImportButton({ path, onDone, describe, hint }) {
       </button>
       <input ref={ref} type="file" accept={ACCEPT} hidden onChange={(e) => e.target.files[0] && send(e.target.files[0])} />
       <DuplicateDialog duplicates={dup?.duplicates} onChoose={choose} />
+      <SuspiciousDialog rows={odd?.rows} onChoose={confirmOdd} />
     </>
   );
 }
 
 const LIMIT = 5;
 const programName = (api) => programByApi(api)?.label ?? finSourceLabel(api);
+
+// nilai PKS/pengajuan berdesimal atau di bawah Rp 1.000: biasanya titik ribuan terbaca koma desimal (Rp 523.920 -> 523,92)
+function SuspiciousDialog({ rows, onChoose }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const d = ref.current;
+    if (rows && !d.open) d.showModal();
+    if (!rows && d.open) d.close();
+  }, [rows]);
+  const list = rows || [];
+  const sheets = new Set(list.map((x) => x.sheet)).size;
+  return (
+    <dialog ref={ref} className="confirm wide" onCancel={(e) => { e.preventDefault(); onChoose(false); }}
+      onClick={(e) => { if (e.target === e.currentTarget) onChoose(false); }}>
+      {rows && (
+        <div className="confirm-box">
+          <div className="confirm-ic"><Icon name="alert" size={20} /></div>
+          <h3>{list.length.toLocaleString("id-ID")} nilai terlihat tidak wajar</h3>
+          <p>Nilai berikut berdesimal atau di bawah Rp 1.000. Biasanya titik ribuan terbaca sebagai koma desimal di Excel
+            (mis. Rp 523.920 menjadi 523,92). Belum ada yang diimpor.</p>
+          <ul className="dup-list">
+            {list.slice(0, LIMIT).map((x) => (
+              <li key={x.sheet + x.row}>
+                <b>{x.name || finTypeLabel(x.type) || "–"}</b>
+                <small>{sheets > 1 && `${x.sheet} · `}Baris {x.row} · {programName(x.program)} · di file {x.raw} → tersimpan {fmtRupiah(x.value)}</small>
+              </li>
+            ))}
+          </ul>
+          {list.length > LIMIT && <p className="muted small">dan {(list.length - LIMIT).toLocaleString("id-ID")} baris lainnya.</p>}
+          <p>Perbaiki nilainya di Excel lalu impor ulang, atau lanjutkan bila nilai tersebut memang benar.</p>
+          <div className="confirm-actions">
+            <button type="button" className="btn btn-primary" autoFocus onClick={() => onChoose(false)}>Batal, perbaiki dulu</button>
+            <button type="button" className="btn" onClick={() => onChoose(true)}>Lanjutkan impor</button>
+          </div>
+        </div>
+      )}
+    </dialog>
+  );
+}
 
 // pilihan untuk baris tanpa ID yang sama dengan data tersimpan atau baris lain di file
 function DuplicateDialog({ duplicates, onChoose }) {
