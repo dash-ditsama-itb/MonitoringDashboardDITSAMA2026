@@ -23,7 +23,7 @@ export const useUiStore = create((set) => ({
   act: { program: "", search: "", sort: "createdAt:desc", page: 1, perPage: 10 },
 
   // Keuangan
-  fin: { program: "all", year: "", month: "", submissionType: "", search: "", sort: "date:desc", page: 1, perPage: 10 },
+  fin: { program: "all", source: "", year: "", month: "", submissionType: "", search: "", sort: "date:desc", page: 1, perPage: 10 },
 
   // Peserta
   pst: {
