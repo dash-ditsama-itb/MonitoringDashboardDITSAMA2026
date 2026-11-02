@@ -10,7 +10,7 @@ import { invalidate, useApi } from "../stores/data.js";
 import { confirmAction, toast } from "./feedback.jsx";
 import { Icon } from "./Icon.jsx";
 import { ExportButton, ImportButton, importSummary } from "./ImportExport.jsx";
-import { EmptyState, ErrorNote, Pagination, SearchInput, Segmented, Sheet, Spinner, TableSkeleton, usePending } from "./ui.jsx";
+import { EmptyState, ErrorNote, Pagination, SearchInput, Segmented, Sheet, Spinner, TableSkeleton, usePending, YearChecks } from "./ui.jsx";
 
 const SORTS = [
   ["date:desc", "Tanggal (terbaru)"], ["date:asc", "Tanggal (terlama)"],
@@ -40,10 +40,11 @@ const subOf = (r) => (isPks(r)
   : [r.submissionType, r.invoiceNumber && `Invoice ${r.invoiceNumber}`].filter(Boolean)).join(" · ");
 
 /** pageFilters: { programs, year, month, submissionType } dari halaman Keuangan. */
-export function FinanceTable({ filters: pageFilters, ui, update }) {
+export function FinanceTable({ filters: pageFilters, ui, update, years, yearOptions, onYears }) {
   // filter Program khusus tabel Transaksi: per sumber dana/mitra, di dalam filter Program halaman
   useFinCatalog();
-  const sources = finSources(pageFilters.year).filter((a) => pageFilters.programs[0] === "all" || pageFilters.programs.includes(a));
+  const labelYear = typeof pageFilters.year === "number" ? pageFilters.year : undefined;
+  const sources = finSources(labelYear).filter((a) => pageFilters.programs[0] === "all" || pageFilters.programs.includes(a));
   const source = sources.includes(ui.source) ? ui.source : "";
   const filters = source ? { ...pageFilters, programs: [source] } : pageFilters;
   const session = useAuthStore((s) => s.session);
@@ -120,9 +121,10 @@ export function FinanceTable({ filters: pageFilters, ui, update }) {
         {sources.length > 1 && (
           <select className="tb-select" value={source} onChange={(e) => update({ source: e.target.value, page: 1 })} aria-label="Program">
             <option value="">Semua program</option>
-            {sources.map((a) => <option key={a} value={a}>{finSourceLabel(a, pageFilters.year)}</option>)}
+            {sources.map((a) => <option key={a} value={a}>{finSourceLabel(a, labelYear)}</option>)}
           </select>
         )}
+        <YearChecks years={years} options={yearOptions} onChange={onYears} />
         <select className="tb-select" value={ui.sort} onChange={(e) => update({ sort: e.target.value, page: 1 })} aria-label="Urutkan">
           {SORTS.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
         </select>

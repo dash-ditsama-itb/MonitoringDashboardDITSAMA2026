@@ -251,6 +251,23 @@ export function Segmented({ value, options, onChange, label }) {
 }
 
 // tampilkan `limit` item pertama + tombol "Lihat semua (n)"
+/** Pilih satu atau beberapa tahun dengan centang; minimal satu tahun tetap tercentang. */
+export function YearChecks({ years, options, onChange }) {
+  const toggle = (y) => {
+    const next = years.includes(y) ? years.filter((x) => x !== y) : [...years, y];
+    if (next.length) onChange(next.sort((a, b) => a - b));
+  };
+  return (
+    <div className="year-checks" role="group" aria-label="Tahun">
+      {options.map((y) => (
+        <label key={y} className={"check" + (years.includes(y) ? " on" : "")}>
+          <input type="checkbox" checked={years.includes(y)} onChange={() => toggle(y)} />{y}
+        </label>
+      ))}
+    </div>
+  );
+}
+
 /** Tab program bergaya map (Peserta, Umpan Balik). items = [[nilai, label]]; tab aktif biru, lainnya biru muda. */
 export function ProgramTabs({ items, value, onChange, label = "Program" }) {
   const ref = useRef(null);
