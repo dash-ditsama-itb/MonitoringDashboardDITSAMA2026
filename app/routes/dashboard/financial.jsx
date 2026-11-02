@@ -3,7 +3,7 @@ import { ChartCanvas } from "../../components/ChartCanvas.jsx";
 import { FinanceTable, useFinCatalog } from "../../components/Finance.jsx";
 import { RequireAccess } from "../../components/Access.jsx";
 import { Icon } from "../../components/Icon.jsx";
-import { Bar, ErrorNote, Kpi, PageHead, PageSkeleton, Pending, SelectField } from "../../components/ui.jsx";
+import { Bar, ErrorNote, Kpi, PageHead, PageSkeleton, Pending, SelectField, YearChecks } from "../../components/ui.jsx";
 import { finGroupOf, finGroups, finMitra, finRecipients, setFinDataYears, fmtPct, fmtRupiah, recipientText, fmtRupiahShort, moneyScale, MONTHS, progColor } from "../../lib/format.js";
 import { useApi } from "../../stores/data.js";
 import { useUiStore } from "../../stores/ui.js";
@@ -21,27 +21,30 @@ function FinancialPage() {
 
   const { ready: catalogReady } = useFinCatalog();
   // nama program mengikuti tahun (mis. Freeport 2025 = INSPIRASI SCD & Bridging, 2026 = INSPIRASI EduQuest & SIAP ITB)
-  const year = ui.year ? Number(ui.year) : undefined;
+  // tahun dicentang (bawaan: tahun ini); dua tahun atau lebih = dijumlah, nama program gabungan tahun-tahun itu
+  const years = ui.years;
+  const year = years.length === 1 ? years[0] : undefined;
+  setFinDataYears(years);
   // filter Program = kelompok program (mis. INSPIRASI SCD = YPK + Toraja); tetap ikut kelompoknya walau tahun berganti
   const group = ui.program && ui.program !== "all" ? finGroupOf(ui.program.split(",")[0], year) : null;
   const filters = {
     programs: group ? group.apis : ["all"],
-    ...(ui.year ? { year: Number(ui.year) } : {}),
-    ...(ui.month ? { month: Number(ui.month) } : {}),
+    year: year ?? years,
+    ...(year && ui.month ? { month: Number(ui.month) } : {}),
     ...(ui.submissionType ? { submissionType: ui.submissionType } : {}),
   };
   const { data, error, loading, reload } = useApi("/dashboard/financial", filters);
   const d = data?.data;
   const fo = d?.filterOptions;
-  if (fo) setFinDataYears(fo.years);
-  const months = (fo?.months || []).filter((m) => !ui.year || String(m.year) === ui.year);
+  const months = (fo?.months || []).filter((m) => years.includes(m.year));
+  const thisYear = new Date().getFullYear();
+  const yearOptions = [...new Set([thisYear, ...(fo?.years || []), ...years])].sort((a, b) => b - a);
   const setFilter = (v) => update({ ...v, page: 1 });
-  // bulan selalu bersama tahun (saldo = akhir bulan itu); tanpa tahun dipilih, pakai tahun terbaru yang punya bulan tsb.
-  const pickMonth = (v) => setFilter(v && !ui.year
-    ? { month: v, year: String(Math.max(...(fo?.months || []).filter((m) => String(m.month) === v).map((m) => m.year))) }
-    : { month: v });
-  const period = ui.month && ui.year ? `${MONTHS[Number(ui.month) - 1]} ${ui.year}` : ui.year || "";
-  const active = !!(group || ui.year || ui.month || ui.submissionType);
+  // filter bulan hanya untuk satu tahun (saldo = akhir bulan itu)
+  const setYears = (list) => setFilter({ years: list, ...(list.length > 1 ? { month: "" } : {}) });
+  const month = year ? ui.month : "";
+  const period = month ? `${MONTHS[Number(month) - 1]} ${year}` : years.join(" & ");
+  const active = !!(group || month || ui.submissionType || years.length !== 1 || year !== thisYear);
 
   return (
     <div className="page">
@@ -50,13 +53,14 @@ function FinancialPage() {
       <section className="card filter-bar">
         <SelectField label="Program" value={group ? group.key : "all"} onChange={(v) => setFilter({ program: v })}
           options={[["all", "Semua program"], ...finGroups(year).map((g) => [g.key, g.label])]} />
-        <SelectField label="Tahun" value={ui.year} onChange={(v) => setFilter({ year: v, month: "" })}
-          options={[["", "Semua tahun"], ...(fo?.years || []).map((y) => [String(y), String(y)])]} />
-        <SelectField label="Bulan" value={ui.month} onChange={pickMonth}
+        <div className="field field-years"><span className="field-lab">Tahun</span>
+          <YearChecks years={years} options={yearOptions} onChange={setYears} />
+        </div>
+        <SelectField label="Bulan" value={month} onChange={(v) => setFilter({ month: v })} disabled={!year}
           options={[["", "Semua bulan"], ...[...new Set(months.map((m) => m.month))].sort((a, b) => a - b).map((m) => [String(m), MONTHS[m - 1]])]} />
         <SelectField label="Jenis pengajuan" value={ui.submissionType} onChange={(v) => setFilter({ submissionType: v })}
           options={[["", "Semua jenis"], ...(fo?.submissionTypes || []).map((t) => [t, t])]} />
-        {active && <button type="button" className="btn btn-sm filter-reset" onClick={() => setFilter({ program: "all", year: "", month: "", submissionType: "" })}>Reset filter</button>}
+        {active && <button type="button" className="btn btn-sm filter-reset" onClick={() => setFilter({ program: "all", years: [thisYear], month: "", submissionType: "" })}>Reset filter</button>}
       </section>
 
       <ErrorNote error={error} onRetry={() => reload()} />
@@ -65,22 +69,22 @@ function FinancialPage() {
         <Pending busy={loading}>
           <div className="kpi-row five">
             {/* PKS & saldo mengikuti periode filter: tahun, atau 1 Jan s.d. akhir bulan terpilih */}
-            <Kpi label={ui.month ? `Nilai PKS s.d. ${period}` : ui.year ? `Nilai PKS ${ui.year}` : "Total nilai PKS"} value={fmtRupiahShort(d.kpi.totalPks)} hint={fmtRupiah(d.kpi.totalPks)} icon="wallet" />
+            <Kpi label={month ? `Nilai PKS s.d. ${period}` : `Nilai PKS ${period}`} value={fmtRupiahShort(d.kpi.totalPks)} hint={fmtRupiah(d.kpi.totalPks)} icon="wallet" />
             <Kpi label="Total DPKS" value={fmtRupiahShort(d.kpi.totalDpks)} hint={fmtRupiah(d.kpi.totalDpks)} />
             <Kpi label={period ? `Pengajuan ${period}` : "Total pengajuan"} value={fmtRupiahShort(d.kpi.totalSubmission)} hint={fmtRupiah(d.kpi.totalSubmission)} />
-            <Kpi label={ui.month ? `Saldo akhir ${period}` : ui.year ? `Saldo ${ui.year}` : "Saldo saat ini"} value={fmtRupiahShort(d.kpi.currentBalance)} hint={fmtRupiah(d.kpi.currentBalance)} tone={d.kpi.currentBalance < 0 ? "t-neg" : ""} />
+            <Kpi label={month ? `Saldo akhir ${period}` : `Saldo ${period}`} value={fmtRupiahShort(d.kpi.currentBalance)} hint={fmtRupiah(d.kpi.currentBalance)} tone={d.kpi.currentBalance < 0 ? "t-neg" : ""} />
             <div className="kpi">
-              <div className="kpi-lab">{ui.month ? `Serapan s.d. ${period}` : "Serapan anggaran"}</div>
+              <div className="kpi-lab">{month ? `Serapan s.d. ${period}` : "Serapan anggaran"}</div>
               <div className="kpi-val">{fmtPct(d.kpi.absorptionPercentage)}</div>
               <Bar value={d.kpi.absorptionPercentage} tone={d.kpi.absorptionPercentage > 95 ? "crit" : ""} />
             </div>
           </div>
-          <FinCharts d={d} period={ui.month ? period : ""} year={year} catalogReady={catalogReady} />
-          <Summary rows={d.summary} period={ui.month ? period : ""} year={year} />
+          <FinCharts d={d} period={month ? period : ""} year={year} catalogReady={catalogReady} />
+          <Summary rows={d.summary} period={month ? period : ""} year={year} />
         </Pending>
       )}
 
-      <FinanceTable filters={filters} ui={ui} update={update} />
+      <FinanceTable filters={filters} ui={ui} update={update} years={years} yearOptions={yearOptions} onYears={setYears} />
     </div>
   );
 }
@@ -101,6 +105,7 @@ const sumOf = (parts, k) => parts.reduce((s, p) => s + (Number(p.values[k]) || 0
 const groupColor = (g) => progColor(g.apis[0]);
 
 function FinCharts({ d, period, year, catalogReady }) {
+  const years = useUiStore((s) => s.fin.years);
   const charts = useMemo(() => {
     const months = d.monthlyRealization.map((m) => m.month);
     // sumbu Y: angka saja (format Indonesia), satuan di judul sumbu dalam kurung; tooltip nominal rupiah lengkap
@@ -169,7 +174,7 @@ function FinCharts({ d, period, year, catalogReady }) {
         scales: { x: { grid: { display: false } }, y: axis(cScale) } },
     };
     return { realisasi, saldo, banding, units: { realisasi: rScale.unit, saldo: sScale.unit, banding: cScale.unit } };
-  }, [d, year, catalogReady]);
+  }, [d, year, years.join(), catalogReady]);
 
   return (
     <>

@@ -1166,3 +1166,7 @@ span.asp-lab{cursor:default}
 .fin-more:hover{text-decoration:underline}
 .fin-add-row{display:flex;gap:8px;align-items:center}.fin-add-row input{flex:1;min-width:0}
 .field-err{margin:6px 0 0;font-size:12.5px;color:var(--crit-ink)}
+/* centang tahun (Keuangan) */
+.year-checks{display:flex;flex-wrap:wrap;gap:6px}
+.year-checks .check{padding:0 10px;min-height:38px;cursor:pointer;white-space:nowrap}
+.filter-bar .field-years{flex:0 1 auto;max-width:none}
