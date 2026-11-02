@@ -1161,3 +1161,8 @@ span.asp-lab{cursor:default}
 .row-meta>.rtag::after{content:"";margin:0 3px}
 .tbl tr.fin-rec td{font-size:12px;color:var(--muted)}
 .tbl tr.fin-rec td:first-child{padding-left:38px}
+/* form Keuangan: tambah mitra / program */
+.fin-more{display:inline-flex;align-items:center;gap:4px;align-self:flex-start;margin-top:6px;padding:0;border:0;background:none;font:inherit;font-size:12.5px;font-weight:700;color:var(--blue-ink);cursor:pointer}
+.fin-more:hover{text-decoration:underline}
+.fin-add-row{display:flex;gap:8px;align-items:center}.fin-add-row input{flex:1;min-width:0}
+.field-err{margin:6px 0 0;font-size:12.5px;color:var(--crit-ink)}

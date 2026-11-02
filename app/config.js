@@ -44,21 +44,20 @@ export const PROGRAMS = [
 // Total program DITSAMA (termasuk SUGT)
 export const TOTAL_PROGRAMS = PROGRAMS.length;
 
-// Daftar sumber dana menu Keuangan. label = nama program penerima yang tampil di dashboard;
-// mitra = pemberi dana (tampil sebagai rincian). Sumber dengan label sama digabung (YPK + Toraja = INSPIRASI SCD).
-// Nilai api tetap nama sumber dana di data (TN, YPK, ...), jadi input, impor, dan ekspor tidak berubah.
-// programs = program yang dibiayai (pilihan "Program penerima" pengajuan; lebih dari satu = bisa juga "Bersama").
+// Mitra / sumber dana bawaan menu Keuangan (sama dengan backend); mitra & program tambahan dari GET /financial/catalog.
+// programsByYear = program yang didanai per tahun; "*" = tahun yang tidak punya daftar sendiri. Lebih dari satu = bisa juga "Bersama".
+// Nilai api = nama sumber dana di data (TN, YPK, ...), jadi impor dan ekspor tidak berubah.
 export const FIN_PROGRAMS = [
-  { api: "siap_itb",           label: "SIAP ITB", programs: ["siap_itb"] },
-  { api: "inspirasi_eduquest", label: "INSPIRASI EduQuest", programs: ["inspirasi_eduquest"] },
-  { api: "toraja",             label: "INSPIRASI SCD", mitra: "Toraja", programs: ["inspirasi_scd"] },
-  { api: "ypk",                label: "INSPIRASI SCD", mitra: "YPK", programs: ["inspirasi_scd"] },
-  { api: "tn",                 label: "Riset, OPSI & OSN", mitra: "TN (Taruna Nusantara)", programs: ["riset", "opsi", "osn"] },
-  { api: "bti",                label: "BTI", programs: ["bti"] },
-  { api: "wit",                label: "WIT", programs: ["wit"] },
-  { api: "maung",              label: "MAUNG", programs: ["maung"] },
-  { api: "sugt",               label: "SUGT", programs: ["sugt"] },
-  { api: "freeport",           label: "INSPIRASI EduQuest & SIAP ITB", mitra: "Freeport", programs: ["siap_itb", "inspirasi_eduquest"] },
+  { api: "siap_itb",           name: "SIAP ITB", programsByYear: { "*": ["SIAP ITB"] } },
+  { api: "inspirasi_eduquest", name: "INSPIRASI EduQuest", programsByYear: { "*": ["INSPIRASI EduQuest"] } },
+  { api: "toraja",             name: "Toraja", isMitra: true, programsByYear: { "*": ["INSPIRASI SCD"] } },
+  { api: "ypk",                name: "YPK", isMitra: true, programsByYear: { "*": ["INSPIRASI SCD"] } },
+  { api: "tn",                 name: "TN (Taruna Nusantara)", isMitra: true, programsByYear: { "*": ["Riset", "OPSI", "OSN"] } },
+  { api: "bti",                name: "BTI", programsByYear: { "*": ["BTI"] } },
+  { api: "wit",                name: "WIT", programsByYear: { "*": ["WIT"] } },
+  { api: "maung",              name: "MAUNG", programsByYear: { "*": ["MAUNG"] } },
+  { api: "sugt",               name: "SUGT", programsByYear: { "*": ["SUGT"] } },
+  { api: "freeport",           name: "Freeport", isMitra: true, programsByYear: { 2026: ["INSPIRASI EduQuest", "SIAP ITB"], 2025: ["INSPIRASI SCD", "Bridging"] } },
 ];
 
 // Hak akses (grant) yang bisa diberikan ke peran; satu peran boleh punya beberapa grant (haknya digabung).

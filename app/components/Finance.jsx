@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { PKS_TYPES } from "../config.js";
 import { api, errorText } from "../lib/api.js";
 import {
-  canEditFinance, FIN_PROGRAMS_AZ, finRecipients, finSourceLabel, finTypeLabel, recipientLabel, recipientText, fmtDate, fmtDateTime, fmtRelative, fmtRupiah, fromDateInput, isPks, toDateInput,
+  canEditFinance, finMitra, finProgramLabel, finRecipients, finSourceLabel, finSources, finTypeLabel, finYears, recipientLabel, recipientText, setFinCatalog, fmtDate, fmtDateTime, fmtRelative, fmtRupiah, fromDateInput, isPks, toDateInput,
 } from "../lib/format.js";
 import { useAuthStore } from "../stores/auth.js";
 import { invalidate, useApi } from "../stores/data.js";
@@ -20,6 +20,16 @@ const SORTS = [
 
 export const refreshFinance = () => invalidate("/financial", "/dashboard/financial");
 
+/** Mitra & program Keuangan dari server. ready = false: backend belum mendukung, memakai daftar bawaan tanpa tambah mitra/program. */
+export function useFinCatalog() {
+  const { data, reload } = useApi("/financial/catalog");
+  const partners = data?.data?.partners;
+  if (partners) setFinCatalog(partners);
+  return { ready: !!partners, reload };
+}
+
+const yearOf = (r) => new Date(r.date).getUTCFullYear();
+
 function TypeChip({ r }) {
   return <span className={"ftype " + (isPks(r) ? "pks" : "sub")}>{finTypeLabel(r.type)}</span>;
 }
@@ -32,7 +42,8 @@ const subOf = (r) => (isPks(r)
 /** pageFilters: { programs, year, month, submissionType } dari halaman Keuangan. */
 export function FinanceTable({ filters: pageFilters, ui, update }) {
   // filter Program khusus tabel Transaksi: per sumber dana/mitra, di dalam filter Program halaman
-  const sources = pageFilters.programs[0] === "all" ? FIN_PROGRAMS_AZ.map((p) => p.api) : FIN_PROGRAMS_AZ.map((p) => p.api).filter((a) => pageFilters.programs.includes(a));
+  useFinCatalog();
+  const sources = finSources(pageFilters.year).filter((a) => pageFilters.programs[0] === "all" || pageFilters.programs.includes(a));
   const source = sources.includes(ui.source) ? ui.source : "";
   const filters = source ? { ...pageFilters, programs: [source] } : pageFilters;
   const session = useAuthStore((s) => s.session);
@@ -90,7 +101,7 @@ export function FinanceTable({ filters: pageFilters, ui, update }) {
         <div className="tbl-actions">
           {canEdit && (
             <ImportButton path={"/financial/import" + (singleProgram ? "/" + singleProgram : "")}
-              hint="Unggah .xlsx/.csv. Semua tab sheet yang punya kolom Nilai PKS atau Nilai Pengajuan ikut diimpor; program dibaca dari kolom Program atau nama tab (mis. SIAP_2026). Baris yang ID-nya sudah ada akan memperbarui transaksi tersebut"
+              hint="Unggah .xlsx/.csv. Semua tab sheet yang punya kolom Nilai PKS atau Nilai Pengajuan ikut diimpor; mitra dibaca dari kolom Program atau nama tab (mis. SIAP_2026), program penerima dari kolom Program Penerima. Baris yang ID-nya sudah ada akan memperbarui transaksi tersebut"
               describe={(d) => importSummary(d, "transaksi", "program tidak dikenal")} onDone={refreshFinance} />
           )}
           <ExportButton path={exportPath} filename="keuangan.xlsx"
@@ -109,7 +120,7 @@ export function FinanceTable({ filters: pageFilters, ui, update }) {
         {sources.length > 1 && (
           <select className="tb-select" value={source} onChange={(e) => update({ source: e.target.value, page: 1 })} aria-label="Program">
             <option value="">Semua program</option>
-            {sources.map((a) => <option key={a} value={a}>{finSourceLabel(a)}</option>)}
+            {sources.map((a) => <option key={a} value={a}>{finSourceLabel(a, pageFilters.year)}</option>)}
           </select>
         )}
         <select className="tb-select" value={ui.sort} onChange={(e) => update({ sort: e.target.value, page: 1 })} aria-label="Urutkan">
@@ -162,7 +173,7 @@ export function FinanceTable({ filters: pageFilters, ui, update }) {
                     <td className="c-type"><TypeChip r={r} /></td>
                     <td className="c-name">
                       <div className="cell-strong">{detailOf(r) || <span className="muted">Tanpa keterangan</span>}</div>
-                      <div className="row-meta">{showProgram && <span className="ptag">{finSourceLabel(r.program)}</span>}<RecipientTag r={r} />{subOf(r) && <span>{subOf(r)}</span>}</div>
+                      <div className="row-meta">{showProgram && <span className="ptag">{finSourceLabel(r.program, yearOf(r))}</span>}<RecipientTag r={r} />{subOf(r) && <span>{subOf(r)}</span>}</div>
                     </td>
                     <td className={"num c-amt " + (isPks(r) ? "pos" : "neg")}>{isPks(r) ? "+" : "−"}{fmtRupiah(amountOf(r))}</td>
                     <td className="num c-dpks">{isPks(r) ? <>{fmtRupiah(r.dpks)}<span className="muted"> · {r.dpksPercentage ?? 0}%</span></> : <span className="muted">–</span>}</td>
@@ -190,7 +201,7 @@ export function FinanceTable({ filters: pageFilters, ui, update }) {
                 <button type="button" className="rec-main" disabled={!canEdit} onClick={() => setForm({ kind: isPks(r) ? "pks" : "submission", record: r })}>
                   <span className="rec-top"><span className="rec-name">{detailOf(r) || finTypeLabel(r.type)}</span>
                     <span className={"rec-amt " + (isPks(r) ? "pos" : "neg")}>{isPks(r) ? "+" : "−"}{fmtRupiah(amountOf(r))}</span></span>
-                  <span className="rec-meta"><TypeChip r={r} /><span>{fmtDate(r.date)}</span>{showProgram && <span>{finSourceLabel(r.program)}</span>}<RecipientTag r={r} /></span>
+                  <span className="rec-meta"><TypeChip r={r} /><span>{fmtDate(r.date)}</span>{showProgram && <span>{finSourceLabel(r.program, yearOf(r))}</span>}<RecipientTag r={r} /></span>
                   <span className="rec-meta"><span>Saldo {fmtRupiah(r.balance)}</span>{subOf(r) && <span>{subOf(r)}</span>}</span>
                 </button>
               </li>
@@ -224,8 +235,8 @@ const today = () => toDateInput(new Date());
 
 // program penerima pengajuan dari mitra yang membiayai lebih dari satu program (TN, Freeport)
 function RecipientTag({ r }) {
-  if (isPks(r) || finRecipients(r.program).length < 2 || !("recipientProgram" in r)) return null;
-  return <span className={"rtag" + (r.recipientProgram ? "" : " shared")}>{recipientText(r.program, r.recipientProgram)}</span>;
+  if (isPks(r) || finRecipients(r.program, yearOf(r)).length < 2 || !("recipientProgram" in r)) return null;
+  return <span className={"rtag" + (r.recipientProgram ? "" : " shared")}>{recipientText(r.program, r.recipientProgram, yearOf(r))}</span>;
 }
 
 function formFrom(kind, r, program, session) {
@@ -239,14 +250,71 @@ function formFrom(kind, r, program, session) {
     : { program: r.program, date: toDateInput(r.date), invoiceNumber: r.invoiceNumber || "", submissionType: r.submissionType || "", text: r.description || "", value: String(r.submissionValue ?? ""), pic: r.pic || "", recipient: r.recipientProgram || "" };
 }
 
+// isian nama mitra/program baru di dalam form pengajuan & PKS
+function AddName({ label, placeholder, onAdd, onCancel }) {
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  async function add() {
+    if (!name.trim()) return setErr(`Isi ${label} dulu.`);
+    setErr(""); setBusy(true);
+    try {
+      const problem = await onAdd(name.trim());   // teks = nama ditolak, form tetap terbuka
+      if (problem) { setErr(problem); setBusy(false); }
+    } catch (e) { setErr(errorText(e)); setBusy(false); }
+  }
+  return (
+    <div className="fin-add span-2">
+      <div className="fin-add-row">
+        <input type="text" autoFocus aria-label={label} placeholder={placeholder} value={name} onChange={(e) => { setName(e.target.value); setErr(""); }}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }} />
+        <button type="button" className="btn btn-sm btn-primary" onClick={add} disabled={busy}>{busy && <Spinner />}Tambah</button>
+        <button type="button" className="btn btn-sm" onClick={onCancel} disabled={busy}>Batal</button>
+      </div>
+      {err && <p className="field-err" role="alert">{err}</p>}
+    </div>
+  );
+}
+
 function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) {
   const session = useAuthStore((s) => s.session);
+  const { ready, reload: reloadCatalog } = useFinCatalog();
+  const [adding, setAdding] = useState(null);   // "mitra" | "program" | null
   const types = useApi("/dashboard/financial", {}, { enabled: open && kind === "submission" }).data?.data?.filterOptions?.submissionTypes || [];
-  const program0 = defaultProgram || FIN_PROGRAMS_AZ[0].api;
+  const program0 = defaultProgram || finSources()[0];
   const [f, setF] = useState(() => formFrom(kind, record, program0, session));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  useEffect(() => { if (open) { setF(formFrom(kind, record, program0, session)); setErr(""); } }, [open, kind, record]);
+  useEffect(() => { if (open) { setF(formFrom(kind, record, program0, session)); setErr(""); setAdding(null); } }, [open, kind, record]);
+
+  // daftar program mengikuti mitra & tahun; tahun selalu sama dengan tanggal transaksi
+  const year = Number(String(f.date || "").slice(0, 4)) || new Date().getFullYear();
+  const recipients = finRecipients(f.program, year);
+  const years = [...new Set([...finYears(), new Date().getFullYear(), year])].sort((a, b) => b - a);
+  const keepRecipient = (cur, program, y) => (finRecipients(program, y).includes(cur.recipient) ? cur.recipient : "");
+  const setDate = (date) => setF((cur) => ({ ...cur, date, recipient: keepRecipient(cur, cur.program, Number(date.slice(0, 4))) }));
+  const setYear = (y) => {
+    const next = `${y}${(f.date || today()).slice(4)}`;
+    setDate(Number.isNaN(Date.parse(next)) ? `${y}-02-28` : next);   // 29 Feb di tahun bukan kabisat
+  };
+  const sameName = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+  async function addMitra(name) {
+    if (finSources().some((a) => sameName(finMitra(a) || finProgramLabel(a), name))) return "Mitra ini sudah ada.";
+    const out = await api("/financial/catalog/partners", { method: "POST", body: { name } });
+    await reloadCatalog();
+    setF((cur) => ({ ...cur, program: out.data.key, recipient: "" }));
+    toast(`Mitra ${name} ditambahkan.`);
+    setAdding("program");
+  }
+  async function addProgram(program) {
+    if (recipients.some((p) => sameName(p, program))) return `Program ini sudah ada di mitra ini untuk tahun ${year}.`;
+    await api("/financial/catalog/programs", { method: "POST", body: { partner: f.program, year, program } });
+    await reloadCatalog();
+    setF((cur) => ({ ...cur, recipient: program }));
+    toast(`Program ${program} ditambahkan.`);
+    setAdding(null);
+  }
 
   const isEdit = !!record, isPksForm = kind === "pks";
   const field = (k) => ({ value: f[k] ?? "", onChange: (e) => setF({ ...f, [k]: e.target.value }) });
@@ -266,7 +334,7 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
               ...(f.invoiceNumber.trim() ? { invoiceNumber: f.invoiceNumber.trim() } : {}),
               ...(f.submissionType.trim() ? { submissionType: f.submissionType.trim() } : {}),
               ...(f.text.trim() ? { description: f.text.trim() } : {}),
-              ...(finRecipients(f.program).length > 1 ? { recipientProgram: f.recipient || null } : {}) };
+              ...(recipients.length > 1 ? { recipientProgram: f.recipient || null } : {}) };
         if (f.pic.trim()) body.pic = f.pic.trim();
         const out = await api(isPksForm ? "/financial/pks" : "/financial/submission", { method: "POST", body });
         toast(`${isPksForm ? "PKS" : "Pengajuan"} tersimpan. Saldo ${finSourceLabel(f.program)} kini ${fmtRupiah(out.data?.balance)}.`);
@@ -285,7 +353,7 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
           set("invoiceNumber", f.invoiceNumber.trim(), r.invoiceNumber);
           set("submissionType", f.submissionType.trim(), r.submissionType);
           set("description", f.text.trim(), r.description);
-          if (finRecipients(f.program).length > 1 && (f.recipient || null) !== (r.recipientProgram ?? null)) body.recipientProgram = f.recipient || null;
+          if (recipients.length > 1 && (f.recipient || null) !== (r.recipientProgram ?? null)) body.recipientProgram = f.recipient || null;
         }
         // backend tidak menerima string kosong -> lewati kolom teks yang dikosongkan
         Object.keys(body).forEach((k) => { if (body[k] === "") delete body[k]; });
@@ -322,24 +390,31 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
             </div>
           )}
           <div className="form-grid">
-            <label className="field"><span className="field-lab">{isPksForm ? "Program" : "Mitra / sumber dana"}</span>
-              <select value={f.program} onChange={(e) => setF({ ...f, program: e.target.value, recipient: "" })}>
-                {FIN_PROGRAMS_AZ.map((p) => <option key={p.api} value={p.api}>{finSourceLabel(p.api)}</option>)}
+            <label className="field"><span className="field-lab">Tahun</span>
+              <select value={year} onChange={(e) => setYear(e.target.value)}>
+                {years.map((y) => <option key={y} value={y}>{y}</option>)}
               </select>
             </label>
-            {!isPksForm && (
-              <label className="field"><span className="field-lab">Program penerima</span>
-                {finRecipients(f.program).length > 1 ? (
-                  <select {...field("recipient")}>
-                    <option value="">{recipientLabel(f.program, null)}</option>
-                    {finRecipients(f.program).map((p) => <option key={p} value={p}>{recipientLabel(f.program, p)}</option>)}
-                  </select>
-                ) : <select disabled value=""><option value="">{recipientLabel(f.program, finRecipients(f.program)[0])}</option></select>}
-              </label>
-            )}
             <label className="field"><span className="field-lab">{isPksForm ? "Tanggal PKS" : "Tanggal pengajuan"}</span>
-              <input type="date" required {...field("date")} />
+              <input type="date" required value={f.date ?? ""} onChange={(e) => setDate(e.target.value)} />
             </label>
+            <div className="field span-2"><label className="field-lab" htmlFor="fin-mitra">Mitra / sumber dana</label>
+              <select id="fin-mitra" value={f.program} onChange={(e) => { const program = e.target.value; setF((cur) => ({ ...cur, program, recipient: keepRecipient(cur, program, year) })); setAdding(null); }}>
+                {finSources(year).map((a) => <option key={a} value={a}>{finSourceLabel(a, year)}</option>)}
+              </select>
+              {ready && adding !== "mitra" && <button type="button" className="fin-more" onClick={() => setAdding("mitra")}><Icon name="plus" size={13} />Tambah mitra lain</button>}
+            </div>
+            {adding === "mitra" && <AddName label="nama mitra" placeholder="Nama mitra baru" onAdd={addMitra} onCancel={() => setAdding(null)} />}
+            <div className="field span-2"><label className="field-lab" htmlFor="fin-prog">{isPksForm ? `Program yang didanai tahun ${year}` : "Program penerima"}</label>
+              {!isPksForm && recipients.length > 1 ? (
+                <select id="fin-prog" {...field("recipient")}>
+                  <option value="">{recipientLabel(f.program, null, year)}</option>
+                  {recipients.map((p) => <option key={p} value={p}>{p}</option>)}
+                </select>
+              ) : <select id="fin-prog" disabled value=""><option value="">{recipients.join(", ") || `Belum ada program untuk tahun ${year}`}</option></select>}
+              {ready && adding !== "program" && <button type="button" className="fin-more" onClick={() => setAdding("program")}><Icon name="plus" size={13} />Tambah program lain</button>}
+            </div>
+            {adding === "program" && <AddName label="nama program" placeholder="Nama program baru, mis. Bridging" onAdd={addProgram} onCancel={() => setAdding(null)} />}
             {isPksForm ? (
               <>
                 <label className="field"><span className="field-lab">Jenis PKS</span>
