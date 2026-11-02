@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 import { ChartCanvas } from "../../components/ChartCanvas.jsx";
-import { FinanceTable } from "../../components/Finance.jsx";
+import { FinanceTable, useFinCatalog } from "../../components/Finance.jsx";
 import { RequireAccess } from "../../components/Access.jsx";
 import { Icon } from "../../components/Icon.jsx";
 import { Bar, ErrorNote, Kpi, PageHead, PageSkeleton, Pending, SelectField } from "../../components/ui.jsx";
-import { FIN_GROUPS_AZ, finGroupOf, finMitra, finRecipients, fmtPct, fmtRupiah, recipientText, fmtRupiahShort, moneyScale, MONTHS, progColor } from "../../lib/format.js";
+import { finGroupOf, finGroups, finMitra, finRecipients, setFinDataYears, fmtPct, fmtRupiah, recipientText, fmtRupiahShort, moneyScale, MONTHS, progColor } from "../../lib/format.js";
 import { useApi } from "../../stores/data.js";
 import { useUiStore } from "../../stores/ui.js";
 
@@ -19,8 +19,11 @@ function FinancialPage() {
   const patch = useUiStore((s) => s.patch);
   const update = (v) => patch("fin", v);
 
-  // filter Program = kelompok program (mis. INSPIRASI SCD = YPK + Toraja); nilai lama berupa satu sumber dana ikut kelompoknya
-  const group = ui.program && ui.program !== "all" ? FIN_GROUPS_AZ.find((g) => g.key === ui.program) || finGroupOf(ui.program) : null;
+  const { ready: catalogReady } = useFinCatalog();
+  // nama program mengikuti tahun (mis. Freeport 2025 = INSPIRASI SCD & Bridging, 2026 = INSPIRASI EduQuest & SIAP ITB)
+  const year = ui.year ? Number(ui.year) : undefined;
+  // filter Program = kelompok program (mis. INSPIRASI SCD = YPK + Toraja); tetap ikut kelompoknya walau tahun berganti
+  const group = ui.program && ui.program !== "all" ? finGroupOf(ui.program.split(",")[0], year) : null;
   const filters = {
     programs: group ? group.apis : ["all"],
     ...(ui.year ? { year: Number(ui.year) } : {}),
@@ -30,6 +33,7 @@ function FinancialPage() {
   const { data, error, loading, reload } = useApi("/dashboard/financial", filters);
   const d = data?.data;
   const fo = d?.filterOptions;
+  if (fo) setFinDataYears(fo.years);
   const months = (fo?.months || []).filter((m) => !ui.year || String(m.year) === ui.year);
   const setFilter = (v) => update({ ...v, page: 1 });
   // bulan selalu bersama tahun (saldo = akhir bulan itu); tanpa tahun dipilih, pakai tahun terbaru yang punya bulan tsb.
@@ -45,7 +49,7 @@ function FinancialPage() {
 
       <section className="card filter-bar">
         <SelectField label="Program" value={group ? group.key : "all"} onChange={(v) => setFilter({ program: v })}
-          options={[["all", "Semua program"], ...FIN_GROUPS_AZ.map((g) => [g.key, g.label])]} />
+          options={[["all", "Semua program"], ...finGroups(year).map((g) => [g.key, g.label])]} />
         <SelectField label="Tahun" value={ui.year} onChange={(v) => setFilter({ year: v, month: "" })}
           options={[["", "Semua tahun"], ...(fo?.years || []).map((y) => [String(y), String(y)])]} />
         <SelectField label="Bulan" value={ui.month} onChange={pickMonth}
@@ -71,8 +75,8 @@ function FinancialPage() {
               <Bar value={d.kpi.absorptionPercentage} tone={d.kpi.absorptionPercentage > 95 ? "crit" : ""} />
             </div>
           </div>
-          <FinCharts d={d} period={ui.month ? period : ""} />
-          <Summary rows={d.summary} period={ui.month ? period : ""} />
+          <FinCharts d={d} period={ui.month ? period : ""} year={year} catalogReady={catalogReady} />
+          <Summary rows={d.summary} period={ui.month ? period : ""} year={year} />
         </Pending>
       )}
 
@@ -82,21 +86,21 @@ function FinancialPage() {
 }
 
 // nilai per sumber dana -> per kelompok program, urut A–Z; rincian mitra disimpan untuk tooltip & ringkasan
-function byGroup(items, apiOf, valuesOf) {
+function byGroup(items, apiOf, valuesOf, year) {
   const out = new Map();
   for (const it of items) {
-    const g = finGroupOf(apiOf(it));
+    const g = finGroupOf(apiOf(it), year);
     if (!g) continue;
     const cur = out.get(g.key) || { group: g, parts: [] };
     cur.parts.push({ api: apiOf(it), values: valuesOf(it) });
     out.set(g.key, cur);
   }
-  return FIN_GROUPS_AZ.filter((g) => out.has(g.key)).map((g) => out.get(g.key));
+  return finGroups(year).filter((g) => out.has(g.key)).map((g) => out.get(g.key));
 }
 const sumOf = (parts, k) => parts.reduce((s, p) => s + (Number(p.values[k]) || 0), 0);
 const groupColor = (g) => progColor(g.apis[0]);
 
-function FinCharts({ d, period }) {
+function FinCharts({ d, period, year, catalogReady }) {
   const charts = useMemo(() => {
     const months = d.monthlyRealization.map((m) => m.month);
     // sumbu Y: angka saja (format Indonesia), satuan di judul sumbu dalam kurung; tooltip nominal rupiah lengkap
@@ -113,7 +117,7 @@ function FinCharts({ d, period }) {
 
     // realisasi ditumpuk per kelompok program: satuan dari total tertinggi per bulan
     const rApis = [...new Set(d.monthlyRealization.flatMap((m) => m.programs.filter((p) => p.realization).map((p) => p.program)))];
-    const rGroups = byGroup(rApis, (a) => a, (a) => Object.fromEntries(d.monthlyRealization.map((m, i) => [i, m.programs.find((x) => x.program === a)?.realization ?? 0])));
+    const rGroups = byGroup(rApis, (a) => a, (a) => Object.fromEntries(d.monthlyRealization.map((m, i) => [i, m.programs.find((x) => x.program === a)?.realization ?? 0])), year);
     const rScale = moneyScale(Math.max(0, ...d.monthlyRealization.map((m) => m.programs.reduce((s, x) => s + (Number(x.realization) || 0), 0))));
     const realisasi = {
       type: "bar",
@@ -132,7 +136,7 @@ function FinCharts({ d, period }) {
     // saldo akhir bulan per kelompok = jumlah saldo sumber dananya (bulan tanpa data: kosong)
     const bApis = [...new Set(d.monthlyBalance.flatMap((m) => m.programs.filter((p) => p.balance).map((p) => p.program)))];
     const bOf = (a, m) => m.programs.find((x) => x.program === a)?.balance;
-    const bGroups = byGroup(bApis, (a) => a, (a) => Object.fromEntries(d.monthlyBalance.map((m, i) => [i, bOf(a, m)])));
+    const bGroups = byGroup(bApis, (a) => a, (a) => Object.fromEntries(d.monthlyBalance.map((m, i) => [i, bOf(a, m)])), year);
     const sScale = moneyScale(Math.max(0, ...d.monthlyBalance.flatMap((m) => m.programs.map((x) => Math.abs(Number(x.balance) || 0)))));
     const saldo = {
       type: "line",
@@ -149,7 +153,7 @@ function FinCharts({ d, period }) {
     };
 
     const cGroups = byGroup(d.programComparison.filter((p) => p.pksValue || p.realization), (p) => p.program,
-      (p) => ({ pks: p.pksValue ?? 0, real: p.realization ?? 0 }));
+      (p) => ({ pks: p.pksValue ?? 0, real: p.realization ?? 0 }), year);
     const cScale = moneyScale(Math.max(0, ...cGroups.flatMap(({ parts }) => [sumOf(parts, "pks"), sumOf(parts, "real")])));
     const banding = {
       type: "bar",
@@ -165,7 +169,7 @@ function FinCharts({ d, period }) {
         scales: { x: { grid: { display: false } }, y: axis(cScale) } },
     };
     return { realisasi, saldo, banding, units: { realisasi: rScale.unit, saldo: sScale.unit, banding: cScale.unit } };
-  }, [d]);
+  }, [d, year, catalogReady]);
 
   return (
     <>
@@ -189,9 +193,9 @@ const absorption = (pks, dpks, sub) => (pks - dpks > 0 ? Math.round((sub / (pks 
 const absorbedOf = (v) => v.absorbed ?? v.totalSubmission;
 
 // ringkasan per kelompok program; kelompok bermitra menampilkan mitranya, dan rincian per mitra bila lebih dari satu
-function Summary({ rows, period }) {
-  const used = byGroup(rows.filter((r) => r.totalPks || r.totalSubmission), (r) => r.program, (r) => r);
-  const idle = FIN_GROUPS_AZ.filter((g) => rows.some((r) => g.apis.includes(r.program))).length - used.length;
+function Summary({ rows, period, year }) {
+  const used = byGroup(rows.filter((r) => r.totalPks || r.totalSubmission), (r) => r.program, (r) => r, year);
+  const idle = finGroups(year).filter((g) => rows.some((r) => g.apis.includes(r.program))).length - used.length;
   const line = (key, label, v, sub) => (
     <tr key={key} className={sub ? "fin-sub" : ""}>
       <td className={sub ? "" : "cell-strong"}>{label}</td>
@@ -216,11 +220,11 @@ function Summary({ rows, period }) {
                 {mitras.length > 0 && <span className="fin-mitra">Mitra: {mitras.join(", ")}</span>}</>
             );
             // pengajuan mitra yang membiayai beberapa program (TN, Freeport) dirinci per program penerima
-            const split = (p) => (finRecipients(p.api).length > 1 ? [...(p.values.recipients || [])]
-              .sort((a, b) => (a.program ? finRecipients(p.api).indexOf(a.program) : 99) - (b.program ? finRecipients(p.api).indexOf(b.program) : 99))
+            const split = (p) => (finRecipients(p.api, year).length > 1 ? [...(p.values.recipients || [])]
+              .sort((a, b) => (a.program ? finRecipients(p.api, year).indexOf(a.program) : 99) - (b.program ? finRecipients(p.api, year).indexOf(b.program) : 99))
               .map((x) => (
                 <tr key={p.api + (x.program || "bersama")} className="fin-sub fin-rec">
-                  <td>{recipientText(p.api, x.program)}</td><td colSpan={5}>Pengajuan {fmtRupiah(x.submission)}</td>
+                  <td>{recipientText(p.api, x.program, year)}</td><td colSpan={5}>Pengajuan {fmtRupiah(x.submission)}</td>
                 </tr>
               )) : []);
             return [

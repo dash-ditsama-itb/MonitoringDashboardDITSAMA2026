@@ -91,23 +91,47 @@ export const isPks = (r) => r.type === "initial_pks" || r.type === "addition_pks
 export const byLabel = (get = (x) => x) => (a, b) => String(get(a)).localeCompare(String(get(b)), "id", { sensitivity: "base" });
 export const sortLabels = (list) => [...(list || [])].sort(byLabel());
 export const PROGRAMS_AZ = [...PROGRAMS].sort(byLabel((p) => p.label));
-export const finProgramLabel = (api) => FIN_PROGRAMS.find((p) => p.api === api)?.label ?? api;
-export const finMitra = (api) => FIN_PROGRAMS.find((p) => p.api === api)?.mitra || "";
-// program + mitra, untuk memilih/menandai satu sumber dana (mis. "INSPIRASI SCD · mitra YPK")
-export const finSourceLabel = (api) => (finMitra(api) ? `${finProgramLabel(api)} · mitra ${finMitra(api)}` : finProgramLabel(api));
-export const FIN_PROGRAMS_AZ = [...FIN_PROGRAMS].sort(byLabel((p) => finSourceLabel(p.api)));
-// kelompok program Keuangan (sumber dana berlabel sama digabung). key = api digabung koma, dipakai langsung sebagai filter programs
-export const FIN_GROUPS_AZ = [...new Set(FIN_PROGRAMS.map((p) => p.label))].sort(byLabel((l) => l)).map((label) => {
-  const apis = FIN_PROGRAMS.filter((p) => p.label === label).map((p) => p.api);
-  return { key: apis.join(","), label, apis, mitras: apis.map(finMitra).filter(Boolean) };
-});
-export const finGroupOf = (api) => FIN_GROUPS_AZ.find((g) => g.apis.includes(api));
-// program penerima pengajuan per sumber dana; null = "Bersama" (dipakai semua program mitra itu)
-export const finRecipients = (api) => FIN_PROGRAMS.find((p) => p.api === api)?.programs || [];
+
+// Mitra & program Keuangan: daftar bawaan + tambahan pengguna (setFinCatalog, dari GET /financial/catalog).
+let finPartners = FIN_PROGRAMS;
+export const setFinCatalog = (partners) => { finPartners = partners.map((p) => ({ ...p, api: p.key })); };
+const finPartner = (api) => finPartners.find((p) => p.api === api);
 const listLabel = (xs) => (xs.length > 1 ? xs.slice(0, -1).join(", ") + " & " + xs[xs.length - 1] : xs.join(""));
-export const recipientLabel = (fin, prog) => (prog ? programByApi(prog)?.label ?? prog : `Bersama (${listLabel(finRecipients(fin).map((p) => programByApi(p)?.label ?? p))})`);
+// tahun yang punya transaksi: tanpa filter tahun, nama program hanya dari tahun-tahun ini
+let finDataYears = [];
+export const setFinDataYears = (years) => { finDataYears = (years || []).map(String); };
+// program yang didanai pada satu tahun; tanpa tahun = gabungan tahun yang punya data (terbaru dulu)
+export function finRecipients(api, year) {
+  const byYear = finPartner(api)?.programsByYear || {};
+  if (year) return byYear[year] ?? byYear["*"] ?? [];
+  const years = Object.keys(byYear).sort().reverse();
+  const withData = years.filter((y) => y === "*" || finDataYears.includes(y));
+  return [...new Set((withData.length ? withData : years).flatMap((y) => byYear[y]))];
+}
+export const finMitra = (api) => (finPartner(api)?.isMitra ? finPartner(api).name : "");
+// nama yang tampil = nama program penerima; mitra baru yang belum punya program memakai nama mitranya
+export const finProgramLabel = (api, year) => listLabel(finRecipients(api, year)) || finPartner(api)?.name || api;
+// program + mitra, untuk memilih/menandai satu sumber dana (mis. "INSPIRASI SCD · mitra YPK")
+export function finSourceLabel(api, year) {
+  const label = finProgramLabel(api, year), mitra = finMitra(api);
+  return mitra && mitra !== label ? `${label} · mitra ${mitra}` : label;
+}
+export const finSources = (year) => finPartners.map((p) => p.api).sort(byLabel((a) => finSourceLabel(a, year)));
+// tahun yang punya daftar program sendiri (untuk pilihan Tahun di form)
+export const finYears = () => [...new Set(finPartners.flatMap((p) => Object.keys(p.programsByYear || {})))].filter((y) => y !== "*").map(Number);
+// kelompok program (sumber dana bernama sama digabung). key = api digabung koma, dipakai langsung sebagai filter programs
+export function finGroups(year) {
+  const labels = [...new Set(finPartners.map((p) => finProgramLabel(p.api, year)))].sort(byLabel((l) => l));
+  return labels.map((label) => {
+    const apis = finPartners.filter((p) => finProgramLabel(p.api, year) === label).map((p) => p.api);
+    return { key: apis.join(","), label, apis, mitras: apis.map(finMitra).filter(Boolean) };
+  });
+}
+export const finGroupOf = (api, year) => finGroups(year).find((g) => g.apis.includes(api));
+// prog = nama program penerima; kosong = "Bersama" (dipakai semua program mitra itu)
+export const recipientLabel = (fin, prog, year) => prog || `Bersama (${listLabel(finRecipients(fin, year))})`;
 // "untuk SIAP ITB" / "Bersama (SIAP ITB & INSPIRASI EduQuest)"
-export const recipientText = (fin, prog) => (prog ? "untuk " : "") + recipientLabel(fin, prog);
+export const recipientText = (fin, prog, year) => (prog ? "untuk " : "") + recipientLabel(fin, prog, year);
 
 export const programByApi = (api) => PROGRAMS.find((p) => p.api === api);
 export const programByKey = (key) => PROGRAMS.find((p) => p.key === key);
@@ -119,7 +143,9 @@ export function progColor(api) {
   if (api === "freeport") return PROG_COLORS[10];
   let i = PROGRAMS.findIndex((p) => p.api === api);
   if (i < 0) i = FIN_PROGRAMS.findIndex((p) => p.api === api);
-  return PROG_COLORS[(i < 0 ? 0 : i) % PROG_COLORS.length];
+  // mitra tambahan: warna tetap dari namanya
+  if (i < 0) i = [...String(api)].reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
+  return PROG_COLORS[i % PROG_COLORS.length];
 }
 
 // selisih hari tanggal kegiatan terhadap hari ini: 0 = hari ini, 1 = besok, -1 = kemarin.
