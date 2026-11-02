@@ -1,5 +1,6 @@
 // Komponen kecil yang dipakai berulang.
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { levelLabel, statusLabel } from "../lib/format.js";
 import { useUiStore } from "../stores/ui.js";
 import { Icon } from "./Icon.jsx";
@@ -251,20 +252,62 @@ export function Segmented({ value, options, onChange, label }) {
 }
 
 // tampilkan `limit` item pertama + tombol "Lihat semua (n)"
-/** Pilih satu atau beberapa tahun dengan centang; minimal satu tahun tetap tercentang. */
+/**
+ * Pilih satu atau beberapa tahun: tertutup hanya menampilkan tahun tercentang; diklik memunculkan semua tahun ke bawah.
+ * Minimal satu tahun tetap tercentang. Daftar dipasang di body agar tidak terpotong kartu.
+ */
 export function YearChecks({ years, options, onChange }) {
+  const [pos, setPos] = useState(null);   // posisi daftar di layar; null = tertutup
+  const btn = useRef(null), panel = useRef(null);
+  const open = !!pos;
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const close = () => setPos(null);
+    const onDown = (e) => { if (!panel.current?.contains(e.target) && !btn.current?.contains(e.target)) close(); };
+    const onKey = (e) => { if (e.key === "Escape") { close(); btn.current?.focus(); } };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [open]);
+
+  const toggleOpen = () => {
+    if (open) return setPos(null);
+    const r = btn.current.getBoundingClientRect();
+    const height = options.length * 38 + 12;
+    const below = r.bottom + 4 + height <= window.innerHeight;
+    return setPos({ left: r.left, minWidth: r.width, top: below ? r.bottom + 4 : Math.max(8, r.top - height - 4) });
+  };
   const toggle = (y) => {
     const next = years.includes(y) ? years.filter((x) => x !== y) : [...years, y];
     if (next.length) onChange(next.sort((a, b) => a - b));
   };
+
   return (
-    <div className="year-checks" role="group" aria-label="Tahun">
-      {options.map((y) => (
-        <label key={y} className={"check" + (years.includes(y) ? " on" : "")}>
-          <input type="checkbox" checked={years.includes(y)} onChange={() => toggle(y)} />{y}
-        </label>
-      ))}
-    </div>
+    <>
+      <button type="button" ref={btn} className="year-pick" aria-haspopup="true" aria-expanded={open} aria-label={`Tahun: ${years.join(", ")}`} onClick={toggleOpen}>
+        <span className="year-box"><Icon name="check" size={12} /></span>
+        <span className="year-now">{[...years].sort((a, b) => b - a).join(", ")}</span>
+        <Icon name="down" size={15} />
+      </button>
+      {open && createPortal(
+        <div ref={panel} className="year-menu" role="group" aria-label="Pilih tahun" style={pos}>
+          {options.map((y) => (
+            <label key={y} className={years.includes(y) ? "on" : ""}>
+              <input type="checkbox" checked={years.includes(y)} onChange={() => toggle(y)} />{y}
+            </label>
+          ))}
+        </div>,
+        document.body,
+      )}
+    </>
   );
 }
 

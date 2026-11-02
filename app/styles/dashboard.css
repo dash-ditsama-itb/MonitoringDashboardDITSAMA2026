@@ -1167,6 +1167,13 @@ span.asp-lab{cursor:default}
 .fin-add-row{display:flex;gap:8px;align-items:center}.fin-add-row input{flex:1;min-width:0}
 .field-err{margin:6px 0 0;font-size:12.5px;color:var(--crit-ink)}
 /* centang tahun (Keuangan) */
-.year-checks{display:flex;flex-wrap:wrap;gap:6px}
-.year-checks .check{padding:0 10px;min-height:38px;cursor:pointer;white-space:nowrap}
-.filter-bar .field-years{flex:0 1 auto;max-width:none}
+.year-pick{display:flex;align-items:center;gap:8px;width:100%;height:40px;padding:0 10px 0 12px;border:1px solid var(--line-2);border-radius:var(--r);background:#fff;
+  font:inherit;font-size:14px;color:var(--ink);cursor:pointer;white-space:nowrap}
+.year-pick:hover{border-color:var(--blue)}
+.year-now{flex:1;min-width:0;text-align:left;overflow:hidden;text-overflow:ellipsis}
+.year-box{display:inline-flex;align-items:center;justify-content:center;flex:none;width:16px;height:16px;border-radius:4px;background:var(--blue);color:#fff}
+.tbl-toolbar .year-pick{width:auto;flex:0 0 auto;min-width:112px;max-width:180px}
+.year-menu{position:fixed;z-index:1000;padding:6px;background:#fff;border:1px solid var(--line-2);border-radius:var(--r);box-shadow:var(--sh-pop);display:flex;flex-direction:column;gap:0}
+.year-menu label{display:flex;align-items:center;gap:8px;min-height:38px;padding:0 10px;border-radius:var(--r-sm);font-size:14px;color:var(--ink);cursor:pointer}
+.year-menu label:hover{background:var(--subtle)}
+.year-menu label.on{color:var(--navy);font-weight:700}
