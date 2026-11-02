@@ -43,7 +43,9 @@ function FinancialPage() {
   // filter bulan hanya untuk satu tahun (saldo = akhir bulan itu)
   const setYears = (list) => setFilter({ years: list, ...(list.length > 1 ? { month: "" } : {}) });
   const month = year ? ui.month : "";
-  const period = month ? `${MONTHS[Number(month) - 1]} ${year}` : years.join(" & ");
+  // periode bisa berlanjut ke tahun berikutnya: bulan itu ditulis dengan tahun kalendernya (April 2026 di periode 2025)
+  const calendarYear = (m) => Math.max(year ?? 0, ...months.filter((x) => x.month === m).map((x) => x.calendarYear ?? x.year));
+  const period = month ? `${MONTHS[Number(month) - 1]} ${calendarYear(Number(month))}` : years.join(" & ");
   const active = !!(group || month || ui.submissionType || years.length !== 1 || year !== thisYear);
 
   return (
@@ -57,7 +59,7 @@ function FinancialPage() {
           <YearChecks years={years} options={yearOptions} onChange={setYears} />
         </div>
         <SelectField label="Bulan" value={month} onChange={(v) => setFilter({ month: v })} disabled={!year}
-          options={[["", "Semua bulan"], ...[...new Set(months.map((m) => m.month))].sort((a, b) => a - b).map((m) => [String(m), MONTHS[m - 1]])]} />
+          options={[["", "Semua bulan"], ...[...new Set(months.map((m) => m.month))].map((m) => [String(m), MONTHS[m - 1] + (year && calendarYear(m) !== year ? ` ${calendarYear(m)}` : "")])]} />
         <SelectField label="Jenis pengajuan" value={ui.submissionType} onChange={(v) => setFilter({ submissionType: v })}
           options={[["", "Semua jenis"], ...(fo?.submissionTypes || []).map((t) => [t, t])]} />
         {active && <button type="button" className="btn btn-sm filter-reset" onClick={() => setFilter({ program: "all", years: [thisYear], month: "", submissionType: "" })}>Reset filter</button>}

@@ -108,6 +108,13 @@ export function finRecipients(api, year) {
   const withData = years.filter((y) => y === "*" || finDataYears.includes(y));
   return [...new Set((withData.length ? withData : years).flatMap((y) => byYear[y]))];
 }
+// periode anggaran mitra, dinamai tahun mulainya: tahun pertama yang punya transaksi = Periode 1, tahun berikutnya Periode 2, dst.
+export const finPeriodYears = (api) => finPartner(api)?.periodYears || [];
+export function finPeriodLabel(api, year) {
+  const first = finPeriodYears(api)[0];
+  if (first === undefined) return `Periode 1 (${year})`;
+  return year < first ? `Periode 1 baru (${year})` : `Periode ${year - first + 1} (${year})`;
+}
 export const finMitra = (api) => (finPartner(api)?.isMitra ? finPartner(api).name : "");
 // nama yang tampil = nama program penerima; mitra baru yang belum punya program memakai nama mitranya
 export const finProgramLabel = (api, year) => listLabel(finRecipients(api, year)) || finPartner(api)?.name || api;
