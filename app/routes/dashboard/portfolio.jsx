@@ -50,6 +50,14 @@ function PortfolioPage() {
   const filters = Object.entries(shownDash).filter(([, v]) => v !== "Semua")
     .map(([k, v]) => (k === "month" ? monthKeyLabel(v) : k === "issueLevel" ? levelLabel(v.toLowerCase()) : v));
   const timeline = useMemo(() => [...(d?.timeline || [])].sort(byLabel((t) => t.programLabel)), [d]);
+  const performa = d && (
+    <div className="grid g-5-7">
+      <Performance strip={!shown ? withProgramFeedback(d.performanceStrip, d.portfolio, d.sugt)
+        : shown.api === "sugt" ? withSugtFeedback(d.performanceStrip, d.sugt) : d.performanceStrip}
+        title={"Performa kegiatan " + (shown ? shown.label : "semua program")} />
+      <PortfolioList items={d.portfolio} sugt={d.sugt} program={shown} />
+    </div>
+  );
 
   return (
     <div className="page">
@@ -62,14 +70,8 @@ function PortfolioPage() {
         <Pending busy={loading}>
           {shown && <ProgramAbout program={shown} />}
           <Progress kpi={d.kpi} portfolio={d.portfolio} sugt={d.sugt} program={shown} last={last} />
-          {shown?.api === "sugt" && <SugtSummary />}
-
-          <div className="grid g-5-7">
-            <Performance strip={!shown ? withProgramFeedback(d.performanceStrip, d.portfolio, d.sugt)
-              : shown.api === "sugt" ? withSugtFeedback(d.performanceStrip, d.sugt) : d.performanceStrip}
-              title={"Performa kegiatan " + (shown ? shown.label : "semua program")} />
-            <PortfolioList items={d.portfolio} sugt={d.sugt} program={shown} />
-          </div>
+          {/* SUGT: performa & kinerja tampil di antara kartu luring/daring dan kartu umpan balik */}
+          {shown?.api === "sugt" ? <SugtSummary>{performa}</SugtSummary> : performa}
 
           <RekapPeserta program={shown?.api} programLabel={shown?.label} />
           <ParticipantAnalysis a={d.participantAnalysis}

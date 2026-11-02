@@ -121,8 +121,11 @@ export function withSugt(p, s) {
   };
 }
 
-/** Kelas luring & daring dari aplikasi SUGT; tampil di dashboard SUGT dan Portofolio Program (filter Program = SUGT). */
-export function SugtSummary() {
+/**
+ * Kelas luring & daring dari aplikasi SUGT; tampil di dashboard SUGT dan Portofolio Program (filter Program = SUGT).
+ * children tampil di antara kartu luring & daring dan kartu umpan balik.
+ */
+export function SugtSummary({ children }) {
   const { data, error, loading, reload } = useApi("/dashboard/sugt");
   const s = data?.data;
   const home = s?.progress.detailUrl || SUGT_URL;
@@ -150,12 +153,9 @@ export function SugtSummary() {
             </EmptyState>
           </section>
         ) : <div className="grid g-2"><SkeletonCard /><SkeletonCard /></div>
-      ) : (
-        <Pending busy={loading}>
-          <SugtMeters s={s} links />
-          <SugtFeedbackCards s={s} />
-        </Pending>
-      )}
+      ) : <Pending busy={loading}><SugtMeters s={s} links /></Pending>}
+      {children}
+      {s && <Pending busy={loading}><SugtFeedbackCards s={s} /></Pending>}
     </>
   );
 }
