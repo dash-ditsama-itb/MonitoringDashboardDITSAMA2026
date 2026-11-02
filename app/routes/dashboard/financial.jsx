@@ -53,7 +53,7 @@ function FinancialPage() {
       <section className="card filter-bar">
         <SelectField label="Program" value={group ? group.key : "all"} onChange={(v) => setFilter({ program: v })}
           options={[["all", "Semua program"], ...finGroups(year).map((g) => [g.key, g.label])]} />
-        <div className="field field-years"><span className="field-lab">Tahun</span>
+        <div className="field"><span className="field-lab">Tahun</span>
           <YearChecks years={years} options={yearOptions} onChange={setYears} />
         </div>
         <SelectField label="Bulan" value={month} onChange={(v) => setFilter({ month: v })} disabled={!year}
