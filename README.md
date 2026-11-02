@@ -114,6 +114,21 @@ digeser; indikator bernomor yang kolom TARGET-nya diisi otomatis tampil di kartu
 sel jenis banner yang kosong untuk suatu lokasi ditampilkan "–" (tidak direncanakan); kolom yang tidak dipakai sama sekali disembunyikan. Bila spreadsheet tidak bisa
 dihubungi, halaman memakai data terakhir yang tersimpan di browser, lalu data cadangan (`TTB`, `MAPPING_FALLBACK`) di `karakter.js`. Akun yang men-deploy harus punya akses ke file Tim Humas.
 
+#### Catatan lokasi Mapping Banner (ditulis dari dashboard)
+Di tabel **Peta keterpasangan per lokasi**, akun dengan izin **Kelola laporan** (grant administrator) bisa menulis
+**Catatan** per lokasi lalu menekan **Simpan catatan**. Apps Script (`doPost`) menulisnya ke kolom `CATATAN` file Tim
+Humas, beserta waktu dan nama penyimpan di kolom `TERAKHIR DIPERBARUI` / `DIPERBARUI OLEH` (dibuat otomatis di kanan
+`CATATAN` saat pertama kali menyimpan). URL `/exec` terbuka untuk siapa saja, jadi setiap penyimpanan membawa token
+login dashboard yang diperiksa Apps Script ke backend (`GET /auth/me`); tanpa token yang sah dan izin Kelola laporan,
+tidak ada yang ditulis. Bila catatan di sheet sudah diubah orang lain sejak halaman dimuat, baris itu tidak ditimpa dan
+dashboard meminta pengguna memeriksanya. Pemasangan (sekali, oleh pemilik proyek Apps Script):
+1. Tempel versi terbaru `apps-script/dashboard-karakter.gs` → **Kelola deployment → Edit → Versi baru** (URL tetap sama).
+2. **Setelan proyek → Properti skrip** → tambah `DITSAMA_API_URL` = alamat backend produksi termasuk `/api`
+   (sama dengan `VITE_API_URL` build produksi). Backend harus bisa diakses dari internet (server Google).
+3. Akun yang menjalankan web app (Jalankan sebagai) harus punya akses **edit** ke file Tim Humas, dan harus menjalankan `cobaLihatDataMapping` sekali dari editor untuk mengizinkan akses baru ("terhubung ke layanan eksternal"); penyimpanan dari dashboard tidak bisa memunculkan dialog izin.
+4. (Opsional) jalankan `pasangWaktuCatatanOtomatis` sekali: catatan yang diketik langsung di file Tim Humas juga
+   mendapat waktu otomatis (pemicu "saat diedit" di file itu).
+
 ## Publikasi di GitHub Pages
 Workflow `.github/workflows/deploy.yml` otomatis build & deploy setiap push ke `main`.
 1. Repo → **Settings → Pages** → Source: **GitHub Actions**.
