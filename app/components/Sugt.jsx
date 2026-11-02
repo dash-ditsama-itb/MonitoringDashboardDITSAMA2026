@@ -5,7 +5,6 @@ import { fmtDateTime, fmtNum, fmtRelative, pct } from "../lib/format.js";
 import { useApi } from "../stores/data.js";
 import { Icon } from "./Icon.jsx";
 import { InfoTip } from "./InfoTip.jsx";
-import { Performance } from "./ProgressSummary.jsx";
 import { Bar, EmptyState, ErrorNote, Pending, RefreshButton, SkeletonCard } from "./ui.jsx";
 
 // kegiatan SUGT = 10 per sekolah (8 sesi + pretest + posttest)
@@ -122,15 +121,10 @@ export function withSugt(p, s) {
   };
 }
 
-/**
- * Kelas luring & daring dari aplikasi SUGT; tampil di dashboard SUGT dan Portofolio Program (filter Program = SUGT).
- * performance: kartu Performa kegiatan SUGT (data kegiatan di dashboard ini + umpan balik aplikasi SUGT);
- * Portofolio Program sudah punya kartu ini sendiri.
- */
-export function SugtSummary({ performance = true }) {
+/** Kelas luring & daring dari aplikasi SUGT; tampil di dashboard SUGT dan Portofolio Program (filter Program = SUGT). */
+export function SugtSummary() {
   const { data, error, loading, reload } = useApi("/dashboard/sugt");
   const s = data?.data;
-  const strip = useApi("/dashboard", { program: "SUGT" }, { enabled: performance }).data?.data?.performanceStrip;
   const home = s?.progress.detailUrl || SUGT_URL;
 
   return (
@@ -159,10 +153,6 @@ export function SugtSummary({ performance = true }) {
       ) : (
         <Pending busy={loading}>
           <SugtMeters s={s} links />
-          {performance && (
-            <Performance title="Performa kegiatan SUGT" strip={withSugtFeedback(strip, s)}
-              sub="Rata-rata kegiatan SUGT di Data Kegiatan; umpan balik digabung dengan aplikasi SUGT · tekan (i) untuk cara hitungnya" />
-          )}
           <SugtFeedbackCards s={s} />
         </Pending>
       )}
