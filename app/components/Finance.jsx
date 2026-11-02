@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { PKS_TYPES } from "../config.js";
 import { api, errorText } from "../lib/api.js";
 import {
-  canEditFinance, finMitra, finProgramLabel, finRecipients, finSourceLabel, finSources, finTypeLabel, finYears, recipientLabel, recipientText, setFinCatalog, fmtDate, fmtDateTime, fmtRelative, fmtRupiah, fromDateInput, isPks, toDateInput,
+  canEditFinance, finMitra, finPeriodLabel, finPeriodYears, finProgramLabel, finRecipients, finSourceLabel, finSources, finTypeLabel, finYears, recipientLabel, recipientText, setFinCatalog, fmtDate, fmtDateTime, fmtRelative, fmtRupiah, fromDateInput, isPks, toDateInput,
 } from "../lib/format.js";
 import { useAuthStore } from "../stores/auth.js";
 import { invalidate, useApi } from "../stores/data.js";
@@ -28,7 +28,10 @@ export function useFinCatalog() {
   return { ready: !!partners, reload };
 }
 
-const yearOf = (r) => new Date(r.date).getUTCFullYear();
+// periode transaksi; baris tanpa periode mengikuti tahun tanggalnya
+const yearOf = (r) => r.periodYear ?? new Date(r.date).getUTCFullYear();
+
+const PeriodTag = ({ r }) => (finPeriodYears(r.program).length ? <span>{finPeriodLabel(r.program, yearOf(r))}</span> : null);
 
 function TypeChip({ r }) {
   return <span className={"ftype " + (isPks(r) ? "pks" : "sub")}>{finTypeLabel(r.type)}</span>;
@@ -102,7 +105,7 @@ export function FinanceTable({ filters: pageFilters, ui, update, years, yearOpti
         <div className="tbl-actions">
           {canEdit && (
             <ImportButton path={"/financial/import" + (singleProgram ? "/" + singleProgram : "")}
-              hint="Unggah .xlsx/.csv. Semua tab sheet yang punya kolom Nilai PKS atau Nilai Pengajuan ikut diimpor; mitra dibaca dari kolom Program atau nama tab (mis. SIAP_2026), program penerima dari kolom Program Penerima. Baris yang ID-nya sudah ada akan memperbarui transaksi tersebut"
+              hint="Unggah .xlsx/.csv. Semua tab sheet yang punya kolom Nilai PKS atau Nilai Pengajuan ikut diimpor; mitra dibaca dari kolom Program atau nama tab (mis. SIAP_2026), periode dari kolom Periode atau tahun di nama tab (kalau tidak ada, tahun tanggalnya), program penerima dari kolom Program Penerima. Baris yang ID-nya sudah ada akan memperbarui transaksi tersebut"
               describe={(d) => importSummary(d, "transaksi", "program tidak dikenal")} onDone={refreshFinance} />
           )}
           <ExportButton path={exportPath} filename="keuangan.xlsx"
@@ -175,7 +178,7 @@ export function FinanceTable({ filters: pageFilters, ui, update, years, yearOpti
                     <td className="c-type"><TypeChip r={r} /></td>
                     <td className="c-name">
                       <div className="cell-strong">{detailOf(r) || <span className="muted">Tanpa keterangan</span>}</div>
-                      <div className="row-meta">{showProgram && <span className="ptag">{finSourceLabel(r.program, yearOf(r))}</span>}<RecipientTag r={r} />{subOf(r) && <span>{subOf(r)}</span>}</div>
+                      <div className="row-meta">{showProgram && <span className="ptag">{finSourceLabel(r.program, yearOf(r))}</span>}<RecipientTag r={r} /><PeriodTag r={r} />{subOf(r) && <span>{subOf(r)}</span>}</div>
                     </td>
                     <td className={"num c-amt " + (isPks(r) ? "pos" : "neg")}>{isPks(r) ? "+" : "−"}{fmtRupiah(amountOf(r))}</td>
                     <td className="num c-dpks">{isPks(r) ? <>{fmtRupiah(r.dpks)}<span className="muted"> · {r.dpksPercentage ?? 0}%</span></> : <span className="muted">–</span>}</td>
@@ -203,7 +206,7 @@ export function FinanceTable({ filters: pageFilters, ui, update, years, yearOpti
                 <button type="button" className="rec-main" disabled={!canEdit} onClick={() => setForm({ kind: isPks(r) ? "pks" : "submission", record: r })}>
                   <span className="rec-top"><span className="rec-name">{detailOf(r) || finTypeLabel(r.type)}</span>
                     <span className={"rec-amt " + (isPks(r) ? "pos" : "neg")}>{isPks(r) ? "+" : "−"}{fmtRupiah(amountOf(r))}</span></span>
-                  <span className="rec-meta"><TypeChip r={r} /><span>{fmtDate(r.date)}</span>{showProgram && <span>{finSourceLabel(r.program, yearOf(r))}</span>}<RecipientTag r={r} /></span>
+                  <span className="rec-meta"><TypeChip r={r} /><span>{fmtDate(r.date)}</span>{showProgram && <span>{finSourceLabel(r.program, yearOf(r))}</span>}<RecipientTag r={r} /><PeriodTag r={r} /></span>
                   <span className="rec-meta"><span>Saldo {fmtRupiah(r.balance)}</span>{subOf(r) && <span>{subOf(r)}</span>}</span>
                 </button>
               </li>
@@ -243,13 +246,15 @@ function RecipientTag({ r }) {
 
 function formFrom(kind, r, program, session) {
   if (!r) {
+    const periodYear = new Date().getFullYear();
     return kind === "pks"
-      ? { program, type: "initial_pks", pksType: "Pm", value: "", date: today(), text: "", pic: session?.name || "" }
-      : { program, date: today(), invoiceNumber: "", submissionType: "", text: "", value: "", pic: session?.name || "", recipient: "" };
+      ? { program, periodYear, type: "initial_pks", pksType: "Pm", value: "", date: today(), text: "", pic: session?.name || "" }
+      : { program, periodYear, date: today(), invoiceNumber: "", submissionType: "", text: "", value: "", pic: session?.name || "", recipient: "" };
   }
+  const periodYear = yearOf(r);
   return isPks(r)
-    ? { program: r.program, type: r.type, pksType: r.pksType || "Pm", value: String(r.pksValue ?? ""), date: toDateInput(r.date), text: r.information || "", pic: r.pic || "" }
-    : { program: r.program, date: toDateInput(r.date), invoiceNumber: r.invoiceNumber || "", submissionType: r.submissionType || "", text: r.description || "", value: String(r.submissionValue ?? ""), pic: r.pic || "", recipient: r.recipientProgram || "" };
+    ? { program: r.program, periodYear, type: r.type, pksType: r.pksType || "Pm", value: String(r.pksValue ?? ""), date: toDateInput(r.date), text: r.information || "", pic: r.pic || "" }
+    : { program: r.program, periodYear, date: toDateInput(r.date), invoiceNumber: r.invoiceNumber || "", submissionType: r.submissionType || "", text: r.description || "", value: String(r.submissionValue ?? ""), pic: r.pic || "", recipient: r.recipientProgram || "" };
 }
 
 // isian nama mitra/program baru di dalam form pengajuan & PKS
@@ -289,16 +294,33 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
   const [err, setErr] = useState("");
   useEffect(() => { if (open) { setF(formFrom(kind, record, program0, session)); setErr(""); setAdding(null); } }, [open, kind, record]);
 
-  // daftar program mengikuti mitra & tahun; tahun selalu sama dengan tanggal transaksi
-  const year = Number(String(f.date || "").slice(0, 4)) || new Date().getFullYear();
+  // daftar program mengikuti mitra & periode. Backend lama belum punya periode: tahun selalu sama dengan tanggal transaksi
+  const thisYear = new Date().getFullYear();
+  const yearOfDate = (date) => Number(String(date || "").slice(0, 4));
+  const year = ready ? f.periodYear : yearOfDate(f.date) || thisYear;
   const recipients = finRecipients(f.program, year);
-  const years = [...new Set([...finYears(), new Date().getFullYear(), year])].sort((a, b) => b - a);
+  const periods = finPeriodYears(f.program);
+  const years = [...new Set([
+    ...finYears(), thisYear, year,
+    ...(ready && periods.length ? [...periods, periods[0] - 1, periods[periods.length - 1] + 1] : []),
+  ])].sort((a, b) => b - a);
   const keepRecipient = (cur, program, y) => (finRecipients(program, y).includes(cur.recipient) ? cur.recipient : "");
-  const setDate = (date) => setF((cur) => ({ ...cur, date, recipient: keepRecipient(cur, cur.program, Number(date.slice(0, 4))) }));
-  const setYear = (y) => {
-    const next = `${y}${(f.date || today()).slice(4)}`;
-    setDate(Number.isNaN(Date.parse(next)) ? `${y}-02-28` : next);   // 29 Feb di tahun bukan kabisat
-  };
+  // tanggal boleh lewat ke tahun berikutnya dalam periode yang sama, tetapi tidak sebelum periodenya dimulai
+  const setDate = (date) => setF((cur) => {
+    const dateYear = yearOfDate(date);
+    const periodYear = dateYear >= 2000 && dateYear < cur.periodYear ? dateYear : cur.periodYear;
+    return { ...cur, date, periodYear, recipient: keepRecipient(cur, cur.program, ready ? periodYear : dateYear) };
+  });
+  const setYear = (y) => setF((cur) => {
+    const dateYear = yearOfDate(cur.date);
+    let date = cur.date;
+    if (!ready || dateYear < y || dateYear > y + 1) {
+      date = `${y}${(cur.date || today()).slice(4)}`;
+      if (Number.isNaN(Date.parse(date))) date = `${y}-02-28`;   // 29 Feb di tahun bukan kabisat
+    }
+    return { ...cur, date, periodYear: y, recipient: keepRecipient(cur, cur.program, y) };
+  });
+  const yearText = (y) => (ready ? finPeriodLabel(f.program, y) : `tahun ${y}`);
   const sameName = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
   async function addMitra(name) {
@@ -310,7 +332,7 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
     setAdding("program");
   }
   async function addProgram(program) {
-    if (recipients.some((p) => sameName(p, program))) return `Program ini sudah ada di mitra ini untuk tahun ${year}.`;
+    if (recipients.some((p) => sameName(p, program))) return `Program ini sudah ada di mitra ini untuk ${yearText(year)}.`;
     await api("/financial/catalog/programs", { method: "POST", body: { partner: f.program, year, program } });
     await reloadCatalog();
     setF((cur) => ({ ...cur, recipient: program }));
@@ -328,11 +350,12 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
     if (!f.date) return setErr("Isi tanggal.");
     setErr(""); setBusy(true);
     const date = fromDateInput(f.date);
+    const periodBody = ready ? { periodYear: year } : {};
     try {
       if (!isEdit) {
         const body = isPksForm
-          ? { program: f.program, type: f.type, pksType: f.pksType, pksValue: value, date, ...(f.text.trim() ? { information: f.text.trim() } : {}) }
-          : { program: f.program, date, submissionValue: value,
+          ? { program: f.program, type: f.type, pksType: f.pksType, pksValue: value, date, ...periodBody, ...(f.text.trim() ? { information: f.text.trim() } : {}) }
+          : { program: f.program, date, ...periodBody, submissionValue: value,
               ...(f.invoiceNumber.trim() ? { invoiceNumber: f.invoiceNumber.trim() } : {}),
               ...(f.submissionType.trim() ? { submissionType: f.submissionType.trim() } : {}),
               ...(f.text.trim() ? { description: f.text.trim() } : {}),
@@ -346,6 +369,7 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
         set("program", f.program, r.program);
         set("pic", f.pic.trim(), r.pic);
         if (f.date !== toDateInput(r.date)) body.date = date;
+        if (ready && year !== yearOf(r)) body.periodYear = year;
         if (isPksForm) {
           set("pksType", f.pksType, r.pksType);
           if (value !== r.pksValue) body.pksValue = value;
@@ -388,18 +412,25 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
               <span className="field-lab">Jenis</span>
               <Segmented label="Jenis PKS" value={f.type} onChange={(v) => setF({ ...f, type: v })}
                 options={[["initial_pks", "PKS Awal"], ["addition_pks", "Penambahan PKS"]]} />
-              <p className="hint">PKS Awal hanya sekali per program dalam satu tahun. Tambahan dana di tahun yang sama dicatat sebagai Penambahan PKS.</p>
+              <p className="hint">PKS Awal hanya sekali per program dalam satu {ready ? "periode" : "tahun"}. Tambahan dana di {ready ? "periode" : "tahun"} yang sama dicatat sebagai Penambahan PKS.</p>
             </div>
           )}
           <div className="form-grid">
-            <label className="field"><span className="field-lab">Tahun</span>
-              <select value={year} onChange={(e) => setYear(e.target.value)}>
-                {years.map((y) => <option key={y} value={y}>{y}</option>)}
+            <label className="field"><span className="field-lab">{ready ? "Periode" : "Tahun"}</span>
+              <select value={year} onChange={(e) => setYear(Number(e.target.value))}>
+                {years.map((y) => <option key={y} value={y}>{ready ? finPeriodLabel(f.program, y) : y}</option>)}
               </select>
             </label>
             <label className="field"><span className="field-lab">{isPksForm ? "Tanggal PKS" : "Tanggal pengajuan"}</span>
               <input type="date" required value={f.date ?? ""} onChange={(e) => setDate(e.target.value)} />
             </label>
+            {ready && (
+              <p className="hint span-2">
+                {periods.length > 0 && year < periods[0]
+                  ? `Periode yang sudah ada bergeser: ${periods[0]} menjadi Periode ${periods[0] - year + 1}.`
+                  : "Tanggal boleh sampai tahun berikutnya, mis. pengajuan April 2026 tetap di periode 2025."}
+              </p>
+            )}
             <div className="field span-2"><label className="field-lab" htmlFor="fin-mitra">Mitra / sumber dana</label>
               <select id="fin-mitra" value={f.program} onChange={(e) => { const program = e.target.value; setF((cur) => ({ ...cur, program, recipient: keepRecipient(cur, program, year) })); setAdding(null); }}>
                 {finSources(year).map((a) => <option key={a} value={a}>{finSourceLabel(a, year)}</option>)}
@@ -407,13 +438,13 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
               {ready && adding !== "mitra" && <button type="button" className="fin-more" onClick={() => setAdding("mitra")}><Icon name="plus" size={13} />Tambah mitra lain</button>}
             </div>
             {adding === "mitra" && <AddName label="nama mitra" placeholder="Nama mitra baru" onAdd={addMitra} onCancel={() => setAdding(null)} />}
-            <div className="field span-2"><label className="field-lab" htmlFor="fin-prog">{isPksForm ? `Program yang didanai tahun ${year}` : "Program penerima"}</label>
+            <div className="field span-2"><label className="field-lab" htmlFor="fin-prog">{isPksForm ? `Program yang didanai ${yearText(year)}` : "Program penerima"}</label>
               {!isPksForm && recipients.length > 1 ? (
                 <select id="fin-prog" {...field("recipient")}>
                   <option value="">{recipientLabel(f.program, null, year)}</option>
                   {recipients.map((p) => <option key={p} value={p}>{p}</option>)}
                 </select>
-              ) : <select id="fin-prog" disabled value=""><option value="">{recipients.join(", ") || `Belum ada program untuk tahun ${year}`}</option></select>}
+              ) : <select id="fin-prog" disabled value=""><option value="">{recipients.join(", ") || `Belum ada program untuk ${yearText(year)}`}</option></select>}
               {ready && adding !== "program" && <button type="button" className="fin-more" onClick={() => setAdding("program")}><Icon name="plus" size={13} />Tambah program lain</button>}
             </div>
             {adding === "program" && <AddName label="nama program" placeholder="Nama program baru, mis. Bridging" onAdd={addProgram} onCancel={() => setAdding(null)} />}
