@@ -110,10 +110,24 @@ export function finRecipients(api, year) {
 }
 // periode anggaran mitra, dinamai tahun mulainya: tahun pertama yang punya transaksi = Periode 1, tahun berikutnya Periode 2, dst.
 export const finPeriodYears = (api) => finPartner(api)?.periodYears || [];
+// masa periode diisi di PKS Awal; periode yang selesai di tahun berikutnya tertulis lintas tahun: Periode 1 (2025–2026)
+const finPeriodRange = (api, year) => finPartner(api)?.periodRanges?.[year] || null;
 export function finPeriodLabel(api, year) {
   const first = finPeriodYears(api)[0];
   if (first === undefined) return `Periode 1 (${year})`;
-  return year < first ? `Periode 1 baru (${year})` : `Periode ${year - first + 1} (${year})`;
+  if (year < first) return `Periode 1 baru (${year})`;
+  const endYear = toDate(finPeriodRange(api, year)?.end)?.getUTCFullYear();
+  return `Periode ${year - first + 1} (${endYear > year ? `${year}–${endYear}` : year})`;
+}
+export function finPeriodDates(api, year) {
+  const range = finPeriodRange(api, year);
+  return range ? `${fmtDate(range.start)} – ${fmtDate(range.end)}` : "";
+}
+// tanggal di luar masa periode; masa yang belum lengkap tidak dinilai
+export function finOutsidePeriod(api, year, date) {
+  const range = finPeriodRange(api, year);
+  if (!range?.start || !range?.end || !date) return false;
+  return date < toDateInput(range.start) || date > toDateInput(range.end);
 }
 export const finMitra = (api) => (finPartner(api)?.isMitra ? finPartner(api).name : "");
 // nama yang tampil = nama program penerima; mitra baru yang belum punya program memakai nama mitranya
