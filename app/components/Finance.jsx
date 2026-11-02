@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { PKS_TYPES } from "../config.js";
 import { api, errorText } from "../lib/api.js";
 import {
-  canEditFinance, finMitra, finPeriodLabel, finPeriodYears, finProgramLabel, finRecipients, finSourceLabel, finSources, finTypeLabel, finYears, recipientLabel, recipientText, setFinCatalog, fmtDate, fmtDateTime, fmtRelative, fmtRupiah, fromDateInput, isPks, toDateInput,
+  canEditFinance, finMitra, finOutsidePeriod, finPeriodDates, finPeriodLabel, finPeriodYears, finProgramLabel, finRecipients, finSourceLabel, finSources, finTypeLabel, finYears, recipientLabel, recipientText, setFinCatalog, fmtDate, fmtDateTime, fmtRelative, fmtRupiah, fromDateInput, isPks, toDateInput,
 } from "../lib/format.js";
 import { useAuthStore } from "../stores/auth.js";
 import { invalidate, useApi } from "../stores/data.js";
@@ -31,7 +31,9 @@ export function useFinCatalog() {
 // periode transaksi; baris tanpa periode mengikuti tahun tanggalnya
 const yearOf = (r) => r.periodYear ?? new Date(r.date).getUTCFullYear();
 
-const PeriodTag = ({ r }) => (finPeriodYears(r.program).length ? <span>{finPeriodLabel(r.program, yearOf(r))}</span> : null);
+const PeriodTag = ({ r }) => (finPeriodYears(r.program).length
+  ? <span title={finPeriodDates(r.program, yearOf(r)) || undefined}>{finPeriodLabel(r.program, yearOf(r))}</span>
+  : null);
 
 function TypeChip({ r }) {
   return <span className={"ftype " + (isPks(r) ? "pks" : "sub")}>{finTypeLabel(r.type)}</span>;
@@ -105,7 +107,7 @@ export function FinanceTable({ filters: pageFilters, ui, update, years, yearOpti
         <div className="tbl-actions">
           {canEdit && (
             <ImportButton path={"/financial/import" + (singleProgram ? "/" + singleProgram : "")}
-              hint="Unggah .xlsx/.csv. Semua tab sheet yang punya kolom Nilai PKS atau Nilai Pengajuan ikut diimpor; mitra dibaca dari kolom Program atau nama tab (mis. SIAP_2026), periode dari kolom Periode atau tahun di nama tab (kalau tidak ada, tahun tanggalnya), program penerima dari kolom Program Penerima. Baris yang ID-nya sudah ada akan memperbarui transaksi tersebut"
+              hint="Unggah .xlsx/.csv. Semua tab sheet yang punya kolom Nilai PKS atau Nilai Pengajuan ikut diimpor; mitra dibaca dari kolom Program atau nama tab (mis. SIAP_2026), periode dari kolom Periode atau tahun di nama tab (kalau tidak ada, tahun tanggalnya), masa periode dari kolom Mulai Periode dan Selesai Periode di baris PKS Awal, program penerima dari kolom Program Penerima. Baris yang ID-nya sudah ada akan memperbarui transaksi tersebut"
               describe={(d) => importSummary(d, "transaksi", "program tidak dikenal")} onDone={refreshFinance} />
           )}
           <ExportButton path={exportPath} filename="keuangan.xlsx"
@@ -248,12 +250,12 @@ function formFrom(kind, r, program, session) {
   if (!r) {
     const periodYear = new Date().getFullYear();
     return kind === "pks"
-      ? { program, periodYear, type: "initial_pks", pksType: "Pm", value: "", date: today(), text: "", pic: session?.name || "" }
+      ? { program, periodYear, periodStart: "", periodEnd: "", type: "initial_pks", pksType: "Pm", value: "", date: today(), text: "", pic: session?.name || "" }
       : { program, periodYear, date: today(), invoiceNumber: "", submissionType: "", text: "", value: "", pic: session?.name || "", recipient: "" };
   }
   const periodYear = yearOf(r);
   return isPks(r)
-    ? { program: r.program, periodYear, type: r.type, pksType: r.pksType || "Pm", value: String(r.pksValue ?? ""), date: toDateInput(r.date), text: r.information || "", pic: r.pic || "" }
+    ? { program: r.program, periodYear, periodStart: toDateInput(r.periodStart), periodEnd: toDateInput(r.periodEnd), type: r.type, pksType: r.pksType || "Pm", value: String(r.pksValue ?? ""), date: toDateInput(r.date), text: r.information || "", pic: r.pic || "" }
     : { program: r.program, periodYear, date: toDateInput(r.date), invoiceNumber: r.invoiceNumber || "", submissionType: r.submissionType || "", text: r.description || "", value: String(r.submissionValue ?? ""), pic: r.pic || "", recipient: r.recipientProgram || "" };
 }
 
@@ -341,6 +343,13 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
   }
 
   const isEdit = !!record, isPksForm = kind === "pks";
+  const isAwal = ready && isPksForm && f.type === "initial_pks";   // masa periode hanya diisi di PKS Awal
+  const periodDates = ready ? finPeriodDates(f.program, year) : "";
+  const periodHint = periods.length > 0 && year < periods[0]
+    ? `Periode yang sudah ada bergeser: ${periods[0]} menjadi Periode ${periods[0] - year + 1}.`
+    : isAwal ? "Isi masa periode sesuai kontrak. Kalau selesai di tahun berikutnya, periode tertulis lintas tahun, mis. Periode 1 (2025–2026)."
+    : periodDates ? `Masa ${finPeriodLabel(f.program, year)}: ${periodDates}.`
+    : "Masa periode ini belum diisi di PKS Awal. Tanggal boleh sampai tahun berikutnya, mis. pengajuan April 2026 tetap di periode 2025.";
   const field = (k) => ({ value: f[k] ?? "", onChange: (e) => setF({ ...f, [k]: e.target.value }) });
   const persen = PKS_TYPES.find(([v]) => v === f.pksType)?.[2] ?? 0;
   const value = Number(f.value) || 0;
@@ -348,13 +357,19 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
   async function save() {
     if (!value) return setErr(isPksForm ? "Isi nilai PKS." : "Isi nilai pengajuan.");
     if (!f.date) return setErr("Isi tanggal.");
+    if (isAwal && (f.periodStart || f.periodEnd)) {
+      if (!f.periodStart || !f.periodEnd) return setErr("Isi tanggal mulai dan selesai periode, atau kosongkan keduanya.");
+      if (yearOfDate(f.periodStart) !== year) return setErr(`Tanggal mulai harus berada di tahun ${year}, sesuai periodenya.`);
+      if (f.periodEnd < f.periodStart) return setErr("Tanggal selesai tidak boleh sebelum tanggal mulai periode.");
+    }
     setErr(""); setBusy(true);
     const date = fromDateInput(f.date);
     const periodBody = ready ? { periodYear: year } : {};
+    const rangeBody = isAwal && f.periodStart ? { periodStart: fromDateInput(f.periodStart), periodEnd: fromDateInput(f.periodEnd) } : {};
     try {
       if (!isEdit) {
         const body = isPksForm
-          ? { program: f.program, type: f.type, pksType: f.pksType, pksValue: value, date, ...periodBody, ...(f.text.trim() ? { information: f.text.trim() } : {}) }
+          ? { program: f.program, type: f.type, pksType: f.pksType, pksValue: value, date, ...periodBody, ...rangeBody, ...(f.text.trim() ? { information: f.text.trim() } : {}) }
           : { program: f.program, date, ...periodBody, submissionValue: value,
               ...(f.invoiceNumber.trim() ? { invoiceNumber: f.invoiceNumber.trim() } : {}),
               ...(f.submissionType.trim() ? { submissionType: f.submissionType.trim() } : {}),
@@ -370,6 +385,10 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
         set("pic", f.pic.trim(), r.pic);
         if (f.date !== toDateInput(r.date)) body.date = date;
         if (ready && year !== yearOf(r)) body.periodYear = year;
+        if (isAwal) {
+          if (f.periodStart !== toDateInput(r.periodStart)) body.periodStart = fromDateInput(f.periodStart);
+          if (f.periodEnd !== toDateInput(r.periodEnd)) body.periodEnd = fromDateInput(f.periodEnd);
+        }
         if (isPksForm) {
           set("pksType", f.pksType, r.pksType);
           if (value !== r.pksValue) body.pksValue = value;
@@ -424,12 +443,17 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
             <label className="field"><span className="field-lab">{isPksForm ? "Tanggal PKS" : "Tanggal pengajuan"}</span>
               <input type="date" required value={f.date ?? ""} onChange={(e) => setDate(e.target.value)} />
             </label>
-            {ready && (
-              <p className="hint span-2">
-                {periods.length > 0 && year < periods[0]
-                  ? `Periode yang sudah ada bergeser: ${periods[0]} menjadi Periode ${periods[0] - year + 1}.`
-                  : "Tanggal boleh sampai tahun berikutnya, mis. pengajuan April 2026 tetap di periode 2025."}
-              </p>
+            {ready && <p className="hint span-2">{periodHint}</p>}
+            {ready && !isAwal && finOutsidePeriod(f.program, year, f.date) && <p className="hint err span-2">Tanggal ini di luar masa periode.</p>}
+            {isAwal && (
+              <>
+                <label className="field"><span className="field-lab">Mulai periode</span>
+                  <input type="date" {...field("periodStart")} />
+                </label>
+                <label className="field"><span className="field-lab">Selesai periode</span>
+                  <input type="date" {...field("periodEnd")} />
+                </label>
+              </>
             )}
             <div className="field span-2"><label className="field-lab" htmlFor="fin-mitra">Mitra / sumber dana</label>
               <select id="fin-mitra" value={f.program} onChange={(e) => { const program = e.target.value; setF((cur) => ({ ...cur, program, recipient: keepRecipient(cur, program, year) })); setAdding(null); }}>
