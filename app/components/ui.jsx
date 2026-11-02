@@ -174,7 +174,8 @@ export function SearchInput({ value, onChange, placeholder, delay = 350, classNa
   );
 }
 
-const PAGE_SIZES = [10, 25, 50, 100];
+const PAGE_SIZES = [10, 25, 50, 100, 250, 500];
+const PAGE_ALL = 100000;   // pilihan "Semua": backend tidak membatasi perPage
 /** Navigasi halaman dari objek `pagination` backend. */
 export function Pagination({ pagination, perPage, onPage, onPerPage, noun = "data" }) {
   if (!pagination || !pagination.totalRecords) return null;
@@ -192,17 +193,18 @@ export function Pagination({ pagination, perPage, onPage, onPerPage, noun = "dat
       <div className="pager-info">
         <b>{from.toLocaleString("id-ID")}–{to.toLocaleString("id-ID")}</b> dari {totalRecords.toLocaleString("id-ID")} {noun}
       </div>
-      <div className="pager-nav">
+      {perPage < PAGE_ALL && <div className="pager-nav">
         <button type="button" className="pg" disabled={currentPage <= 1} onClick={() => onPage(currentPage - 1)} aria-label="Halaman sebelumnya"><Icon name="left" size={16} /></button>
         {pages.map((p, i) => p === "…"
           ? <span key={"g" + i} className="pg-gap">…</span>
           : <button key={p} type="button" className={"pg" + (p === currentPage ? " on" : "")} aria-current={p === currentPage ? "page" : undefined} onClick={() => onPage(p)}>{p}</button>)}
         <button type="button" className="pg" disabled={currentPage >= totalPages} onClick={() => onPage(currentPage + 1)} aria-label="Halaman berikutnya"><Icon name="right" size={16} /></button>
-      </div>
+      </div>}
       {onPerPage && (
         <label className="pager-size">
           <select value={perPage} onChange={(e) => onPerPage(Number(e.target.value))} aria-label="Baris per halaman">
             {PAGE_SIZES.map((n) => <option key={n} value={n}>{n} / halaman</option>)}
+            <option value={PAGE_ALL}>Semua ({totalRecords.toLocaleString("id-ID")})</option>
           </select>
         </label>
       )}
