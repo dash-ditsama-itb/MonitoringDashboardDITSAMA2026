@@ -368,28 +368,35 @@ function groupMapping(items, year) {
 const FALLBACK_ITEMS = mappingFallbackItems();
 // kunci satu lokasi (sama dengan baris di tab Tim Humas): tahun, kampus, gedung / area, lokasi
 const noteKey = (it) => JSON.stringify([String(it.year), it.campus, it.area, it.location]);
-// saved = catatan yang baru disimpan (atau isi terbaru sheet saat bentrok), dipakai sampai spreadsheet terbaca ulang
-function useMapping(year, saved) {
+// saved = perubahan yang baru disimpan (atau isi terbaru sheet saat bentrok), dipakai sampai spreadsheet terbaca ulang:
+// { note, noteAt, noteBy, st: { "tema huruf kecil": sudah/belum } }
+const NOTHING_SAVED = {};
+function useMapping(year, saved = NOTHING_SAVED) {
   const { data, source, reload } = useLiveData("mapping");
   const items = data?.items || FALLBACK_ITEMS;
   const merged = useMemo(() => (Object.keys(saved).length
-    ? items.map((it) => { const s = saved[noteKey(it)]; return s ? { ...it, ...s } : it; }) : items), [items, saved]);
+    ? items.map((it) => {
+      const s = saved[noteKey(it)];
+      if (!s) return it;
+      const { st, ...note } = s;
+      return { ...it, ...note, done: st[it.theme.toLowerCase()] ?? it.done };
+    }) : items), [items, saved]);
   const grouped = useMemo(() => groupMapping(merged, year), [merged, year]);
   return { ...grouped, source, reload, updatedAt: data?.updatedAt, asOf: MAPPING_FALLBACK.asOf };
 }
 
-// simpan catatan lokasi ke file Tim Humas lewat Apps Script (POST teks biasa: tanpa preflight CORS)
-async function saveMappingNotes(token, changes) {
+// simpan centang & catatan lokasi ke file Tim Humas lewat Apps Script (POST teks biasa: tanpa preflight CORS)
+async function saveMappingChanges(token, changes) {
   const res = await fetch(KARAKTER_API_URL, {
     method: "POST",
     headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify({ action: "mapping-notes", token, changes }),
+    body: JSON.stringify({ action: "mapping-update", token, changes }),
   });
   return res.json();
 }
-const NOTE_FAIL = {
-  login: "Sesi Anda sudah berakhir. Masuk lagi, lalu simpan ulang catatan.",
-  forbidden: "Akun Anda tidak punya izin mengubah catatan Mapping Banner.",
+const SAVE_FAIL = {
+  login: "Sesi Anda sudah berakhir. Masuk lagi, lalu simpan ulang perubahan.",
+  forbidden: "Akun Anda tidak punya izin mengubah Mapping Banner.",
 };
 const fmtStamp = (iso) => new Date(iso).toLocaleString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
@@ -550,7 +557,7 @@ function Mapping({ year, picker }) {
   const map = useMapping(year, saved);
   const [campus, setCampus] = useState(null);
   const c = map.campuses.find((x) => x.key === campus) || map.campuses[0];
-  const notes = useMappingNotes(map, setSaved);
+  const edits = useMappingEdits(map, setSaved);
   // hanya jenis banner yang dipakai di kampus & tahun ini (mis. 2025 hanya 4 jenis)
   const themes = c ? map.themes.filter((t) => c.rooms.some((r) => t in r.st)) : [];
   const tone = (share) => (share < 0.35 ? "crit" : share < 0.6 ? "warn" : "ok");
@@ -597,15 +604,15 @@ function Mapping({ year, picker }) {
               ) : <p className="kr-muted">Semua banner yang direncanakan sudah terpasang.</p>}
             </section>
           </div>
-          <MappingMatrix campus={c} themes={themes} notes={notes} />
-          {notes.dirty.length > 0 && (
-            <div className="kr-savebar" role="region" aria-label="Catatan belum disimpan">
+          <MappingMatrix campus={c} themes={themes} edits={edits} />
+          {edits.dirty.length > 0 && (
+            <div className="kr-savebar" role="region" aria-label="Perubahan belum disimpan">
               <div className="kr-savebar-txt">
-                <b>{notes.dirty.length} catatan belum disimpan</b>
-                <small>Waktu dan nama Anda tercatat otomatis saat disimpan</small>
+                <b>{edits.count} perubahan belum disimpan</b>
+                <small>di {edits.dirty.length} lokasi · tanggal tercatat otomatis saat disimpan</small>
               </div>
-              <button type="button" className="btn" onClick={notes.cancel} disabled={notes.busy}>Batalkan</button>
-              <button type="button" className="btn btn-primary" onClick={notes.save} disabled={notes.busy}>{notes.busy && <Spinner />}Simpan catatan</button>
+              <button type="button" className="btn" onClick={edits.cancel} disabled={edits.busy}>Batalkan</button>
+              <button type="button" className="btn btn-primary" onClick={edits.save} disabled={edits.busy}>{edits.busy && <Spinner />}Simpan perubahan</button>
             </div>
           )}
         </>
@@ -614,67 +621,97 @@ function Mapping({ year, picker }) {
   );
 }
 
-// Catatan per lokasi: diketik di tabel, disimpan sekaligus lewat bilah Simpan. Hanya akun Kelola laporan, dan hanya
-// saat data terbaru dari spreadsheet sudah termuat (bukan data cadangan). drafts[key] = { previous, note }.
-function useMappingNotes(map, setSaved) {
+// Perubahan draf satu lokasi: { note: { previous, value }, st: { tema: { previous, done } } }. previous = isi saat mulai diubah.
+const noteEdited = (d) => Boolean(d.note) && d.note.value.trim() !== d.note.previous.trim();
+const bannerEdits = (d) => Object.entries(d.st).filter(([, s]) => s.done !== s.previous);
+const editCount = (d) => (noteEdited(d) ? 1 : 0) + bannerEdits(d).length;
+
+// Centang dan catatan per lokasi: diubah di tabel, disimpan sekaligus lewat bilah Simpan. Hanya akun Kelola laporan,
+// dan hanya saat data terbaru dari spreadsheet sudah termuat (bukan data cadangan).
+function useMappingEdits(map, setSaved) {
   const session = useAuthStore((s) => s.session);
   const canEdit = canManageReports(session) && map.source === "live";
   const [drafts, setDrafts] = useState({});
   const [conflicts, setConflicts] = useState({});
   const [busy, setBusy] = useState(false);
-  const changed = (d) => d.note.trim() !== d.previous.trim();
-  const dirty = Object.entries(drafts).filter(([, d]) => changed(d));
+  const dirty = Object.entries(drafts).filter(([, d]) => editCount(d) > 0);
+  const count = dirty.reduce((n, [, d]) => n + editCount(d), 0);
 
-  // spreadsheet terbaca ulang: catatan yang baru disimpan sudah ada di data, tidak perlu ditimpa lagi
+  // spreadsheet terbaca ulang: perubahan yang baru disimpan sudah ada di data, tidak perlu ditimpa lagi
   useEffect(() => setSaved({}), [map.updatedAt]);
 
-  const edit = (r, note) => setDrafts((all) => ({ ...all, [r.key]: { previous: all[r.key]?.previous ?? r.note, note } }));
+  const editNote = (r, value) => setDrafts((all) => {
+    const d = all[r.key] || { st: {} };
+    return { ...all, [r.key]: { ...d, note: { previous: d.note?.previous ?? r.note, value } } };
+  });
+  const editBanner = (r, theme, done) => setDrafts((all) => {
+    const d = all[r.key] || { st: {} };
+    return { ...all, [r.key]: { ...d, st: { ...d.st, [theme]: { previous: d.st[theme]?.previous ?? r.st[theme], done } } } };
+  });
 
   const save = async () => {
     setBusy(true);
     const changes = dirty.map(([key, d]) => {
       const [year, campus, area, location] = JSON.parse(key);
-      return { key, year, campus, area, location, previous: d.previous, note: d.note.trim() };
+      const change = { key, year, campus, area, location };
+      if (noteEdited(d)) { change.previous = d.note.previous; change.note = d.note.value.trim(); }
+      const banners = bannerEdits(d).map(([theme, s]) => ({ theme, previous: s.previous, done: s.done }));
+      if (banners.length) change.banners = banners;
+      return change;
     });
     let out = null;
-    try { out = await saveMappingNotes(session.token, changes); } catch (err) { console.error("[mapping] simpan catatan gagal:", err); }
+    try { out = await saveMappingChanges(session.token, changes); } catch (err) { console.error("[mapping] simpan perubahan gagal:", err); }
     setBusy(false);
     if (!out?.ok) {
       if (out) console.error("[mapping] Apps Script menolak:", out.code, out.error);
-      toast(NOTE_FAIL[out?.code] || "Catatan belum tersimpan. Coba lagi beberapa saat lagi.", "err");
+      toast(SAVE_FAIL[out?.code] || "Perubahan belum tersimpan. Coba lagi beberapa saat lagi.", "err");
       return;
     }
     const ok = out.results.filter((x) => x.ok);
     const clash = out.results.filter((x) => x.code === "conflict");
     const lost = out.results.filter((x) => !x.ok && x.code !== "conflict");
-    setSaved((s) => ({ ...s, ...Object.fromEntries([...ok, ...clash].map((x) => [x.key, { note: x.note, noteAt: x.noteAt || "", noteBy: x.noteBy || "" }])) }));
+    setSaved((all) => {
+      const next = { ...all };
+      [...ok, ...clash].forEach((x) => {
+        const st = Object.fromEntries(Object.entries(x.st).map(([t, done]) => [t.toLowerCase(), done]));
+        next[x.key] = { note: x.note, noteAt: x.noteAt || "", noteBy: x.noteBy || "", st: { ...all[x.key]?.st, ...st } };
+      });
+      return next;
+    });
     setDrafts((all) => {
       const next = { ...all };
       ok.forEach((x) => delete next[x.key]);
-      // isi sheet terbaru jadi pembanding; tulisan pengguna tetap ada untuk diperiksa lalu disimpan lagi
-      clash.forEach((x) => { if (next[x.key]) next[x.key] = { ...next[x.key], previous: x.note }; });
+      // isi sheet terbaru jadi pembanding; perubahan pengguna tetap ada untuk diperiksa lalu disimpan lagi
+      clash.forEach((x) => {
+        const d = next[x.key];
+        if (!d) return;
+        next[x.key] = {
+          note: noteEdited(d) ? { ...d.note, previous: x.note } : undefined,
+          st: Object.fromEntries(Object.entries(d.st).map(([t, s]) => [t, t in x.st ? { ...s, previous: x.st[t] } : s])),
+        };
+      });
       return next;
     });
     setConflicts(Object.fromEntries(clash.map((x) => [x.key, true])));
-    if (ok.length) toast(`${ok.length} catatan tersimpan.`);
-    if (clash.length) toast(`${clash.length} catatan sudah diubah orang lain di spreadsheet. Periksa isinya, lalu simpan lagi.`, "err");
+    if (ok.length) toast(`Perubahan di ${ok.length} lokasi tersimpan.`);
+    if (clash.length) toast(`${clash.length} lokasi sudah diubah orang lain di spreadsheet. Periksa isinya, lalu simpan lagi.`, "err");
     if (lost.length) {
       console.error("[mapping] lokasi tidak ditemukan di sheet:", lost);
-      toast(`${lost.length} lokasi tidak ditemukan lagi di spreadsheet Tim Humas, jadi catatannya tidak disimpan.`, "err");
+      toast(`${lost.length} lokasi tidak ditemukan lagi di spreadsheet Tim Humas, jadi perubahannya tidak disimpan.`, "err");
     }
     map.reload();
   };
 
   const cancel = async () => {
-    const yes = await confirmAction({ title: "Batalkan perubahan?", body: `${dirty.length} catatan yang belum disimpan akan dihapus.`, confirmText: "Batalkan perubahan", danger: true });
+    const yes = await confirmAction({ title: "Batalkan perubahan?", body: `${count} perubahan yang belum disimpan akan dihapus.`, confirmText: "Batalkan perubahan", danger: true });
     if (yes) { setDrafts({}); setConflicts({}); }
   };
 
-  // catatan belum disimpan: tanya dulu sebelum pindah halaman atau menutup tab
+  // perubahan belum disimpan: tanya dulu sebelum pindah halaman atau menutup tab
   const blocker = useBlocker(dirty.length > 0 && !busy);
   useEffect(() => {
     if (blocker.state !== "blocked") return;
-    confirmAction({ title: "Tinggalkan halaman?", body: "Catatan yang belum disimpan akan hilang.", confirmText: "Tinggalkan", danger: true })
+    confirmAction({ title: "Tinggalkan halaman?", body: "Perubahan yang belum disimpan akan hilang.", confirmText: "Tinggalkan", danger: true })
       .then((leave) => (leave ? blocker.proceed() : blocker.reset()));
   }, [blocker.state]);
   useEffect(() => {
@@ -685,29 +722,32 @@ function useMappingNotes(map, setSaved) {
   }, [dirty.length > 0]);
 
   return {
-    canEdit, conflicts, dirty, busy, edit, save, cancel,
-    valueOf: (r) => drafts[r.key]?.note ?? r.note,
-    rowDirty: (r) => Boolean(drafts[r.key] && changed(drafts[r.key])),
+    canEdit, conflicts, dirty, count, busy, editNote, editBanner, save, cancel,
+    noteOf: (r) => drafts[r.key]?.note?.value ?? r.note,
+    doneOf: (r, t) => drafts[r.key]?.st[t]?.done ?? r.st[t],
+    rowDirty: (r) => Boolean(drafts[r.key] && editCount(drafts[r.key])),
+    editedThemes: (r) => (drafts[r.key] ? bannerEdits(drafts[r.key]).map(([t]) => t) : []),
   };
 }
 
-function MappingMatrix({ campus: c, themes, notes }) {
+function MappingMatrix({ campus: c, themes, edits }) {
   const [q, setQ] = useState("");
   const [onlyChanged, setOnlyChanged] = useState(false);
-  const changedOnly = onlyChanged && notes.dirty.length > 0;
+  const changedOnly = onlyChanged && edits.dirty.length > 0;
   const term = q.trim().toLowerCase();
-  const show = (a, r) => (!term || r.name.toLowerCase().includes(term) || a.name.toLowerCase().includes(term)) && (!changedOnly || notes.rowDirty(r));
+  const show = (a, r) => (!term || r.name.toLowerCase().includes(term) || a.name.toLowerCase().includes(term)) && (!changedOnly || edits.rowDirty(r));
   const areas = c.areas.map((a) => ({ ...a, shown: a.rooms.filter((r) => show(a, r)) })).filter((a) => a.shown.length);
   return (
     <section className="card">
       <div className="card-head"><div>
-        <h2 className="card-title">Peta keterpasangan per lokasi{notes.canEdit && <span className="kr-badge">Bisa diubah</span>}</h2>
-        <div className="card-sub">Hijau = sudah terpasang · kotak kosong = belum · – = tidak direncanakan · {notes.canEdit
-          ? "tulis di kolom Catatan; waktu dan nama tercatat otomatis saat disimpan" : "dikelompokkan per gedung / area"}</div>
+        <h2 className="card-title">Peta keterpasangan per lokasi{edits.canEdit && <span className="kr-badge">Bisa diubah</span>}</h2>
+        <div className="card-sub">{edits.canEdit
+          ? "Centang = sudah terpasang · – = tidak direncanakan · klik kolom Catatan untuk menulis · tanggal tercatat otomatis saat disimpan"
+          : "Hijau = sudah terpasang · kotak kosong = belum · – = tidak direncanakan · dikelompokkan per gedung / area"}</div>
       </div></div>
       <div className="kr-tools">
         <SearchInput value={q} onChange={setQ} placeholder="Cari lokasi / gedung" className="compact" delay={150} />
-        {notes.dirty.length > 0 && (
+        {edits.dirty.length > 0 && (
           <button type="button" className="btn btn-sm" aria-pressed={changedOnly} onClick={() => setOnlyChanged(!changedOnly)}>
             {changedOnly ? "Tampilkan semua lokasi" : "Tampilkan yang berubah"}
           </button>
@@ -719,7 +759,7 @@ function MappingMatrix({ campus: c, themes, notes }) {
             <th className="kr-note-col">Catatan</th><th className="kr-stamp-col">Terakhir diperbarui</th></tr></thead>
           <tbody>{areas.map((a) => [
             <tr key={a.name} className="kr-group"><td colSpan={themes.length + 4}>{a.name}</td></tr>,
-            ...a.shown.map((r) => <MappingRow key={r.key} r={r} themes={themes} notes={notes} />),
+            ...a.shown.map((r) => <MappingRow key={r.key} r={r} themes={themes} edits={edits} />),
           ])}</tbody>
         </table></div>
       ) : <p className="kr-muted kr-empty">Tidak ada lokasi yang cocok dengan pencarian.</p>}
@@ -727,23 +767,29 @@ function MappingMatrix({ campus: c, themes, notes }) {
   );
 }
 
-function MappingRow({ r, themes, notes }) {
-  const dirty = notes.rowDirty(r);
+function MappingRow({ r, themes, edits }) {
+  const dirty = edits.rowDirty(r);
+  const done = Object.keys(r.st).filter((t) => edits.doneOf(r, t)).length; // ikut berubah saat dicentang, sebelum disimpan
+  const sheetNow = [`catatan: ${r.note || "(kosong)"}`, ...edits.editedThemes(r).map((t) => `${t}: ${r.st[t] ? "sudah" : "belum"}`)].join(" · ");
   return (
     <tr className={dirty ? "kr-dirty" : undefined}>
       <td className="kr-room">{r.name}</td>
       {themes.map((t) => (
-        <td key={t} className="c">{t in r.st
-          ? <span className={"kr-dot" + (r.st[t] ? " on" : "")} title={`${t}: ${r.st[t] ? "sudah" : "belum"}`} />
-          : <span className="kr-na" title={`${t}: tidak direncanakan`}>–</span>}</td>
+        <td key={t} className="c">{!(t in r.st)
+          ? <span className="kr-na" title={`${t}: tidak direncanakan`}>–</span>
+          : edits.canEdit
+            ? <label className="kr-check" title={`${t}: ${edits.doneOf(r, t) ? "sudah" : "belum"}`}>
+              <input type="checkbox" checked={edits.doneOf(r, t)} disabled={edits.busy} aria-label={`${t}, ${r.name}`}
+                onChange={(e) => edits.editBanner(r, t, e.target.checked)} /></label>
+            : <span className={"kr-dot" + (r.st[t] ? " on" : "")} title={`${t}: ${r.st[t] ? "sudah" : "belum"}`} />}</td>
       ))}
-      <td className={"num cell-strong " + (r.done ? "" : "kr-bad")}>{r.done}/{r.planned}</td>
-      <td className="kr-note-cell">{notes.canEdit
-        ? <textarea className="kr-note-input" rows={1} maxLength={500} value={notes.valueOf(r)} placeholder="Tambah catatan…"
-          aria-label={`Catatan ${r.name}`} onChange={(e) => notes.edit(r, e.target.value)} />
+      <td className={"num cell-strong " + (done ? "" : "kr-bad")}>{done}/{r.planned}</td>
+      <td className="kr-note-cell">{edits.canEdit
+        ? <textarea className="kr-note-input" rows={1} maxLength={500} value={edits.noteOf(r)} placeholder="Tambah catatan…" disabled={edits.busy}
+          aria-label={`Catatan ${r.name}`} onChange={(e) => edits.editNote(r, e.target.value)} />
         : r.note ? <span className="kr-note">{r.note}</span> : <span className="kr-na">–</span>}</td>
-      <td className="kr-stamp">{notes.conflicts[r.key] && dirty
-        ? <span className="kr-unsaved" title={`Isi di spreadsheet sekarang: ${r.note || "(kosong)"}`}>Diubah orang lain · periksa</span>
+      <td className="kr-stamp">{edits.conflicts[r.key] && dirty
+        ? <span className="kr-unsaved" title={`Isi di spreadsheet sekarang: ${sheetNow}`}>Diubah orang lain · periksa</span>
         : dirty ? <span className="kr-unsaved">Belum disimpan</span>
           : r.noteAt ? <><b>{fmtStamp(r.noteAt)}</b>{r.noteBy && <small>{r.noteBy}</small>}</> : <span className="kr-na">–</span>}</td>
     </tr>

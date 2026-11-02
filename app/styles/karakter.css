@@ -162,7 +162,14 @@ a.kr-prog-head:hover b,a.kr-go:hover{text-decoration:underline}
 .kr-matrix th.c{font-size:11.5px;min-width:72px}
 .kr-group td{background:var(--subtle);font-weight:800;color:var(--navy)}
 .kr-room{padding-left:22px!important}
-/* catatan per lokasi (bisa diubah akun Kelola laporan) */
+/* centang & catatan per lokasi (bisa diubah akun Kelola laporan) */
+/* nama lokasi tetap terlihat saat tabel digeser */
+.kr-matrix thead th:first-child{left:0;z-index:2;box-shadow:1px 0 0 var(--line)}
+.kr-matrix .kr-room{position:sticky;left:0;z-index:1;background:#fff;box-shadow:1px 0 0 var(--line)}
+.kr-check{display:inline-flex;padding:6px;cursor:pointer;vertical-align:middle}
+.kr-check input{width:18px;height:18px;margin:0;accent-color:var(--kr-green);cursor:pointer}
+.kr-check input:disabled{cursor:progress}
+.kr-check input:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .kr-badge{display:inline-flex;align-items:center;margin-left:8px;padding:2px 8px;border-radius:999px;background:var(--warn-bg);color:var(--warn-ink);
   font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;vertical-align:2px}
 .kr-tools{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:-2px 0 12px}

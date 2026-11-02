@@ -218,7 +218,7 @@ function mapOpenSource_() {
 // Satu tab matriks Tim Humas: baris 1 berisi judul (dan kolom CATATAN, TERAKHIR DIPERBARUI, DIPERBARUI OLEH),
 // baris 2 berisi nama kampus (kolom A) dan jenis banner; baris tanpa centang dan tanpa catatan = judul area;
 // kotak centang TRUE/FALSE = sudah/belum. Jenis banner yang selnya kosong untuk suatu lokasi = tidak direncanakan
-// (tidak dikirim). row = nomor baris di sheet (untuk menyimpan catatan).
+// (tidak dikirim). row, col = letak kotak centang di sheet (untuk menyimpan perubahan).
 function mapParseMatrix_(values) {
   const out = { campus: '', rows: [] };
   if (values.length < 3) return out;
@@ -242,7 +242,7 @@ function mapParseMatrix_(values) {
     const noteBy = byCol < 0 ? '' : String(row[byCol]).trim();
     themes.forEach((t) => {
       const done = mapStatus_(row[t.col]);
-      if (done !== null) out.rows.push({ area: area, location: location, theme: t.name, done: done, note: note, noteAt: noteAt, noteBy: noteBy, row: i + 1 });
+      if (done !== null) out.rows.push({ area: area, location: location, theme: t.name, done: done, note: note, noteAt: noteAt, noteBy: noteBy, row: i + 1, col: t.col + 1 });
     });
   }
   return out;
@@ -284,15 +284,20 @@ function mapFromSummaryTab_() {
   return { ok: true, updatedAt: new Date().toISOString(), sheet: sheet.getName(), items: items };
 }
 
-/* ---------- CATATAN MAPPING BANNER (ditulis dari dashboard) ---------- */
+/* ---------- CENTANG & CATATAN MAPPING BANNER (ditulis dari dashboard) ---------- */
 
 // Dashboard mengirim POST (body JSON sebagai teks):
-//   { action: 'mapping-notes', token, changes: [{ key, year, campus, area, location, previous, note }] }
+//   { action: 'mapping-update', token, changes: [{ key, year, campus, area, location,
+//       previous, note,                        // hanya bila catatan berubah
+//       banners: [{ theme, previous, done }]   // hanya kotak centang yang berubah
+//   }] }
 // URL /exec terbuka untuk siapa saja, jadi token login dashboard diperiksa ke backend DITSAMA (GET /auth/me):
 // hanya akun dengan izin Kelola laporan (manageReports) yang boleh menulis. Alamat backend (termasuk /api, mis.
 // https://…/api) disimpan di Setelan proyek → Properti skrip → DITSAMA_API_URL.
-// Catatan ditulis ke kolom CATATAN file Tim Humas; waktu dan nama penyimpan ke TERAKHIR DIPERBARUI / DIPERBARUI OLEH.
-// previous = catatan yang dilihat pengguna; bila isi sheet sudah berbeda (diubah orang lain), baris itu tidak ditimpa.
+// Centang ditulis ke kotak jenis banner dan catatan ke kolom CATATAN file Tim Humas; waktu dan nama penyimpan ke
+// TERAKHIR DIPERBARUI / DIPERBARUI OLEH. previous = isi yang dilihat pengguna; bila isi sheet sudah berbeda (diubah
+// orang lain), seluruh perubahan lokasi itu tidak ditulis. Sel yang kosong (tidak direncanakan) tidak bisa diisi.
+// 'mapping-notes' = nama aksi versi lama (catatan saja), diterima selama halaman lama masih terbuka.
 const MAP_NOTE_MAX = 500;
 
 function doPost(e) {
@@ -302,7 +307,7 @@ function doPost(e) {
   } catch (err) {
     return ttbJson_({ ok: false, code: 'request', error: 'Isi permintaan bukan JSON' });
   }
-  if (req.action !== 'mapping-notes') return ttbJson_({ ok: false, code: 'request', error: 'Aksi tidak dikenal: ' + req.action });
+  if (req.action !== 'mapping-update' && req.action !== 'mapping-notes') return ttbJson_({ ok: false, code: 'request', error: 'Aksi tidak dikenal: ' + req.action });
   if (!Array.isArray(req.changes) || !req.changes.length) return ttbJson_({ ok: false, code: 'request', error: 'Tidak ada perubahan' });
 
   let user;
@@ -315,7 +320,7 @@ function doPost(e) {
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(20000)) return ttbJson_({ ok: false, code: 'busy', error: 'Penyimpanan lain sedang berjalan' });
   try {
-    const results = mapWriteNotes_(req.changes, user);
+    const results = mapWriteChanges_(req.changes, user);
     CacheService.getScriptCache().remove('mapping'); // GET ?data=mapping berikutnya langsung membaca isi terbaru
     return ttbJson_({ ok: true, results: results });
   } catch (err) {
@@ -349,7 +354,7 @@ function mapVerifyUser_(token) {
   return user;
 }
 
-function mapWriteNotes_(changes, user) {
+function mapWriteChanges_(changes, user) {
   const source = mapOpenSource_();
   const tabs = source.getSheets().filter((sh) => MAP_TAB_PATTERN.test(sh.getName()) && /(20\d{2})/.test(sh.getName()));
   const by = user.name || user.email;
@@ -361,36 +366,55 @@ function mapWriteNotes_(changes, user) {
       String(t.getRange(2, 1).getValue()).trim() === String(ch.campus).trim());
     if (!sh) return fail('notfound');
     const cols = mapNoteColumns_(sh);
-    if (!cols) return fail('notfound');
     const name = sh.getName();
     // kolom baru bisa saja baru dibuat, jadi isi sheet dibaca setelah mapNoteColumns_
     parsedBySheet[name] = parsedBySheet[name] || mapParseMatrix_(sh.getDataRange().getValues());
-    const hit = parsedBySheet[name].rows.find((r) => r.area === ch.area && r.location === ch.location);
-    if (!hit) return fail('notfound');
+    const rows = parsedBySheet[name].rows.filter((r) => r.area === ch.area && r.location === ch.location);
+    if (!rows.length) return fail('notfound');
+    const hit = rows[0];
+    // nama jenis banner di dashboard bisa beda huruf besar-kecil dengan judul kolom di sheet
+    const banners = (ch.banners || []).map((b) => ({
+      theme: b.theme,
+      previous: Boolean(b.previous),
+      done: Boolean(b.done),
+      cell: rows.find((r) => r.theme.toLowerCase() === String(b.theme).trim().toLowerCase()),
+    }));
+    if (banners.some((b) => !b.cell)) return fail('notfound');
 
-    const cell = sh.getRange(hit.row, cols.note);
-    const current = String(cell.getValue()).trim();
-    if (current !== String(ch.previous || '').trim()) {
-      return fail('conflict', { note: current, noteAt: hit.noteAt, noteBy: hit.noteBy });
+    const noteCell = sh.getRange(hit.row, cols.note);
+    const current = String(noteCell.getValue()).trim();
+    const hasNote = ch.note !== undefined;
+    const statusOf = (pick) => {
+      const st = {};
+      banners.forEach((b) => { st[b.theme] = pick(b); });
+      return st;
+    };
+    if ((hasNote && current !== String(ch.previous || '').trim()) || banners.some((b) => b.cell.done !== b.previous)) {
+      return fail('conflict', { note: current, noteAt: hit.noteAt, noteBy: hit.noteBy, st: statusOf((b) => b.cell.done) });
     }
-    const note = String(ch.note || '').trim().slice(0, MAP_NOTE_MAX);
-    cell.setValue(/^[=+\-@]/.test(note) ? "'" + note : note); // teks, bukan rumus
+    const note = hasNote ? String(ch.note || '').trim().slice(0, MAP_NOTE_MAX) : current;
+    if (hasNote) noteCell.setValue(/^[=+\-@]/.test(note) ? "'" + note : note); // teks, bukan rumus
+    banners.forEach((b) => { sh.getRange(b.cell.row, b.cell.col).setValue(b.done); });
     sh.getRange(hit.row, cols.time).setValue(now).setNumberFormat('dd/MM/yyyy HH:mm');
     sh.getRange(hit.row, cols.by).setValue(by);
-    // baris lain di sheet ini yang lokasinya sama tetap memakai hasil baca awal; catatan berikutnya dibandingkan ulang
-    hit.note = note;
-    return { key: ch.key, ok: true, note: note, noteAt: now.toISOString(), noteBy: by };
+    return { key: ch.key, ok: true, note: note, noteAt: now.toISOString(), noteBy: by, st: statusOf((b) => b.done) };
   });
 }
 
-// nomor kolom (mulai 1) CATATAN, TERAKHIR DIPERBARUI, DIPERBARUI OLEH; dua kolom terakhir dibuat di kanan CATATAN
-// bila belum ada. null bila tab tidak punya kolom CATATAN.
+// nomor kolom (mulai 1) CATATAN, TERAKHIR DIPERBARUI, DIPERBARUI OLEH. Yang belum ada dibuat: CATATAN setelah kolom
+// jenis banner terakhir (tanpa kotak centang yang ikut tersalin dari kolom di kirinya), dua lainnya di kanan CATATAN.
 function mapNoteColumns_(sh) {
-  const width = sh.getLastColumn();
   const read = () => sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map((h) => String(h).trim().toUpperCase());
   let hdr = read();
-  const note = hdr.indexOf(MAP_NOTE_HEADER) + 1;
-  if (!note || !width) return null;
+  let note = hdr.indexOf(MAP_NOTE_HEADER) + 1;
+  if (!note) {
+    const lastBanner = sh.getRange(2, 1, 1, sh.getLastColumn()).getValues()[0].reduce((end, h, i) => (String(h).trim() ? i + 1 : end), 1);
+    sh.insertColumnsAfter(lastBanner, 1);
+    note = lastBanner + 1;
+    sh.getRange(1, note, sh.getMaxRows(), 1).clearDataValidations();
+    sh.getRange(1, note).setValue(MAP_NOTE_HEADER).setFontWeight('bold');
+    hdr = read();
+  }
   const missing = [MAP_TIME_HEADER, MAP_BY_HEADER].filter((h) => hdr.indexOf(h) < 0);
   if (missing.length) {
     sh.insertColumnsAfter(note, missing.length);
@@ -400,7 +424,7 @@ function mapNoteColumns_(sh) {
   return { note: note, time: hdr.indexOf(MAP_TIME_HEADER) + 1, by: hdr.indexOf(MAP_BY_HEADER) + 1 };
 }
 
-// Catatan yang diketik langsung di file Tim Humas juga mendapat waktu otomatis: jalankan sekali
+// Centang dan catatan yang diubah langsung di file Tim Humas juga mendapat waktu otomatis: jalankan sekali
 // pasangWaktuCatatanOtomatis() dari editor (memasang pemicu "saat diedit" pada file Tim Humas).
 function pasangWaktuCatatanOtomatis() {
   const id = mapOpenSource_().getId();
@@ -418,7 +442,7 @@ function mapCatatanDiubah(e) {
   if (!MAP_TAB_PATTERN.test(sh.getName())) return;
   const hdr = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map((h) => String(h).trim().toUpperCase());
   const note = hdr.indexOf(MAP_NOTE_HEADER) + 1, time = hdr.indexOf(MAP_TIME_HEADER) + 1, by = hdr.indexOf(MAP_BY_HEADER) + 1;
-  if (!note || !time || note < range.getColumn() || note > range.getLastColumn()) return;
+  if (!note || !time || range.getLastColumn() < 2 || range.getColumn() > note) return; // kolom jenis banner s.d. CATATAN
   const who = (e.user && e.user.getEmail && e.user.getEmail()) || 'Spreadsheet Tim Humas';
   for (let r = range.getRow(); r <= range.getLastRow(); r++) {
     sh.getRange(r, time).setValue(new Date()).setNumberFormat('dd/MM/yyyy HH:mm');
