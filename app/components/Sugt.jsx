@@ -122,10 +122,15 @@ export function withSugt(p, s) {
   };
 }
 
-/** Kelas luring & daring dari aplikasi SUGT; tampil di dashboard SUGT dan Portofolio Program (filter Program = SUGT). */
-export function SugtSummary() {
+/**
+ * Kelas luring & daring dari aplikasi SUGT; tampil di dashboard SUGT dan Portofolio Program (filter Program = SUGT).
+ * performance: kartu Performa kegiatan SUGT (data kegiatan di dashboard ini + umpan balik aplikasi SUGT);
+ * Portofolio Program sudah punya kartu ini sendiri.
+ */
+export function SugtSummary({ performance = true }) {
   const { data, error, loading, reload } = useApi("/dashboard/sugt");
   const s = data?.data;
+  const strip = useApi("/dashboard", { program: "SUGT" }, { enabled: performance }).data?.data?.performanceStrip;
   const home = s?.progress.detailUrl || SUGT_URL;
 
   return (
@@ -154,6 +159,10 @@ export function SugtSummary() {
       ) : (
         <Pending busy={loading}>
           <SugtMeters s={s} links />
+          {performance && (
+            <Performance title="Performa kegiatan SUGT" strip={withSugtFeedback(strip, s)}
+              sub="Rata-rata kegiatan SUGT di Data Kegiatan; umpan balik digabung dengan aplikasi SUGT · tekan (i) untuk cara hitungnya" />
+          )}
           <SugtFeedbackCards s={s} />
         </Pending>
       )}
@@ -161,13 +170,10 @@ export function SugtSummary() {
   );
 }
 
-/** Umpan balik dari aplikasi SUGT: ringkasan (opsional), Umpan Balik Peserta, dan Evaluasi Perjalanan Dinas. */
-function SugtFeedbackCards({ s, summary = true }) {
+/** Umpan balik dari aplikasi SUGT: Umpan Balik Peserta dan Evaluasi Perjalanan Dinas. */
+function SugtFeedbackCards({ s }) {
   return (
     <>
-      {summary && <Performance title="Umpan balik kelas SUGT" strip={{ feedback: sugtFeedback(s) }}
-        sub="Dari aplikasi SUGT · tekan (i) untuk cara hitungnya"
-        info={{ feedback: "sugtFeedback" }} empty="belum tersedia dari aplikasi SUGT" />}
       <div className="grid g-2">
         <FeedbackCard title="Umpan Balik Peserta" info="sugtParticipantFeedback" f={s.participantFeedback}
           noun="formulir" items={participantRatings(s.participantFeedback)} />
@@ -205,7 +211,7 @@ export function SugtFeedbackPanel() {
             </EmptyState>
           </section>
         ) : <div className="grid g-2"><SkeletonCard /><SkeletonCard /></div>
-      ) : <Pending busy={loading}><SugtFeedbackCards s={s} summary={false} /></Pending>}
+      ) : <Pending busy={loading}><SugtFeedbackCards s={s} /></Pending>}
     </>
   );
 }

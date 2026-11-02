@@ -62,7 +62,7 @@ function PortfolioPage() {
         <Pending busy={loading}>
           {shown && <ProgramAbout program={shown} />}
           <Progress kpi={d.kpi} portfolio={d.portfolio} sugt={d.sugt} program={shown} last={last} />
-          {shown?.api === "sugt" && <SugtSummary />}
+          {shown?.api === "sugt" && <SugtSummary performance={false} />}
 
           <div className="grid g-5-7">
             <Performance strip={!shown ? withProgramFeedback(d.performanceStrip, d.portfolio, d.sugt)
