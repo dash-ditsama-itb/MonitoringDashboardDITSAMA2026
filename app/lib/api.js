@@ -47,7 +47,7 @@ const MESSAGES = {
   "Forbidden.": "Anda tidak punya akses untuk tindakan ini.",
   "Activity not found.": "Kegiatan tidak ditemukan (mungkin sudah dihapus).",
   "Financial not found.": "Data keuangan tidak ditemukan (mungkin sudah dihapus).",
-  "Initial PKS for this program already exists.": "PKS Awal untuk program ini sudah ada. Gunakan Penambahan PKS.",
+  "Initial PKS for this program already exists.": "PKS Awal untuk program ini di tahun tersebut sudah ada. Gunakan Penambahan PKS.",
   "Submission fields cannot be applied to a PKS record.": "Kolom pengajuan tidak bisa dipakai untuk data PKS.",
   "PKS fields cannot be applied to a submission record.": "Kolom PKS tidak bisa dipakai untuk data pengajuan.",
   "Failed to upload SK.": "Gagal mengunggah SK. Coba lagi.",

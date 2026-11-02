@@ -386,7 +386,7 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
               <span className="field-lab">Jenis</span>
               <Segmented label="Jenis PKS" value={f.type} onChange={(v) => setF({ ...f, type: v })}
                 options={[["initial_pks", "PKS Awal"], ["addition_pks", "Penambahan PKS"]]} />
-              <p className="hint">PKS Awal hanya sekali per program. Tambahan dana berikutnya dicatat sebagai Penambahan PKS.</p>
+              <p className="hint">PKS Awal hanya sekali per program dalam satu tahun. Tambahan dana di tahun yang sama dicatat sebagai Penambahan PKS.</p>
             </div>
           )}
           <div className="form-grid">
