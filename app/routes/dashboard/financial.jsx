@@ -3,8 +3,8 @@ import { ChartCanvas } from "../../components/ChartCanvas.jsx";
 import { FinanceTable, useFinCatalog } from "../../components/Finance.jsx";
 import { RequireAccess } from "../../components/Access.jsx";
 import { Icon } from "../../components/Icon.jsx";
-import { Bar, ErrorNote, Kpi, PageHead, PageSkeleton, Pending, SelectField, YearChecks } from "../../components/ui.jsx";
-import { finGroupOf, finGroups, finMitra, finRecipients, setFinDataYears, fmtPct, fmtRupiah, recipientText, fmtRupiahShort, moneyScale, MONTHS, progColor } from "../../lib/format.js";
+import { Bar, ErrorNote, Kpi, PageHead, PageSkeleton, Pending, PeriodChecks, SelectField, YearChecks } from "../../components/ui.jsx";
+import { finAllPeriods, finDefaultPeriods, finGroupOf, finGroups, finMitra, finPeriod, finPeriodDates, finPeriodName, finPeriodOption, finPeriodStatus, finPeriodYear, finRecipients, finSourceLabel, setFinDataYears, fmtPct, fmtRupiah, recipientText, fmtRupiahShort, moneyScale, MONTHS, progColor } from "../../lib/format.js";
 import { useApi } from "../../stores/data.js";
 import { useUiStore } from "../../stores/ui.js";
 
@@ -19,50 +19,79 @@ function FinancialPage() {
   const patch = useUiStore((s) => s.patch);
   const update = (v) => patch("fin", v);
 
-  const { ready: catalogReady } = useFinCatalog();
-  // nama program mengikuti tahun (mis. Freeport 2025 = INSPIRASI SCD & Bridging, 2026 = INSPIRASI EduQuest & SIAP ITB)
-  // tahun dicentang (bawaan: tahun ini); dua tahun atau lebih = dijumlah, nama program gabungan tahun-tahun itu
-  const years = ui.years;
+  const { ready: catalogReady, settled } = useFinCatalog();
+  // filter periode (backend lama: centang tahun). Bawaan: periode yang berjalan atau mulai tahun ini; nilainya utuh satu periode.
+  const groupApis = ui.program && ui.program !== "all" ? ui.program.split(",") : null;
+  const periodOptions = catalogReady ? finAllPeriods(groupApis) : [];
+  const picked = periodOptions.filter((p) => ui.periodIds?.includes(p.id));
+  const selectedPeriods = picked.length ? picked : finDefaultPeriods(periodOptions);
+  const selectedIds = selectedPeriods.map((p) => p.id);
+  // nama program mengikuti tahun (mis. Freeport 2025 = INSPIRASI SCD & Bridging, 2026 = INSPIRASI EduQuest & SIAP ITB);
+  // beberapa tahun = nama program gabungan tahun-tahun itu
+  const years = catalogReady ? [...new Set(selectedPeriods.map(finPeriodYear))] : ui.years;
   const year = years.length === 1 ? years[0] : undefined;
   setFinDataYears(years);
   // filter Program = kelompok program (mis. INSPIRASI SCD = YPK + Toraja); tetap ikut kelompoknya walau tahun berganti
   const group = ui.program && ui.program !== "all" ? finGroupOf(ui.program.split(",")[0], year) : null;
   const filters = {
     programs: group ? group.apis : ["all"],
-    year: year ?? years,
-    ...(year && ui.month ? { month: Number(ui.month) } : {}),
+    ...(catalogReady ? (selectedIds.length ? { periodIds: selectedIds } : {}) : { year: year ?? years }),
+    ...(catalogReady && /^\d{4}-\d{2}$/.test(ui.month) ? { month: Number(ui.month.slice(5)), calendarYear: Number(ui.month.slice(0, 4)) } : {}),
+    ...(!catalogReady && year && ui.month ? { month: Number(ui.month) } : {}),
     ...(ui.submissionType ? { submissionType: ui.submissionType } : {}),
   };
-  const { data, error, loading, reload } = useApi("/dashboard/financial", filters);
+  const { data, error, loading, reload } = useApi("/dashboard/financial", filters, { enabled: settled });
   const d = data?.data;
   const fo = d?.filterOptions;
-  const months = (fo?.months || []).filter((m) => years.includes(m.year));
+  const months = (fo?.months || []).filter((m) => (catalogReady ? selectedIds.includes(m.periodId) : years.includes(m.year)));
   const thisYear = new Date().getFullYear();
   const yearOptions = [...new Set([thisYear, ...(fo?.years || []), ...years])].sort((a, b) => b - a);
   const setFilter = (v) => update({ ...v, page: 1 });
-  // filter bulan hanya untuk satu tahun (saldo = akhir bulan itu)
+  // backend lama: filter bulan hanya untuk satu tahun (saldo = akhir bulan itu)
   const setYears = (list) => setFilter({ years: list, ...(list.length > 1 ? { month: "" } : {}) });
-  const month = year ? ui.month : "";
-  // periode bisa berlanjut ke tahun berikutnya: bulan itu ditulis dengan tahun kalendernya (April 2026 di periode 2025)
-  const calendarYear = (m) => Math.max(year ?? 0, ...months.filter((x) => x.month === m).map((x) => x.calendarYear ?? x.year));
-  const period = month ? `${MONTHS[Number(month) - 1]} ${calendarYear(Number(month))}` : years.join(" & ");
-  const active = !!(group || month || ui.submissionType || years.length !== 1 || year !== thisYear);
+  const monthKey = (m) => `${m.year}-${String(m.month).padStart(2, "0")}`;
+  const monthLabel = (key) => `${MONTHS[Number(key.slice(5)) - 1]} ${key.slice(0, 4)}`;
+  const monthKeys = [...new Set(months.map(monthKey))].sort();
+  const month = catalogReady ? (monthKeys.includes(ui.month) ? ui.month : "") : year ? ui.month : "";
+  const periodLabel = selectedPeriods.length === 1 ? finPeriodName(selectedPeriods[0]) : `${selectedPeriods.length} periode`;
+  const period = catalogReady
+    ? (month ? monthLabel(month) : periodLabel)
+    : (month ? `${MONTHS[Number(month) - 1]} ${year}` : years.join(" & "));
+  const active = !!(group || month || ui.submissionType || (catalogReady ? ui.periodIds : years.length !== 1 || year !== thisYear));
+  // satu mitra: cukup nomor periodenya; beberapa mitra: dengan nama programnya
+  const manyMitra = new Set(periodOptions.map((p) => p.api)).size > 1;
+  const startYears = [...new Set(periodOptions.map(finPeriodYear))].sort((a, b) => b - a);
+  const periodGroups = startYears.map((y) => ({
+    key: y, label: `Mulai ${y}`,
+    items: periodOptions.filter((p) => finPeriodYear(p) === y).sort((a, b) => new Date(b.start) - new Date(a.start)).map((p) => ({
+      id: p.id,
+      label: manyMitra ? `${finSourceLabel(p.api, y)} · ${finPeriodName(p)}` : finPeriodName(p),
+      meta: `${finPeriodDates(p)} · ${finPeriodStatus(p)}`,
+    })),
+  }));
+  const periodSummary = !selectedPeriods.length ? "Belum ada periode"
+    : selectedPeriods.length === 1 ? finPeriodOption(selectedPeriods[0]) : `${selectedPeriods.length} periode dipilih`;
+  const picker = catalogReady
+    ? <PeriodChecks groups={periodGroups} selected={selectedIds} summary={periodSummary} onChange={(ids) => setFilter({ periodIds: ids })} />
+    : <YearChecks years={years} options={yearOptions} onChange={setYears} />;
 
   return (
     <div className="page">
       <PageHead title="Keuangan" sub="PKS, pengajuan dana, dan saldo per program" />
 
       <section className="card filter-bar">
-        <SelectField label="Program" value={group ? group.key : "all"} onChange={(v) => setFilter({ program: v })}
+        <SelectField label="Program" value={group ? group.key : "all"} onChange={(v) => setFilter({ program: v, periodIds: null })}
           options={[["all", "Semua program"], ...finGroups(year).map((g) => [g.key, g.label])]} />
-        <div className="field"><span className="field-lab">Tahun</span>
-          <YearChecks years={years} options={yearOptions} onChange={setYears} />
+        <div className="field"><span className="field-lab">{catalogReady ? "Periode" : "Tahun"}</span>
+          {picker}
         </div>
-        <SelectField label="Bulan" value={month} onChange={(v) => setFilter({ month: v })} disabled={!year}
-          options={[["", "Semua bulan"], ...[...new Set(months.map((m) => m.month))].map((m) => [String(m), MONTHS[m - 1] + (year && calendarYear(m) !== year ? ` ${calendarYear(m)}` : "")])]} />
+        <SelectField label="Bulan" value={month} onChange={(v) => setFilter({ month: v })} disabled={!catalogReady && !year}
+          options={[["", "Semua bulan"], ...(catalogReady
+            ? monthKeys.map((k) => [k, monthLabel(k)])
+            : [...new Set(months.map((m) => m.month))].map((m) => [String(m), MONTHS[m - 1]]))]} />
         <SelectField label="Jenis pengajuan" value={ui.submissionType} onChange={(v) => setFilter({ submissionType: v })}
           options={[["", "Semua jenis"], ...(fo?.submissionTypes || []).map((t) => [t, t])]} />
-        {active && <button type="button" className="btn btn-sm filter-reset" onClick={() => setFilter({ program: "all", years: [thisYear], month: "", submissionType: "" })}>Reset filter</button>}
+        {active && <button type="button" className="btn btn-sm filter-reset" onClick={() => setFilter({ program: "all", years: [thisYear], periodIds: null, month: "", submissionType: "" })}>Reset filter</button>}
       </section>
 
       <ErrorNote error={error} onRetry={() => reload()} />
@@ -70,7 +99,7 @@ function FinancialPage() {
       {!d ? <PageSkeleton kpis={5} /> : (
         <Pending busy={loading}>
           <div className="kpi-row five">
-            {/* PKS & saldo mengikuti periode filter: tahun, atau 1 Jan s.d. akhir bulan terpilih */}
+            {/* PKS & saldo mengikuti filter: utuh per periode, atau s.d. akhir bulan terpilih */}
             <Kpi label={month ? `Nilai PKS s.d. ${period}` : `Nilai PKS ${period}`} value={fmtRupiahShort(d.kpi.totalPks)} hint={fmtRupiah(d.kpi.totalPks)} icon="wallet" />
             <Kpi label="Total DPKS" value={fmtRupiahShort(d.kpi.totalDpks)} hint={fmtRupiah(d.kpi.totalDpks)} />
             <Kpi label={period ? `Pengajuan ${period}` : "Total pengajuan"} value={fmtRupiahShort(d.kpi.totalSubmission)} hint={fmtRupiah(d.kpi.totalSubmission)} />
@@ -86,7 +115,7 @@ function FinancialPage() {
         </Pending>
       )}
 
-      <FinanceTable filters={filters} ui={ui} update={update} years={years} yearOptions={yearOptions} onYears={setYears} />
+      <FinanceTable filters={filters} ui={ui} update={update} labelYear={year} picker={picker} />
     </div>
   );
 }
@@ -195,18 +224,24 @@ function FinCharts({ d, period, year, catalogReady }) {
 // kartu sempit: nominal diringkas (Rp 1,07 miliar)
 const Money = ({ v }) => <><span className="sm-hide">{fmtRupiah(v)}</span><span className="sm-only">{fmtRupiahShort(v)}</span></>;
 
-// serapan satu desimal; absorbed = pengajuan s.d. akhir periode dari server (fallback: pengajuan periode)
-const absorption = (pks, dpks, sub) => (pks - dpks > 0 ? Math.round((sub / (pks - dpks)) * 1000) / 10 : 0);
+// serapan satu desimal; absorbed = pengajuan s.d. akhir filter dari server (fallback: pengajuan filter)
+const netOf = (v) => (Number(v.totalPks) || 0) - (Number(v.totalTax) || 0) - (Number(v.totalDpks) || 0);
+const absorption = (net, sub) => (net > 0 ? Math.round((sub / net) * 1000) / 10 : 0);
 const absorbedOf = (v) => v.absorbed ?? v.totalSubmission;
 
 // ringkasan per kelompok program; kelompok bermitra menampilkan mitranya, dan rincian per mitra bila lebih dari satu
 function Summary({ rows, period, year }) {
   const used = byGroup(rows.filter((r) => r.totalPks || r.totalSubmission), (r) => r.program, (r) => r, year);
   const idle = finGroups(year).filter((g) => rows.some((r) => g.apis.includes(r.program))).length - used.length;
+  // backend lama belum punya pajak dan periode
+  const showTax = rows.some((r) => "totalTax" in r);
   const line = (key, label, v, sub) => (
     <tr key={key} className={sub ? "fin-sub" : ""}>
       <td className={sub ? "" : "cell-strong"}>{label}</td>
-      <td className="num"><Money v={v.totalPks} /></td><td className="num sm-hide">{fmtRupiah(v.totalDpks)}</td>
+      <td className="num"><Money v={v.totalPks} /></td>
+      {showTax && <td className="num sm-hide">{v.totalTax ? fmtRupiah(v.totalTax) : "–"}</td>}
+      <td className="num sm-hide">{fmtRupiah(v.totalDpks)}</td>
+      {showTax && <td className="num sm-hide">{fmtRupiah(netOf(v))}</td>}
       <td className="num sm-hide">{fmtRupiah(v.totalSubmission)}</td><td className={"num" + (sub ? "" : " cell-strong") + (v.balance < 0 ? " neg" : "")}><Money v={v.balance} /></td>
       <td className="c-abs"><span className="att-cell"><Bar value={v.absorptionPercentage} />{fmtPct(v.absorptionPercentage)}</span></td>
     </tr>
@@ -217,31 +252,46 @@ function Summary({ rows, period, year }) {
         <div className="card-sub">{idle > 0 ? `${idle} program belum punya transaksi dan tidak ditampilkan` : "Semua program"}</div></div></div>
       {!used.length ? <div className="empty-inline">Belum ada transaksi untuk filter ini.</div> : (
         <div className="tbl-scroll"><table className="tbl compact">
-          <thead><tr><th>Program</th><th className="num">Nilai PKS</th><th className="num sm-hide">DPKS</th><th className="num sm-hide">{period ? `Pengajuan ${period}` : "Pengajuan"}</th><th className="num">{period ? "Saldo akhir bulan" : "Saldo"}</th><th className="c-abs">{period ? "Serapan s.d. bulan" : "Serapan"}</th></tr></thead>
+          <thead><tr><th>{showTax ? "Program dan periode" : "Program"}</th><th className="num">Nilai PKS</th>{showTax && <th className="num sm-hide">Pajak</th>}<th className="num sm-hide">DPKS</th>{showTax && <th className="num sm-hide">Dana bersih</th>}<th className="num sm-hide">{period ? `Pengajuan ${period}` : "Pengajuan"}</th><th className="num">{period ? "Saldo akhir bulan" : "Saldo"}</th><th className="c-abs">{period ? "Serapan s.d. bulan" : "Serapan"}</th></tr></thead>
           <tbody>{used.map(({ group: g, parts }) => {
-            const t = Object.fromEntries(["totalPks", "totalDpks", "totalSubmission", "balance"].map((k) => [k, sumOf(parts, k)]));
-            t.absorptionPercentage = absorption(t.totalPks, t.totalDpks, parts.reduce((s, p) => s + (Number(absorbedOf(p.values)) || 0), 0));
+            const t = Object.fromEntries(["totalPks", "totalTax", "totalDpks", "totalSubmission", "balance"].map((k) => [k, sumOf(parts, k)]));
+            t.absorptionPercentage = absorption(netOf(t), parts.reduce((s, p) => s + (Number(absorbedOf(p.values)) || 0), 0));
             const mitras = parts.map((p) => finMitra(p.api)).filter(Boolean);
+            const periodsOf = (p) => (p.values.periods || []).map((x) => ({ ...x, period: finPeriod(x.periodId) })).filter((x) => x.period)
+              .sort((a, b) => new Date(a.period.start) - new Date(b.period.start));
+            const periodCount = parts.reduce((n, p) => n + periodsOf(p).length, 0);
+            const only = parts.length === 1 && periodCount === 1 ? periodsOf(parts[0])[0].period : null;
             const name = (
               <><span className="port-dot" style={{ background: groupColor(g) }} />{g.label}
-                {mitras.length > 0 && <span className="fin-mitra">Mitra: {mitras.join(", ")}</span>}</>
+                {mitras.length > 0 && <span className="fin-mitra">Mitra: {mitras.join(", ")}</span>}
+                {only ? <span className="fin-mitra">{finPeriodOption(only)}</span> : periodCount > 1 && <span className="fin-mitra">{periodCount} periode</span>}</>
             );
+            // satu periode digabung dengan baris program/mitranya; beberapa periode dirinci
+            const periodRows = (p) => { const list = periodsOf(p); return list.length > 1 ? list.map((x) => line(p.api + x.periodId,
+              <>{finPeriodName(x.period)}<span className="fin-mitra fin-plain">{finPeriodDates(x.period)}</span></>, x, true)) : []; };
+            const mitraName = (p) => { const list = periodsOf(p); return (
+              <>Mitra {finMitra(p.api) || "–"}{list.length === 1 && <span className="fin-mitra fin-plain">{finPeriodOption(list[0].period)}</span>}</>
+            ); };
             // pengajuan mitra yang membiayai beberapa program (TN, Freeport) dirinci per program penerima
             const split = (p) => (finRecipients(p.api, year).length > 1 ? [...(p.values.recipients || [])]
               .sort((a, b) => (a.program ? finRecipients(p.api, year).indexOf(a.program) : 99) - (b.program ? finRecipients(p.api, year).indexOf(b.program) : 99))
               .map((x) => (
                 <tr key={p.api + (x.program || "bersama")} className="fin-sub fin-rec">
-                  <td>{recipientText(p.api, x.program, year)}</td><td colSpan={5}>Pengajuan {fmtRupiah(x.submission)}</td>
+                  <td>{recipientText(p.api, x.program, year)}</td><td colSpan={showTax ? 7 : 5}>Pengajuan {fmtRupiah(x.submission)}</td>
                 </tr>
               )) : []);
             return [
               line(g.key, name, t),
-              ...(parts.length > 1 ? parts.flatMap((p) => [line(p.api, `Mitra ${finMitra(p.api) || "–"}`, p.values, true), ...split(p)]) : split(parts[0])),
+              ...(parts.length > 1
+                ? parts.flatMap((p) => [line(p.api, mitraName(p), p.values, true), ...periodRows(p), ...split(p)])
+                : [...periodRows(parts[0]), ...split(parts[0])]),
             ];
           })}</tbody>
         </table></div>
       )}
-      <p className="hint"><Icon name="info" size={14} />Serapan = pengajuan ÷ (nilai PKS − DPKS). Filter tahun/bulan: PKS, saldo, dan serapan dihitung dari 1 Januari sampai akhir periode; saldo memakai semua jenis pengajuan. Nama program menggantikan nama sumber dana; mitra = pemberi dana (mis. YPK, TN, Freeport).</p>
+      <p className="hint"><Icon name="info" size={14} />{showTax
+        ? "Dana bersih = nilai PKS − pajak − DPKS, dan DPKS dihitung setelah pajak. Serapan = pengajuan ÷ dana bersih. Nilainya utuh per periode yang dicentang; dengan filter bulan dihitung s.d. akhir bulan itu."
+        : "Serapan = pengajuan ÷ (nilai PKS − DPKS). Filter tahun/bulan: PKS, saldo, dan serapan dihitung dari 1 Januari sampai akhir periode; saldo memakai semua jenis pengajuan."} Nama program menggantikan nama sumber dana; mitra = pemberi dana (mis. YPK, TN, Freeport).</p>
     </section>
   );
 }
