@@ -108,26 +108,38 @@ export function finRecipients(api, year) {
   const withData = years.filter((y) => y === "*" || finDataYears.includes(y));
   return [...new Set((withData.length ? withData : years).flatMap((y) => byYear[y]))];
 }
-// periode anggaran mitra, dinamai tahun mulainya: tahun pertama yang punya transaksi = Periode 1, tahun berikutnya Periode 2, dst.
-export const finPeriodYears = (api) => finPartner(api)?.periodYears || [];
-// masa periode diisi di PKS Awal; periode yang selesai di tahun berikutnya tertulis lintas tahun: Periode 1 (2025–2026)
-const finPeriodRange = (api, year) => finPartner(api)?.periodRanges?.[year] || null;
-export function finPeriodLabel(api, year) {
-  const first = finPeriodYears(api)[0];
-  if (first === undefined) return `Periode 1 (${year})`;
-  if (year < first) return `Periode 1 baru (${year})`;
-  const endYear = toDate(finPeriodRange(api, year)?.end)?.getUTCFullYear();
-  return `Periode ${year - first + 1} (${endYear > year ? `${year}–${endYear}` : year})`;
+// periode = satu kerja sama mitra: kode, tanggal mulai & selesai, bisa lintas tahun; satu mitra bisa punya beberapa dalam setahun.
+// Nomornya urut tanggal mulai per mitra.
+export const finPeriods = (api) => finPartner(api)?.periods || [];
+export const finAllPeriods = (apis) => finPartners.filter((p) => !apis || apis.includes(p.api)).flatMap((p) => (p.periods || []).map((x) => ({ ...x, api: p.api })));
+export const finPeriod = (id) => finPartners.flatMap((p) => p.periods || []).find((x) => x.id === id) || null;
+const isoDay = (v) => new Date(v).toISOString().slice(0, 10);
+export const finPeriodYear = (p) => new Date(p.start).getUTCFullYear();
+export const finPeriodName = (p) => `Periode ${p.number}`;
+export function finPeriodDates(p) {
+  const s = new Date(p.start), e = new Date(p.end);
+  const mon = (d) => MONTHS[d.getUTCMonth()].slice(0, 3);
+  if (s.getUTCFullYear() !== e.getUTCFullYear()) return `${mon(s)} ${s.getUTCFullYear()} – ${mon(e)} ${e.getUTCFullYear()}`;
+  return s.getUTCMonth() === e.getUTCMonth() ? `${mon(e)} ${e.getUTCFullYear()}` : `${mon(s)} – ${mon(e)} ${e.getUTCFullYear()}`;
 }
-export function finPeriodDates(api, year) {
-  const range = finPeriodRange(api, year);
-  return range ? `${fmtDate(range.start)} – ${fmtDate(range.end)}` : "";
+export const finPeriodOption = (p) => `${finPeriodName(p)} · ${finPeriodDates(p)}`;
+export const finPeriodHas = (p, date) => isoDay(p.start) <= date && isoDay(p.end) >= date;
+export function finPeriodStatus(p, today = toDateInput(new Date())) {
+  return isoDay(p.start) > today ? "akan datang" : isoDay(p.end) < today ? "selesai" : "berjalan";
 }
-// tanggal di luar masa periode; masa yang belum lengkap tidak dinilai
-export function finOutsidePeriod(api, year, date) {
-  const range = finPeriodRange(api, year);
-  if (!range?.start || !range?.end || !date) return false;
-  return date < toDateInput(range.start) || date > toDateInput(range.end);
+// periode untuk sebuah tanggal: yang memuat tanggal itu (terbaru), kalau tidak ada yang terakhir dimulai sebelumnya
+export function finPeriodForDate(api, date) {
+  const list = finPeriods(api);
+  const started = list.filter((p) => isoDay(p.start) <= date);
+  return started.filter((p) => finPeriodHas(p, date)).at(-1) ?? started.at(-1) ?? list[0] ?? null;
+}
+// pilihan bawaan filter: masih berjalan atau mulai tahun ini; kalau tidak ada, periode terakhir tiap mitra
+export function finDefaultPeriods(options) {
+  const thisYear = new Date().getFullYear();
+  const now = options.filter((p) => finPeriodStatus(p) === "berjalan" || finPeriodYear(p) === thisYear);
+  if (now.length) return now;
+  const last = new Map(options.map((p) => [p.api, p]));
+  return [...last.values()];
 }
 export const finMitra = (api) => (finPartner(api)?.isMitra ? finPartner(api).name : "");
 // nama yang tampil = nama program penerima; mitra baru yang belum punya program memakai nama mitranya

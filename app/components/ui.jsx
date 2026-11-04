@@ -251,12 +251,8 @@ export function Segmented({ value, options, onChange, label }) {
   );
 }
 
-// tampilkan `limit` item pertama + tombol "Lihat semua (n)"
-/**
- * Pilih satu atau beberapa tahun: tertutup hanya menampilkan tahun tercentang; diklik memunculkan semua tahun ke bawah.
- * Minimal satu tahun tetap tercentang. Daftar dipasang di body agar tidak terpotong kartu.
- */
-export function YearChecks({ years, options, onChange }) {
+// posisi dan buka-tutup daftar turun yang digambar di atas halaman
+function useDropdown(height) {
   const [pos, setPos] = useState(null);   // posisi daftar di layar; null = tertutup
   const btn = useRef(null), panel = useRef(null);
   const open = !!pos;
@@ -266,14 +262,15 @@ export function YearChecks({ years, options, onChange }) {
     const close = () => setPos(null);
     const onDown = (e) => { if (!panel.current?.contains(e.target) && !btn.current?.contains(e.target)) close(); };
     const onKey = (e) => { if (e.key === "Escape") { close(); btn.current?.focus(); } };
+    const onScroll = (e) => { if (!panel.current?.contains(e.target)) close(); };
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
-    window.addEventListener("scroll", close, true);
+    window.addEventListener("scroll", onScroll, true);
     window.addEventListener("resize", close);
     return () => {
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
-      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("scroll", onScroll, true);
       window.removeEventListener("resize", close);
     };
   }, [open]);
@@ -281,10 +278,19 @@ export function YearChecks({ years, options, onChange }) {
   const toggleOpen = () => {
     if (open) return setPos(null);
     const r = btn.current.getBoundingClientRect();
-    const height = options.length * 38 + 12;
     const below = r.bottom + 4 + height <= window.innerHeight;
     return setPos({ left: r.left, minWidth: r.width, top: below ? r.bottom + 4 : Math.max(8, r.top - height - 4) });
   };
+  return { btn, panel, pos, open, toggleOpen };
+}
+
+// tampilkan `limit` item pertama + tombol "Lihat semua (n)"
+/**
+ * Pilih satu atau beberapa tahun: tertutup hanya menampilkan tahun tercentang; diklik memunculkan semua tahun ke bawah.
+ * Minimal satu tahun tetap tercentang. Daftar dipasang di body agar tidak terpotong kartu.
+ */
+export function YearChecks({ years, options, onChange }) {
+  const { btn, panel, pos, open, toggleOpen } = useDropdown(options.length * 38 + 12);
   const toggle = (y) => {
     const next = years.includes(y) ? years.filter((x) => x !== y) : [...years, y];
     if (next.length) onChange(next.sort((a, b) => a - b));
@@ -304,6 +310,51 @@ export function YearChecks({ years, options, onChange }) {
               <input type="checkbox" checked={years.includes(y)} onChange={() => toggle(y)} />{y}
             </label>
           ))}
+        </div>,
+        document.body,
+      )}
+    </>
+  );
+}
+
+/** Pilih periode dengan centang, dikelompokkan per tahun mulai; centang kelompok memilih semua isinya. Minimal satu tetap tercentang.
+ *  groups: [{ key, label, items: [{ id, label, meta }] }] */
+export function PeriodChecks({ groups, selected, summary, onChange }) {
+  const count = groups.reduce((n, g) => n + g.items.length + 1, 0);
+  const { btn, panel, pos, open, toggleOpen } = useDropdown(Math.min(count * 38 + 12, 420));
+  const apply = (next) => { if (next.length) onChange(next); };
+  const toggle = (id) => apply(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
+  const toggleGroup = (g) => {
+    const ids = g.items.map((x) => x.id);
+    const all = ids.every((id) => selected.includes(id));
+    apply(all ? selected.filter((id) => !ids.includes(id)) : [...new Set([...selected, ...ids])]);
+  };
+
+  return (
+    <>
+      <button type="button" ref={btn} className="year-pick" aria-haspopup="true" aria-expanded={open} aria-label={`Periode: ${summary}`} onClick={toggleOpen}>
+        <span className="year-box"><Icon name="check" size={12} /></span>
+        <span className="year-now">{summary}</span>
+        <Icon name="down" size={15} />
+      </button>
+      {open && count > 0 && createPortal(
+        <div ref={panel} className="year-menu period-menu" role="group" aria-label="Pilih periode" style={pos}>
+          {groups.map((g) => {
+            const on = g.items.filter((x) => selected.includes(x.id)).length;
+            return (
+              <div key={g.key}>
+                <label className={"period-group" + (on ? " on" : "")}>
+                  <input type="checkbox" checked={on === g.items.length} ref={(el) => { if (el) el.indeterminate = on > 0 && on < g.items.length; }} onChange={() => toggleGroup(g)} />{g.label}
+                </label>
+                {g.items.map((x) => (
+                  <label key={x.id} className={"period-item" + (selected.includes(x.id) ? " on" : "")}>
+                    <input type="checkbox" checked={selected.includes(x.id)} onChange={() => toggle(x.id)} />
+                    <span>{x.label}</span><span className="period-meta">{x.meta}</span>
+                  </label>
+                ))}
+              </div>
+            );
+          })}
         </div>,
         document.body,
       )}
