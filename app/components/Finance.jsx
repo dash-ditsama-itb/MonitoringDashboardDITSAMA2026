@@ -361,7 +361,7 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
   }
 
   const field = (k) => ({ value: f[k] ?? "", onChange: (e) => setF({ ...f, [k]: e.target.value }) });
-  // Penambahan PKS mengikuti jenis PKS Awal periodenya; pajak dipotong sebelum DPKS
+  // Penambahan PKS mengikuti jenis PKS Awal periodenya; pajak hanya mengurangi dasar DPKS, dana bersih = nilai − DPKS
   const inheritedType = ready && isPksForm && !isAwal && period?.hasInitialPks ? period.pksType : null;
   const pksType = inheritedType || f.pksType;
   const persen = PKS_TYPES.find(([v]) => v === pksType)?.[2] ?? 0;
@@ -530,9 +530,9 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
         </label>
       )}
       <div className="calc span-2">
-        {tax > 0 && <><span>Setelah pajak</span><b>{fmtRupiah(afterTax)}</b></>}
+        {tax > 0 && <><span>Dasar DPKS (setelah pajak)</span><b>{fmtRupiah(afterTax)}</b></>}
         <span>DPKS {persen}%</span><b>{fmtRupiah(dpks)}</b>
-        <span>{isAwal || !ready ? "Dana bersih" : "Tambahan bersih"}</span><b>{fmtRupiah(afterTax - dpks)}</b>
+        <span>{isAwal || !ready ? "Dana bersih" : "Tambahan bersih"}</span><b>{fmtRupiah(value - dpks)}</b>
       </div>
       <label className="field span-2"><span className="field-lab">Keterangan</span>
         <input type="text" placeholder="opsional, mis. PKS Awal SIAP ITB" {...field("text")} />
@@ -559,7 +559,7 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
   const title = (isEdit ? "Ubah " : "Tambah ") + (isPksForm ? (isEdit ? finTypeLabel(record.type) : "PKS") : "pengajuan");
   return (
     <Sheet open={open} onClose={onClose} title={title}
-      sub={isPksForm ? "Nilai PKS menambah dana program; pajak dan DPKS dipotong sesuai isian." : "Setiap pengajuan mengurangi saldo periode program."}
+      sub={isPksForm ? "Nilai PKS menambah dana program; DPKS dipotong, dihitung dari nilai setelah pajak." : "Setiap pengajuan mengurangi saldo periode program."}
       footer={(
         <>
           {err && <div className="foot-err" role="alert"><Icon name="alert" size={16} />{err}</div>}
