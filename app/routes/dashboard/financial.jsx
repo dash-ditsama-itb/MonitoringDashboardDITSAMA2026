@@ -212,7 +212,8 @@ function FinCharts({ d, period, year, catalogReady }) {
 const Money = ({ v }) => <><span className="sm-hide">{fmtRupiah(v)}</span><span className="sm-only">{fmtRupiahShort(v)}</span></>;
 
 // serapan satu desimal; absorbed = pengajuan s.d. akhir filter dari server (fallback: pengajuan filter)
-const netOf = (v) => (Number(v.totalPks) || 0) - (Number(v.totalTax) || 0) - (Number(v.totalDpks) || 0);
+// dana bersih = nilai PKS − DPKS; pajak hanya mengurangi dasar DPKS
+const netOf = (v) => (Number(v.totalPks) || 0) - (Number(v.totalDpks) || 0);
 const absorption = (net, sub) => (net > 0 ? Math.round((sub / net) * 1000) / 10 : 0);
 const absorbedOf = (v) => v.absorbed ?? v.totalSubmission;
 
@@ -277,7 +278,7 @@ function Summary({ rows, period, year }) {
         </table></div>
       )}
       <p className="hint"><Icon name="info" size={14} />{showTax
-        ? "Dana bersih = nilai PKS − pajak − DPKS, dan DPKS dihitung setelah pajak. Serapan = pengajuan ÷ dana bersih. Filter Periode memilih periode menurut tahun mulainya; periode yang berlanjut ke tahun berikutnya tetap dihitung utuh. Dengan filter bulan, dihitung s.d. akhir bulan itu."
+        ? "Dana bersih = nilai PKS − DPKS; pajak hanya mengurangi dasar DPKS (DPKS = persen × (nilai PKS − pajak)). Serapan = pengajuan ÷ dana bersih. Filter Periode memilih periode menurut tahun mulainya; periode yang berlanjut ke tahun berikutnya tetap dihitung utuh. Dengan filter bulan, dihitung s.d. akhir bulan itu."
         : "Serapan = pengajuan ÷ (nilai PKS − DPKS). Filter tahun/bulan: PKS, saldo, dan serapan dihitung dari 1 Januari sampai akhir periode; saldo memakai semua jenis pengajuan."} Nama program menggantikan nama sumber dana; mitra = pemberi dana (mis. YPK, TN, Freeport).</p>
     </section>
   );
