@@ -124,23 +124,20 @@ export function finPeriodDates(p) {
 }
 export const finPeriodOption = (p) => `${finPeriodName(p)} · ${finPeriodDates(p)}`;
 export const finPeriodHas = (p, date) => isoDay(p.start) <= date && isoDay(p.end) >= date;
-export function finPeriodStatus(p, today = toDateInput(new Date())) {
-  return isoDay(p.start) > today ? "akan datang" : isoDay(p.end) < today ? "selesai" : "berjalan";
+// tahun mulai periode yang ada datanya (filter utama halaman Keuangan)
+export const finPeriodYears = (apis) => [...new Set(finAllPeriods(apis).map(finPeriodYear))].sort((a, b) => b - a);
+// form: pilih program dulu, lalu mitra yang mendanainya, lalu periodenya.
+// Program mitra = program penerima dari semua tahun dan periodenya; mitra tanpa program memakai namanya.
+export function finPartnerPrograms(api) {
+  const p = finPartner(api);
+  if (!p) return [];
+  const list = [...Object.values(p.programsByYear || {}).flat(), ...(p.periods || []).flatMap((x) => x.programs)];
+  return list.length ? [...new Set(list)] : [p.name];
 }
-// periode untuk sebuah tanggal: yang memuat tanggal itu (terbaru), kalau tidak ada yang terakhir dimulai sebelumnya
-export function finPeriodForDate(api, date) {
-  const list = finPeriods(api);
-  const started = list.filter((p) => isoDay(p.start) <= date);
-  return started.filter((p) => finPeriodHas(p, date)).at(-1) ?? started.at(-1) ?? list[0] ?? null;
-}
-// pilihan bawaan filter: masih berjalan atau mulai tahun ini; kalau tidak ada, periode terakhir tiap mitra
-export function finDefaultPeriods(options) {
-  const thisYear = new Date().getFullYear();
-  const now = options.filter((p) => finPeriodStatus(p) === "berjalan" || finPeriodYear(p) === thisYear);
-  if (now.length) return now;
-  const last = new Map(options.map((p) => [p.api, p]));
-  return [...last.values()];
-}
+export const finProgramNames = () => [...new Set(finPartners.flatMap((p) => finPartnerPrograms(p.api)))].sort(byLabel());
+export const finFunders = (prog) => finPartners.filter((p) => finPartnerPrograms(p.api).includes(prog)).map((p) => p.api);
+export const finPartnerName = (api) => finPartner(api)?.name || api;
+export const finPeriodsFor = (api, prog) => finPeriods(api).filter((p) => !p.programs.length || p.programs.includes(prog) || finPartnerPrograms(api).length === 1);
 export const finMitra = (api) => (finPartner(api)?.isMitra ? finPartner(api).name : "");
 // nama yang tampil = nama program penerima; mitra baru yang belum punya program memakai nama mitranya
 export const finProgramLabel = (api, year) => listLabel(finRecipients(api, year)) || finPartner(api)?.name || api;

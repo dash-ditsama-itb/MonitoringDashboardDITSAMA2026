@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { PKS_TYPES } from "../config.js";
 import { api, errorText } from "../lib/api.js";
 import {
-  canEditFinance, finMitra, finPeriod, finPeriodDates, finPeriodForDate, finPeriodHas, finPeriodName, finPeriodOption, finPeriodYear, finPeriods, finProgramLabel, finRecipients, finSourceLabel, finSources, finTypeLabel, finYears, recipientText, setFinCatalog, fmtDate, fmtDateTime, fmtRelative, fmtRupiah, fromDateInput, isPks, toDateInput,
+  canEditFinance, finFunders, finMitra, finPartnerName, finPartnerPrograms, finPeriod, finPeriodDates, finPeriodHas, finPeriodName, finPeriodOption, finPeriodYear, finPeriods, finPeriodsFor, finProgramLabel, finProgramNames, finRecipients, finSourceLabel, finSources, finTypeLabel, finYears, recipientText, setFinCatalog, fmtDate, fmtDateTime, fmtRelative, fmtRupiah, fromDateInput, isPks, toDateInput,
 } from "../lib/format.js";
 import { useAuthStore } from "../stores/auth.js";
 import { invalidate, useApi } from "../stores/data.js";
@@ -43,7 +43,7 @@ const subOf = (r) => (isPks(r)
   ? [r.pksType && `Jenis ${r.pksType}`, r.taxValue && `Pajak ${fmtRupiah(r.taxValue)}`].filter(Boolean)
   : [r.submissionType, r.invoiceNumber && `Invoice ${r.invoiceNumber}`].filter(Boolean)).join(" · ");
 
-/** pageFilters: { programs, periodIds | year, month, submissionType } dari halaman Keuangan; picker = centang periode/tahun yang sama dengan filter halaman. */
+/** pageFilters: { programs, year, month, submissionType } dari halaman Keuangan; picker = centang periode (tahun mulai) yang sama dengan filter halaman. */
 export function FinanceTable({ filters: pageFilters, ui, update, labelYear, picker }) {
   // filter Program khusus tabel Transaksi: per sumber dana/mitra, di dalam filter Program halaman
   const { settled } = useFinCatalog();
@@ -248,13 +248,14 @@ function RecipientTag({ r }) {
 function formFrom(kind, r, program, session) {
   if (!r) {
     return kind === "pks"
-      ? { program, periodId: "", code: "", periodStart: "", periodEnd: "", tax: "", type: "initial_pks", pksType: "Pm", value: "", date: today(), text: "", pic: session?.name || "" }
-      : { program, periodId: "", date: today(), invoiceNumber: "", submissionType: "", text: "", value: "", pic: session?.name || "", recipient: "" };
+      ? { program, prog: finPartnerPrograms(program)[0] || "", periodId: "", code: "", periodStart: "", periodEnd: "", tax: "", type: "initial_pks", pksType: "Pm", value: "", date: today(), text: "", pic: session?.name || "" }
+      : { program, prog: finPartnerPrograms(program)[0] || "", periodId: "", date: today(), invoiceNumber: "", submissionType: "", text: "", value: "", pic: session?.name || "", recipient: finPartnerPrograms(program)[0] || "" };
   }
   const p = finPeriod(r.periodId);
+  const prog = r.recipientProgram || p?.programs[0] || finPartnerPrograms(r.program)[0] || "";
   return isPks(r)
-    ? { program: r.program, periodId: r.periodId || "", code: p?.code || "", periodStart: p ? toDateInput(p.start) : "", periodEnd: p ? toDateInput(p.end) : "", tax: String(r.taxValue || ""), type: r.type, pksType: r.pksType || "Pm", value: String(r.pksValue ?? ""), date: toDateInput(r.date), text: r.information || "", pic: r.pic || "" }
-    : { program: r.program, periodId: r.periodId || "", date: toDateInput(r.date), invoiceNumber: r.invoiceNumber || "", submissionType: r.submissionType || "", text: r.description || "", value: String(r.submissionValue ?? ""), pic: r.pic || "", recipient: r.recipientProgram || "" };
+    ? { program: r.program, prog, periodId: r.periodId || "", code: p?.code || "", periodStart: p ? toDateInput(p.start) : "", periodEnd: p ? toDateInput(p.end) : "", tax: String(r.taxValue || ""), type: r.type, pksType: r.pksType || "Pm", value: String(r.pksValue ?? ""), date: toDateInput(r.date), text: r.information || "", pic: r.pic || "" }
+    : { program: r.program, prog, periodId: r.periodId || "", date: toDateInput(r.date), invoiceNumber: r.invoiceNumber || "", submissionType: r.submissionType || "", text: r.description || "", value: String(r.submissionValue ?? ""), pic: r.pic || "", recipient: r.recipientProgram || "" };
 }
 
 // isian nama mitra/program baru di dalam form pengajuan & PKS
@@ -297,34 +298,41 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
   const isEdit = !!record, isPksForm = kind === "pks";
   const thisYear = new Date().getFullYear();
   const yearOfDate = (date) => Number(String(date || "").slice(0, 4));
-  // PKS Awal membuat periode baru (atau melengkapi periode yang belum punya PKS Awal); yang lain memakai periode terpilih, bawaannya sesuai tanggal.
+  // Urutan isian: program, mitra yang mendanainya, lalu periodenya (dipilih sendiri, tidak ditebak dari tanggal).
+  // PKS Awal membuat periode baru, atau melengkapi periode yang belum punya PKS Awal.
   // Backend lama belum punya periode: tahun selalu sama dengan tanggal transaksi.
   const isAwal = ready && isPksForm && f.type === "initial_pks";
-  const periods = ready ? finPeriods(f.program) : [];
-  const newest = [...periods].reverse();
+  const funders = ready ? [...new Set([...finFunders(f.prog), ...(f.program ? [f.program] : [])])].filter((a) => finFunders(f.prog).includes(a) || a === record?.program) : [];
+  const listed = ready ? finPeriodsFor(f.program, f.prog) : [];
+  const current = isEdit && ready ? finPeriod(record.periodId) : null;
+  const periods = current && !listed.some((p) => p.id === current.id) ? [...listed, current] : listed;
+  const newest = [...periods].sort((a, b) => new Date(b.start) - new Date(a.start));
   const orphans = isAwal && !isEdit ? newest.filter((p) => !p.hasInitialPks) : [];
-  const period = periods.find((p) => p.id === f.periodId) ?? (isAwal || !ready ? null : finPeriodForDate(f.program, f.date || today()));
+  const period = periods.find((p) => p.id === f.periodId) ?? null;
   const year = !ready ? yearOfDate(f.date) || thisYear : period ? finPeriodYear(period) : yearOfDate(f.periodStart) || thisYear;
-  const recipients = period ? period.programs : finRecipients(f.program, year);
+  const recipients = period ? period.programs : ready ? finPartnerPrograms(f.program) : finRecipients(f.program, year);
   const years = [...new Set([...finYears(), thisYear, year])].sort((a, b) => b - a);
-  const programsFor = (program, periodId, date) => {
-    if (!ready) return finRecipients(program, yearOfDate(date) || thisYear);
-    const p = finPeriods(program).find((x) => x.id === periodId) ?? finPeriodForDate(program, date || today());
-    return p ? p.programs : finRecipients(program, yearOfDate(date) || thisYear);
-  };
   const keepRecipient = (cur, programs) => (programs.includes(cur.recipient) ? cur.recipient : "");
-  const setDate = (date) => setF((cur) => {
-    const chosen = finPeriods(cur.program).find((p) => p.id === cur.periodId);
-    const periodId = chosen && date && finPeriodHas(chosen, date) ? cur.periodId : "";
-    return { ...cur, date, periodId, recipient: keepRecipient(cur, programsFor(cur.program, periodId, date)) };
-  });
+  const setDate = (date) => setF((cur) => ({ ...cur, date, recipient: ready ? cur.recipient : keepRecipient(cur, finRecipients(cur.program, yearOfDate(date) || thisYear)) }));
   const setPeriod = (periodId) => setF((cur) => {
     const p = finPeriods(cur.program).find((x) => x.id === periodId);
     const details = isAwal ? { code: p?.code || "", periodStart: p ? toDateInput(p.start) : "", periodEnd: p ? toDateInput(p.end) : "" } : {};
-    return { ...cur, ...details, periodId, recipient: keepRecipient(cur, programsFor(cur.program, periodId, cur.date)) };
+    const programs = p ? p.programs : finPartnerPrograms(cur.program);
+    return { ...cur, ...details, periodId, recipient: programs.includes(cur.prog) ? cur.prog : keepRecipient(cur, programs) };
   });
+  const setProg = (prog) => {
+    setF((cur) => {
+      const list = finFunders(prog);
+      const program = list.includes(cur.program) ? cur.program : list[0] ?? cur.program;
+      const keep = program === cur.program && finPeriodsFor(program, prog).some((p) => p.id === cur.periodId);
+      return { ...cur, prog, program, periodId: keep ? cur.periodId : "", recipient: prog };
+    });
+    setAdding(null);
+  };
   const setMitra = (program) => {
-    setF((cur) => ({ ...cur, program, periodId: "", recipient: keepRecipient(cur, programsFor(program, "", cur.date)) }));
+    setF((cur) => (ready
+      ? { ...cur, program, periodId: "", recipient: cur.prog }
+      : { ...cur, program, periodId: "", recipient: keepRecipient(cur, finRecipients(program, yearOfDate(cur.date) || thisYear)) }));
     setAdding(null);
   };
   const setYear = (y) => {
@@ -336,16 +344,18 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
   async function addMitra(name) {
     if (finSources().some((a) => sameName(finMitra(a) || finProgramLabel(a), name))) return "Mitra ini sudah ada.";
     const out = await api("/financial/catalog/partners", { method: "POST", body: { name } });
+    // mitra baru langsung mendanai program yang sedang dipilih
+    if (f.prog) await api("/financial/catalog/programs", { method: "POST", body: { partner: out.data.key, year: thisYear, program: f.prog } });
     await reloadCatalog();
-    setF((cur) => ({ ...cur, program: out.data.key, periodId: "", recipient: "" }));
+    setF((cur) => ({ ...cur, program: out.data.key, periodId: "", recipient: cur.prog }));
     toast(`Mitra ${name} ditambahkan.`);
-    setAdding("program");
+    setAdding(f.prog ? null : "program");
   }
   async function addProgram(program) {
-    if (recipients.some((p) => sameName(p, program))) return `Program ini sudah ada di ${programScope}.`;
+    if (finPartnerPrograms(f.program).some((p) => sameName(p, program))) return `Program ini sudah ada di ${programScope}.`;
     await api("/financial/catalog/programs", { method: "POST", body: { partner: f.program, year, program, ...(period ? { periodId: period.id } : {}) } });
     await reloadCatalog();
-    setF((cur) => ({ ...cur, recipient: program }));
+    setF((cur) => ({ ...cur, prog: program, recipient: program }));
     toast(`Program ${program} ditambahkan.`);
     setAdding(null);
   }
@@ -359,7 +369,7 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
   const tax = ready && isPksForm ? Number(f.tax) || 0 : 0;
   const afterTax = value - tax;
   const dpks = Math.round(afterTax * persen / 100);
-  const programScope = period ? `${finPeriodName(period)} mitra ini` : `mitra ini untuk tahun ${year}`;
+  const programScope = ready ? `mitra ${finPartnerName(f.program)}` : `mitra ini untuk tahun ${year}`;
 
   async function save() {
     if (!value) return setErr(isPksForm ? "Isi nilai PKS." : "Isi nilai pengajuan.");
@@ -368,8 +378,8 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
       if (!f.periodStart || !f.periodEnd) return setErr("Isi tanggal mulai dan selesai periode.");
       if (f.periodEnd < f.periodStart) return setErr("Tanggal selesai tidak boleh sebelum tanggal mulai periode.");
     } else {
+      if (ready && !period) return setErr(periods.length ? "Pilih periode." : "Mitra ini belum punya periode untuk program ini. Input PKS Awal dulu.");
       if (!f.date) return setErr("Isi tanggal.");
-      if (ready && !period) return setErr("Mitra ini belum punya periode. Input PKS Awal dulu.");
     }
     setErr(""); setBusy(true);
     const date = fromDateInput(isAwal ? f.periodStart : f.date);
@@ -455,20 +465,51 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
       <input type="date" required value={f.date ?? ""} onChange={(e) => setDate(e.target.value)} />
     </label>
   );
+  const progField = (
+    <>
+      <div className="field span-2"><label className="field-lab" htmlFor="fin-program">Program</label>
+        <select id="fin-program" value={f.prog} onChange={(e) => setProg(e.target.value)}>
+          {!finProgramNames().includes(f.prog) && <option value={f.prog}>{f.prog || "Pilih program"}</option>}
+          {finProgramNames().map((p) => <option key={p} value={p}>{p}</option>)}
+        </select>
+        {adding !== "program" && <button type="button" className="fin-more" onClick={() => setAdding("program")}><Icon name="plus" size={13} />Tambah program lain</button>}
+      </div>
+      {adding === "program" && <AddName label="nama program" placeholder={`Program baru untuk mitra ${finPartnerName(f.program)}`} onAdd={addProgram} onCancel={() => setAdding(null)} />}
+    </>
+  );
+  const funderField = (
+    <>
+      <div className="field span-2"><label className="field-lab" htmlFor="fin-mitra">Mitra</label>
+        <select id="fin-mitra" value={f.program} onChange={(e) => setMitra(e.target.value)}>
+          {funders.map((a) => <option key={a} value={a}>{finMitra(a) || `${finPartnerName(a)} (tanpa mitra)`}</option>)}
+        </select>
+        {adding !== "mitra" && <button type="button" className="fin-more" onClick={() => setAdding("mitra")}><Icon name="plus" size={13} />Tambah mitra lain</button>}
+      </div>
+      {adding === "mitra" && <AddName label="nama mitra" placeholder={`Mitra baru untuk program ${f.prog}`} onAdd={addMitra} onCancel={() => setAdding(null)} />}
+    </>
+  );
   const periodField = (
     <>
       <label className="field span-2"><span className="field-lab">Periode</span>
         <select value={period?.id ?? ""} disabled={!periods.length} onChange={(e) => setPeriod(e.target.value)}>
-          {period ? null : <option value="">Belum ada periode</option>}
+          <option value="">{periods.length ? "Pilih periode" : "Belum ada periode"}</option>
           {newest.map((p) => <option key={p.id} value={p.id}>{finPeriodOption(p)}{p.code ? ` · ${p.code}` : ""}</option>)}
         </select>
       </label>
       {!periods.length
-        ? <p className="hint err span-2 fin-note">Mitra ini belum punya periode. Input PKS Awal dulu.</p>
+        ? <p className="hint err span-2 fin-note">Mitra ini belum punya periode untuk program ini. Input PKS Awal dulu.</p>
         : period && f.date && !finPeriodHas(period, f.date)
-          ? <p className="hint err span-2 fin-note">Tanggal ini di luar masa periode ({finPeriodDates(period)}).</p>
-          : !isPksForm && <p className="hint span-2 fin-note">Terpilih otomatis dari tanggal, tetapi masih bisa diganti.</p>}
+          && <p className="hint err span-2 fin-note">Tanggal ini di luar masa periode ({finPeriodDates(period)}).</p>}
     </>
+  );
+  // mitra yang mendanai beberapa program: pengajuan dibebankan ke program terpilih, atau dipakai bersama
+  const recipientField = recipients.length > 1 && (
+    <label className="field span-2"><span className="field-lab">Dibebankan ke</span>
+      <select {...field("recipient")}>
+        {recipients.map((p) => <option key={p} value={p}>{p}</option>)}
+        <option value="">{`Bersama (${recipients.join(" & ")})`}</option>
+      </select>
+    </label>
   );
   const moneyField = (
     <label className="field"><span className="field-lab">{isPksForm ? (isAwal || !ready ? "Nilai PKS" : "Nilai tambahan") : "Nilai pengajuan"}</span>
@@ -552,7 +593,7 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
               </>
             ) : isAwal ? (
               <>
-                {mitraField}
+                {progField}{funderField}
                 {orphans.length > 0 && (
                   <label className="field span-2"><span className="field-lab">Periode</span>
                     <select value={f.periodId} onChange={(e) => setPeriod(e.target.value)}>
@@ -570,12 +611,12 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
                 <label className="field"><span className="field-lab">Selesai</span>
                   <input type="date" required {...field("periodEnd")} />
                 </label>
-                {pksFields}{programField}
+                {pksFields}
               </>
             ) : isPksForm ? (
-              <>{mitraField}{periodField}{dateField}{pksFields}{programField}</>
+              <>{progField}{funderField}{periodField}{dateField}{pksFields}</>
             ) : (
-              <>{mitraField}{dateField}{periodField}{programField}{submissionFields}</>
+              <>{progField}{funderField}{periodField}{dateField}{recipientField}{submissionFields}</>
             )}
             <label className="field span-2"><span className="field-lab">PIC</span>
               <input type="text" placeholder="kosongkan untuk memakai email akun Anda" {...field("pic")} />
