@@ -3,8 +3,8 @@ import { ChartCanvas } from "../../components/ChartCanvas.jsx";
 import { FinanceTable, useFinCatalog } from "../../components/Finance.jsx";
 import { RequireAccess } from "../../components/Access.jsx";
 import { Icon } from "../../components/Icon.jsx";
-import { Bar, ErrorNote, Kpi, PageHead, PageSkeleton, Pending, PeriodChecks, SelectField, YearChecks } from "../../components/ui.jsx";
-import { finAllPeriods, finDefaultPeriods, finGroupOf, finGroups, finMitra, finPeriod, finPeriodDates, finPeriodName, finPeriodOption, finPeriodStatus, finPeriodYear, finRecipients, finSourceLabel, setFinDataYears, fmtPct, fmtRupiah, recipientText, fmtRupiahShort, moneyScale, MONTHS, progColor } from "../../lib/format.js";
+import { Bar, ErrorNote, Kpi, PageHead, PageSkeleton, Pending, SelectField, YearChecks } from "../../components/ui.jsx";
+import { finAllPeriods, finGroupOf, finGroups, finMitra, finPeriod, finPeriodDates, finPeriodName, finPeriodOption, finPeriodYear, finPeriodYears, finRecipients, setFinDataYears, fmtPct, fmtRupiah, recipientText, fmtRupiahShort, moneyScale, MONTHS, progColor } from "../../lib/format.js";
 import { useApi } from "../../stores/data.js";
 import { useUiStore } from "../../stores/ui.js";
 
@@ -20,22 +20,26 @@ function FinancialPage() {
   const update = (v) => patch("fin", v);
 
   const { ready: catalogReady, settled } = useFinCatalog();
-  // filter periode (backend lama: centang tahun). Bawaan: periode yang berjalan atau mulai tahun ini; nilainya utuh satu periode.
-  const groupApis = ui.program && ui.program !== "all" ? ui.program.split(",") : null;
-  const periodOptions = catalogReady ? finAllPeriods(groupApis) : [];
-  const picked = periodOptions.filter((p) => ui.periodIds?.includes(p.id));
-  const selectedPeriods = picked.length ? picked : finDefaultPeriods(periodOptions);
-  const selectedIds = selectedPeriods.map((p) => p.id);
-  // nama program mengikuti tahun (mis. Freeport 2025 = INSPIRASI SCD & Bridging, 2026 = INSPIRASI EduQuest & SIAP ITB);
-  // beberapa tahun = nama program gabungan tahun-tahun itu
-  const years = catalogReady ? [...new Set(selectedPeriods.map(finPeriodYear))] : ui.years;
+  // filter utama = periode menurut tahun mulainya (2025, 2026, ...): periode yang mulai di tahun itu dihitung utuh, walau
+  // berlanjut ke tahun berikutnya. Backend lama: tahun tanggal transaksi.
+  const thisYear = new Date().getFullYear();
+  const periodYearOptions = catalogReady ? finPeriodYears() : [];
+  const pickedYears = (ui.periodYears || []).filter((y) => periodYearOptions.includes(y));
+  const years = !catalogReady ? ui.years
+    : pickedYears.length ? pickedYears
+    : [periodYearOptions.includes(thisYear) ? thisYear : periodYearOptions[0] ?? thisYear];
   const year = years.length === 1 ? years[0] : undefined;
   setFinDataYears(years);
-  // filter Program = kelompok program (mis. INSPIRASI SCD = YPK + Toraja); tetap ikut kelompoknya walau tahun berganti
-  const group = ui.program && ui.program !== "all" ? finGroupOf(ui.program.split(",")[0], year) : null;
+  // filter Program = kelompok program (mis. INSPIRASI SCD = YPK + Toraja), hanya yang punya periode di tahun terpilih
+  const inYears = (apis) => !catalogReady || finAllPeriods(apis).some((p) => years.includes(finPeriodYear(p)));
+  const groupOptions = finGroups(year).filter((g) => inYears(g.apis));
+  const picked = ui.program && ui.program !== "all" ? finGroupOf(ui.program.split(",")[0], year) : null;
+  const group = picked && groupOptions.some((g) => g.key === picked.key) ? picked : null;
+  const selectedPeriods = catalogReady ? finAllPeriods(group?.apis).filter((p) => years.includes(finPeriodYear(p))) : [];
+  const selectedIds = selectedPeriods.map((p) => p.id);
   const filters = {
     programs: group ? group.apis : ["all"],
-    ...(catalogReady ? (selectedIds.length ? { periodIds: selectedIds } : {}) : { year: year ?? years }),
+    year: year ?? years,
     ...(catalogReady && /^\d{4}-\d{2}$/.test(ui.month) ? { month: Number(ui.month.slice(5)), calendarYear: Number(ui.month.slice(0, 4)) } : {}),
     ...(!catalogReady && year && ui.month ? { month: Number(ui.month) } : {}),
     ...(ui.submissionType ? { submissionType: ui.submissionType } : {}),
@@ -44,54 +48,37 @@ function FinancialPage() {
   const d = data?.data;
   const fo = d?.filterOptions;
   const months = (fo?.months || []).filter((m) => (catalogReady ? selectedIds.includes(m.periodId) : years.includes(m.year)));
-  const thisYear = new Date().getFullYear();
-  const yearOptions = [...new Set([thisYear, ...(fo?.years || []), ...years])].sort((a, b) => b - a);
+  const yearOptions = catalogReady ? periodYearOptions : [...new Set([thisYear, ...(fo?.years || []), ...years])].sort((a, b) => b - a);
   const setFilter = (v) => update({ ...v, page: 1 });
   // backend lama: filter bulan hanya untuk satu tahun (saldo = akhir bulan itu)
-  const setYears = (list) => setFilter({ years: list, ...(list.length > 1 ? { month: "" } : {}) });
+  const setYears = (list) => setFilter(catalogReady ? { periodYears: list } : { years: list, ...(list.length > 1 ? { month: "" } : {}) });
   const monthKey = (m) => `${m.year}-${String(m.month).padStart(2, "0")}`;
   const monthLabel = (key) => `${MONTHS[Number(key.slice(5)) - 1]} ${key.slice(0, 4)}`;
   const monthKeys = [...new Set(months.map(monthKey))].sort();
   const month = catalogReady ? (monthKeys.includes(ui.month) ? ui.month : "") : year ? ui.month : "";
-  const periodLabel = selectedPeriods.length === 1 ? finPeriodName(selectedPeriods[0]) : `${selectedPeriods.length} periode`;
   const period = catalogReady
-    ? (month ? monthLabel(month) : periodLabel)
+    ? (month ? monthLabel(month) : `periode ${[...years].sort().join(" & ")}`)
     : (month ? `${MONTHS[Number(month) - 1]} ${year}` : years.join(" & "));
-  const active = !!(group || month || ui.submissionType || (catalogReady ? ui.periodIds : years.length !== 1 || year !== thisYear));
-  // satu mitra: cukup nomor periodenya; beberapa mitra: dengan nama programnya
-  const manyMitra = new Set(periodOptions.map((p) => p.api)).size > 1;
-  const startYears = [...new Set(periodOptions.map(finPeriodYear))].sort((a, b) => b - a);
-  const periodGroups = startYears.map((y) => ({
-    key: y, label: `Mulai ${y}`,
-    items: periodOptions.filter((p) => finPeriodYear(p) === y).sort((a, b) => new Date(b.start) - new Date(a.start)).map((p) => ({
-      id: p.id,
-      label: manyMitra ? `${finSourceLabel(p.api, y)} · ${finPeriodName(p)}` : finPeriodName(p),
-      meta: `${finPeriodDates(p)} · ${finPeriodStatus(p)}`,
-    })),
-  }));
-  const periodSummary = !selectedPeriods.length ? "Belum ada periode"
-    : selectedPeriods.length === 1 ? finPeriodOption(selectedPeriods[0]) : `${selectedPeriods.length} periode dipilih`;
-  const picker = catalogReady
-    ? <PeriodChecks groups={periodGroups} selected={selectedIds} summary={periodSummary} onChange={(ids) => setFilter({ periodIds: ids })} />
-    : <YearChecks years={years} options={yearOptions} onChange={setYears} />;
+  const active = !!(group || month || ui.submissionType || (catalogReady ? pickedYears.length : years.length !== 1 || year !== thisYear));
+  const picker = <YearChecks years={years} options={yearOptions.length ? yearOptions : years} onChange={setYears} />;
 
   return (
     <div className="page">
       <PageHead title="Keuangan" sub="PKS, pengajuan dana, dan saldo per program" />
 
       <section className="card filter-bar">
-        <SelectField label="Program" value={group ? group.key : "all"} onChange={(v) => setFilter({ program: v, periodIds: null })}
-          options={[["all", "Semua program"], ...finGroups(year).map((g) => [g.key, g.label])]} />
         <div className="field"><span className="field-lab">{catalogReady ? "Periode" : "Tahun"}</span>
           {picker}
         </div>
+        <SelectField label="Program" value={group ? group.key : "all"} onChange={(v) => setFilter({ program: v })}
+          options={[["all", "Semua program"], ...groupOptions.map((g) => [g.key, g.label])]} />
         <SelectField label="Bulan" value={month} onChange={(v) => setFilter({ month: v })} disabled={!catalogReady && !year}
           options={[["", "Semua bulan"], ...(catalogReady
             ? monthKeys.map((k) => [k, monthLabel(k)])
             : [...new Set(months.map((m) => m.month))].map((m) => [String(m), MONTHS[m - 1]]))]} />
         <SelectField label="Jenis pengajuan" value={ui.submissionType} onChange={(v) => setFilter({ submissionType: v })}
           options={[["", "Semua jenis"], ...(fo?.submissionTypes || []).map((t) => [t, t])]} />
-        {active && <button type="button" className="btn btn-sm filter-reset" onClick={() => setFilter({ program: "all", years: [thisYear], periodIds: null, month: "", submissionType: "" })}>Reset filter</button>}
+        {active && <button type="button" className="btn btn-sm filter-reset" onClick={() => setFilter({ program: "all", years: [thisYear], periodYears: null, month: "", submissionType: "" })}>Reset filter</button>}
       </section>
 
       <ErrorNote error={error} onRetry={() => reload()} />
@@ -290,7 +277,7 @@ function Summary({ rows, period, year }) {
         </table></div>
       )}
       <p className="hint"><Icon name="info" size={14} />{showTax
-        ? "Dana bersih = nilai PKS − pajak − DPKS, dan DPKS dihitung setelah pajak. Serapan = pengajuan ÷ dana bersih. Nilainya utuh per periode yang dicentang; dengan filter bulan dihitung s.d. akhir bulan itu."
+        ? "Dana bersih = nilai PKS − pajak − DPKS, dan DPKS dihitung setelah pajak. Serapan = pengajuan ÷ dana bersih. Filter Periode memilih periode menurut tahun mulainya; periode yang berlanjut ke tahun berikutnya tetap dihitung utuh. Dengan filter bulan, dihitung s.d. akhir bulan itu."
         : "Serapan = pengajuan ÷ (nilai PKS − DPKS). Filter tahun/bulan: PKS, saldo, dan serapan dihitung dari 1 Januari sampai akhir periode; saldo memakai semua jenis pengajuan."} Nama program menggantikan nama sumber dana; mitra = pemberi dana (mis. YPK, TN, Freeport).</p>
     </section>
   );

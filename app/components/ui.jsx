@@ -317,51 +317,6 @@ export function YearChecks({ years, options, onChange }) {
   );
 }
 
-/** Pilih periode dengan centang, dikelompokkan per tahun mulai; centang kelompok memilih semua isinya. Minimal satu tetap tercentang.
- *  groups: [{ key, label, items: [{ id, label, meta }] }] */
-export function PeriodChecks({ groups, selected, summary, onChange }) {
-  const count = groups.reduce((n, g) => n + g.items.length + 1, 0);
-  const { btn, panel, pos, open, toggleOpen } = useDropdown(Math.min(count * 38 + 12, 420));
-  const apply = (next) => { if (next.length) onChange(next); };
-  const toggle = (id) => apply(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
-  const toggleGroup = (g) => {
-    const ids = g.items.map((x) => x.id);
-    const all = ids.every((id) => selected.includes(id));
-    apply(all ? selected.filter((id) => !ids.includes(id)) : [...new Set([...selected, ...ids])]);
-  };
-
-  return (
-    <>
-      <button type="button" ref={btn} className="year-pick" aria-haspopup="true" aria-expanded={open} aria-label={`Periode: ${summary}`} onClick={toggleOpen}>
-        <span className="year-box"><Icon name="check" size={12} /></span>
-        <span className="year-now">{summary}</span>
-        <Icon name="down" size={15} />
-      </button>
-      {open && count > 0 && createPortal(
-        <div ref={panel} className="year-menu period-menu" role="group" aria-label="Pilih periode" style={pos}>
-          {groups.map((g) => {
-            const on = g.items.filter((x) => selected.includes(x.id)).length;
-            return (
-              <div key={g.key}>
-                <label className={"period-group" + (on ? " on" : "")}>
-                  <input type="checkbox" checked={on === g.items.length} ref={(el) => { if (el) el.indeterminate = on > 0 && on < g.items.length; }} onChange={() => toggleGroup(g)} />{g.label}
-                </label>
-                {g.items.map((x) => (
-                  <label key={x.id} className={"period-item" + (selected.includes(x.id) ? " on" : "")}>
-                    <input type="checkbox" checked={selected.includes(x.id)} onChange={() => toggle(x.id)} />
-                    <span>{x.label}</span><span className="period-meta">{x.meta}</span>
-                  </label>
-                ))}
-              </div>
-            );
-          })}
-        </div>,
-        document.body,
-      )}
-    </>
-  );
-}
-
 /** Tab program bergaya map (Peserta, Umpan Balik). items = [[nilai, label]]; tab aktif biru, lainnya biru muda. */
 export function ProgramTabs({ items, value, onChange, label = "Program" }) {
   const ref = useRef(null);

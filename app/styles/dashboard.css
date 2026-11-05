@@ -1177,10 +1177,6 @@ span.asp-lab{cursor:default}
 .year-menu label{display:flex;align-items:center;gap:8px;min-height:38px;padding:0 10px;border-radius:var(--r-sm);font-size:14px;color:var(--ink);cursor:pointer}
 .year-menu label:hover{background:var(--subtle)}
 .year-menu label.on{color:var(--navy);font-weight:700}
-/* centang periode (Keuangan) */
-.year-menu.period-menu{display:block;max-height:420px;overflow-y:auto;max-width:min(560px,calc(100vw - 24px))}
-.year-menu .period-group{font-weight:700;color:var(--navy)}
-.year-menu .period-item{padding-left:28px}
-.period-meta{margin-left:auto;padding-left:18px;font-size:12px;font-weight:500;color:var(--muted);white-space:nowrap}
+/* periode Keuangan */
 .fin-mitra.fin-plain{margin-left:0}
 .fin-note{margin:-4px 0 0}
