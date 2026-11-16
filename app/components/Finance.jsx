@@ -10,6 +10,7 @@ import { invalidate, useApi } from "../stores/data.js";
 import { confirmAction, toast } from "./feedback.jsx";
 import { Icon } from "./Icon.jsx";
 import { ExportButton, ImportButton, importSummary } from "./ImportExport.jsx";
+import { KermaImportButton } from "./KermaImport.jsx";
 import { EmptyState, ErrorNote, Pagination, SearchInput, Segmented, Sheet, Spinner, TableSkeleton, usePending } from "./ui.jsx";
 
 const SORTS = [
@@ -108,6 +109,7 @@ export function FinanceTable({ filters: pageFilters, ui, update, labelYear, pick
               hint="Unggah .xlsx/.csv. Semua tab sheet yang punya kolom Nilai PKS atau Nilai Pengajuan ikut diimpor; mitra dibaca dari kolom Program atau nama tab (mis. SIAP_2026), periode dari kolom Kode Kerja Sama, Mulai Periode, Periode, atau tahun di nama tab (kalau tidak ada, dari tanggalnya), pajak dari kolom Pajak, program penerima dari kolom Program Penerima. Baris yang ID-nya sudah ada akan memperbarui transaksi tersebut"
               describe={(d) => importSummary(d, "transaksi", "program tidak dikenal")} onDone={refreshFinance} />
           )}
+          {canEdit && <KermaImportButton onDone={refreshFinance} />}
           <ExportButton path={exportPath} filename="keuangan.xlsx"
             query={{ ...filters, search: ui.search, sortBy, sortOrder }} />
           {canEdit && (

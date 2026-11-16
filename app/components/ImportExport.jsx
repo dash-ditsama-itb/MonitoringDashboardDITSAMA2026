@@ -90,7 +90,7 @@ const LIMIT = 5;
 const programName = (api) => programByApi(api)?.label ?? finSourceLabel(api);
 
 // nilai PKS/pengajuan berdesimal atau di bawah Rp 1.000: biasanya titik ribuan terbaca koma desimal (Rp 523.920 -> 523,92)
-function SuspiciousDialog({ rows, onChoose }) {
+export function SuspiciousDialog({ rows, onChoose }) {
   const ref = useRef(null);
   useEffect(() => {
     const d = ref.current;

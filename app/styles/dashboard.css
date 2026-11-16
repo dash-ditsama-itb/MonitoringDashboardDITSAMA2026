@@ -595,6 +595,15 @@ dialog.confirm.wide{width:min(540px,calc(100vw - 32px))}
 .dup-list li{display:flex;flex-direction:column;gap:2px;padding:8px 12px;border-bottom:1px solid var(--line);font-size:13px}
 .dup-list li:last-child{border-bottom:0}
 .dup-list small{color:var(--muted);font-size:12px}
+dialog.confirm.xwide{width:min(760px,calc(100vw - 32px))}
+.fill-list{margin:4px 0 0;border:1px solid var(--line);border-radius:var(--r);max-height:min(52vh,460px);overflow:auto}
+.fill-sheet{position:sticky;top:0;z-index:1;margin:0;padding:7px 12px;background:var(--subtle);border-bottom:1px solid var(--line);font-size:12.5px;font-weight:700;color:var(--navy)}
+.fill-list ul{list-style:none;margin:0;padding:0}
+.fill-list li{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,230px);gap:6px 14px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--line);font-size:13px}
+.fill-what{display:flex;flex-direction:column;gap:2px;min-width:0}
+.fill-what small{color:var(--muted);font-size:12px;overflow-wrap:anywhere}
+.fill-what .fill-skip{color:var(--crit-ink)}
+@media (max-width:600px){.fill-list li{grid-template-columns:1fr}}
 
 /* ------------------------------------------------------ portfolio --- */
 .perf{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px}

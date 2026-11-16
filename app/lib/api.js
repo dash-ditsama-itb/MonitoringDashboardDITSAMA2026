@@ -59,6 +59,7 @@ const MESSAGES = {
   "Invalid Excel file format.": "Format file tidak dikenali. Gunakan .xlsx atau .csv.",
   "Excel workbook contains no sheets.": "File tidak berisi sheet apa pun.",
   "Duplicate data found.": "Ada baris yang sama dengan data tersimpan. Pilih cara mengimpornya.",
+  "No Rekap Pengajuan Kerma sheet found.": "File ini bukan Rekap Pengajuan Kerma: tidak ada sheet dengan kolom No Invoice dan Nilai Pengajuan.",
   "Uploaded sheet contains no data.": "Tidak ada data yang bisa diimpor dari file ini. Pastikan kolomnya sama dengan file hasil Ekspor.",
   "A file field containing the spreadsheet is required.": "Pilih file spreadsheet dulu.",
   "Report not found.": "Laporan tidak ditemukan (mungkin sudah dihapus). Muat ulang halaman.",
