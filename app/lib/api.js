@@ -95,7 +95,7 @@ const FIELD_LABELS = {
   email: "Email", password: "Password", name: "Nama", roleId: "Peran", grants: "Akses", programs: "Program", code: "Kode",
   newPassword: "Password baru", program: "Program", date: "Tanggal", pksValue: "Nilai PKS",
   submissionValue: "Nilai pengajuan", achievementValue: "Nilai capaian", feedback: "Umpan balik",
-  participants: "Peserta", humanResources: "SDM", memberIds: "Nama SDM", targetMemberId: "Nama tujuan", issues: "Isu", sk: "File SK", pic: "PIC", location: "Lokasi",
+  participants: "Peserta", humanResources: "SDM", memberIds: "Nama SDM", targetMemberId: "Nama tujuan", issues: "Isu", sk: "File SK", pic: "PIC", location: "Lokasi", period: "Periode",
   section: "Bagian", title: "Judul laporan", url: "Link Power BI",
 };
 

@@ -199,7 +199,7 @@ export function ActivitiesTable({ fixedProgram, title = "Data Kegiatan", sub }) 
       </div>
 
       <div className="tbl-toolbar">
-        <SearchInput value={st.search} onChange={(v) => update({ search: v, page: 1 })} placeholder="Cari nama kegiatan, PIC, atau lokasi" />
+        <SearchInput value={st.search} onChange={(v) => update({ search: v, page: 1 })} placeholder="Cari nama kegiatan, PIC, lokasi, atau periode" />
         {!fixedProgram && (
           <select className="tb-select" value={st.program} onChange={(e) => update({ program: e.target.value, page: 1 })} aria-label="Filter program">
             {programOptions.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
@@ -357,6 +357,7 @@ export function ActivityDetail({ activity: a, onClose, canEdit, onEdit, onToggle
           <dl className="facts">
             <div><dt><Icon name="calendar" size={15} />Tanggal</dt><dd>{a.date ? fmtDateLong(a.date) : "Belum dijadwalkan"}</dd></div>
             <div><dt><Icon name="layers" size={15} />Fase</dt><dd>{a.phase ? phaseLabel(a.phase) : "–"}</dd></div>
+            <div><dt><Icon name="calendar" size={15} />Periode</dt><dd>{a.period || "–"}</dd></div>
             <div><dt><Icon name="pin" size={15} />Lokasi</dt><dd>{a.location || "–"}</dd></div>
             <div><dt><Icon name="user" size={15} />PIC</dt><dd>{a.pic || "–"}</dd></div>
             <div><dt><Icon name="clipboard" size={15} />Diinput</dt><dd>{fmtDateTime(a.createdAt)}</dd></div>

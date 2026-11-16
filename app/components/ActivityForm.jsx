@@ -30,14 +30,14 @@ const numOrNull = (v) => (v === "" || v === null || v === undefined ? null : Num
 function formFrom(a, session, program) {
   if (!a) {
     return {
-      mode: "ongoing", program, pic: session?.name || "", name: "", date: "", phase: "", location: "",
+      mode: "ongoing", program, pic: session?.name || "", name: "", date: "", phase: "", location: "", period: "",
       participants: [newPeserta({ category: "SMA" }), newPeserta({ category: "Universitas" })],
       hr: [newSdm()], issues: [], achievementValue: "", feedback: "", progress: "", isDone: false,
     };
   }
   return {
     mode: a.mode, program: a.program, pic: a.pic || "", name: a.name || "", date: toDateInput(a.date), phase: a.phase || "",
-    location: a.location || "",
+    location: a.location || "", period: a.period || "",
     participants: a.participants?.length ? a.participants.map(newPeserta) : [newPeserta()],
     hr: a.humanResources?.length ? a.humanResources.map(newSdm) : [newSdm()],
     issues: (a.issues || []).map(newIssue),
@@ -86,6 +86,7 @@ function buildCreate(f) {
   if (f.date) body.date = fromDateInput(f.date);
   if (f.phase) body.phase = f.phase;
   if (f.location.trim()) body.location = f.location.trim();
+  if (f.period.trim()) body.period = f.period.trim();
   if (f.mode === "ongoing") {
     Object.assign(body, lists(f));
     if (f.achievementValue !== "") body.achievementValue = Number(f.achievementValue);
@@ -106,6 +107,7 @@ function buildPatch(f, a) {
   if (f.date !== toDateInput(a.date)) body.date = fromDateInput(f.date);
   set("phase", f.phase || null, a.phase);
   set("location", f.location.trim() || null, a.location);
+  set("period", f.period.trim() || null, a.period);
   set("isDone", f.isDone, !!a.isDone);
   if (f.mode === "ongoing") {
     Object.assign(body, lists(f));
@@ -217,7 +219,10 @@ export function ActivityForm({ open, activity, defaultProgram, initialMode, onCl
           <label className="field"><span className="field-lab">Fase</span>
             <select {...field("phase")}><option value="">– Pilih fase –</option>{PHASES.map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select>
           </label>
-          <label className="field span-2"><span className="field-lab">Lokasi / alamat</span>
+          <label className="field"><span className="field-lab">Periode</span>
+            <input type="text" placeholder="mis. 2026 atau Periode 1" maxLength={255} {...field("period")} />
+          </label>
+          <label className="field"><span className="field-lab">Lokasi / alamat</span>
             <input type="text" placeholder="mis. Aula Barat ITB atau Daring" {...field("location")} />
           </label>
         </div>
