@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { Link, Navigate, useBlocker, useParams } from "react-router";
 import { confirmAction, toast } from "../../components/feedback.jsx";
 import { Icon } from "../../components/Icon.jsx";
-import { Bar, EmptyState, Kpi, PageHead, SearchInput, Segmented, Spinner } from "../../components/ui.jsx";
+import { Bar, EmptyState, ErrorNote, Kpi, PageHead, SearchInput, Segmented, Spinner } from "../../components/ui.jsx";
 import {
   BANNER_THEMES, CAMPAIGN_BOOK, CAMPAIGN_YEAR, CAMPAIGN_POSTERS, CAMPAIGN_VIDEOS, DISCUSSIONS, DOCUMENTATION, DOCUMENTATION_FOLDER,
   KARAKTER_ABOUT, KARAKTER_BASE, KARAKTER_API_URL, KARAKTER_PROGRAMS, KARAKTER_YEARS, MAPPING_FALLBACK, TTB, TTB_LIVE_YEAR, mappingFallbackItems,
@@ -200,6 +200,50 @@ function useTtb(year) {
   return data ? { ...base, ...data, source } : { ...base, source };
 }
 
+// Feedback mahasiswa (Google Form) berisi komentar, jadi diminta lewat POST dengan token login (Apps Script memeriksanya)
+// dan hanya disimpan di sessionStorage selama tab terbuka; tidak ada salinan di kode.
+const FEEDBACK_KEY = liveKey("feedback");
+const FEEDBACK_ERRORS = {
+  request: "Feedback belum bisa dimuat: Apps Script TTB belum diperbarui ke versi yang memuat feedback.",
+  login: "Sesi login sudah berakhir. Masuk lagi untuk melihat feedback.",
+  forbidden: "Akun Anda belum disetujui untuk melihat feedback.",
+};
+function useTtbFeedback(enabled) {
+  const token = useAuthStore((s) => s.session?.token);
+  const [state, setState] = useState(() => {
+    try {
+      const data = JSON.parse(sessionStorage.getItem(FEEDBACK_KEY));
+      return data ? { data, source: "cache" } : { data: null };
+    } catch { return { data: null }; }
+  });
+  useEffect(() => {
+    if (!enabled || !KARAKTER_API_URL || !token) return undefined;
+    let off = false;
+    fetch(KARAKTER_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "feedback", token }),
+    })
+      .then((r) => r.json())
+      .then((j) => {
+        if (off) return;
+        if (!j?.ok) {
+          console.error("[feedback TTB]", j);
+          setState((s) => ({ ...s, error: FEEDBACK_ERRORS[j?.code] || "Feedback tidak bisa dimuat dari spreadsheet. Coba muat ulang halaman." }));
+          return;
+        }
+        setState({ data: j, source: "live" });
+        try { sessionStorage.setItem(FEEDBACK_KEY, JSON.stringify(j)); } catch { /* penyimpanan browser tidak tersedia */ }
+      })
+      .catch((err) => {
+        console.error("[feedback TTB]", err);
+        if (!off) setState((s) => ({ ...s, error: "Feedback tidak bisa dimuat dari spreadsheet. Periksa koneksi internet Anda." }));
+      });
+    return () => { off = true; };
+  }, [enabled, token]);
+  return state;
+}
+
 // keterangan sumber data di bawah judul halaman
 function SourceChip({ source, updatedAt, asOf, sheet }) {
   const text = source === "static" ? `Data sheet ${sheet} per ${fmtDate(asOf, { day: "numeric", month: "short", year: "numeric" })}`
@@ -321,6 +365,96 @@ function Ttb({ year, picker }) {
         <div className="kr-legend"><span><i className="held" />rata-rata terlaksana: {avgHeld.toLocaleString("id-ID", { maximumFractionDigits: 1 })} pertemuan per kelompok</span>
           <span><i className="tgt" />target s.d. pekan ini: pertemuan ke-{toDate}</span></div>
       </section>
+      {year === TTB_LIVE_YEAR && <TtbFeedback />}
+    </>
+  );
+}
+
+// skor 1–5: warna sama dengan umpan balik pengajar
+const fbTone = (v) => (v >= 4.5 ? "ok" : v >= 4 ? "" : v >= 3 ? "warn" : "crit");
+const fbScore = (v) => (v === null ? "–" : v.toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
+const share = (xs) => (xs.length ? (xs.filter((v) => v >= 4).length / xs.length) * 100 : null);
+// kode kelompok ditulis bebas ("IS - P - 050", "IS-L-027"); teks yang bukan kode ditampilkan apa adanya
+const groupCode = (s) => (/^[a-z]{2}(\s*-\s*[a-z])?\s*-\s*\d+$/i.test(s) ? s.replace(/\s+/g, "").toUpperCase() : s);
+
+function feedbackStats(d) {
+  const scored = d.responses.filter((r) => r.scores.some((v) => v !== null));
+  const all = scored.flatMap((r) => r.scores.filter((v) => v !== null));
+  return {
+    scored: scored.length,
+    average: mean(all),
+    positive: share(all),
+    questions: d.questions.map((q, i) => {
+      const xs = scored.map((r) => r.scores[i]).filter((v) => v !== null);
+      return { q, average: mean(xs), positive: share(xs), count: xs.length };
+    }),
+    toMentor: d.responses.filter((r) => r.toMentor),
+    toTeam: d.responses.filter((r) => r.toTeam),
+  };
+}
+
+function FeedbackQuotes({ items, text, caption, empty }) {
+  if (!items.length) return <p className="kr-muted">{empty}</p>;
+  return (
+    <div className="kr-fb-quotes">
+      {items.map((r, i) => (
+        <figure className="quote" key={i}><blockquote>{text(r)}</blockquote>
+          <figcaption>{[caption?.(r), r.at && fmtDate(r.at, { day: "numeric", month: "short", year: "numeric" })].filter(Boolean).join(" · ")}</figcaption></figure>
+      ))}
+    </div>
+  );
+}
+
+// Umpan balik mahasiswa dari Google Form feedback TTB: skor 1–5 per pertanyaan + komentar untuk mentor dan Tim Teknis
+function TtbFeedback() {
+  const { data, source, error } = useTtbFeedback(true);
+  const s = useMemo(() => (data ? feedbackStats(data) : null), [data]);
+  return (
+    <>
+      <div className="sec-head">
+        <h2><Icon name="message" size={18} />Umpan balik mahasiswa</h2>
+        <p>Google Form feedback TTB{data ? ` · ${data.sheet}` : ""} · skala 1–5</p>
+      </div>
+      {data && <div className="kr-status"><SourceChip source={source} updatedAt={data.updatedAt} /></div>}
+      {!data && (error
+        ? <ErrorNote error={error} />
+        : <section className="card"><EmptyState icon="message" title="Memuat feedback…">Jawaban Google Form dibaca dari spreadsheet.</EmptyState></section>)}
+      {s && <>
+        <div className="kpi-row">
+          <Kpi icon="clipboard" label="Jawaban" value={fmtNum(data.responses.length)} hint={`${fmtNum(s.scored)} dengan skor`} />
+          <Kpi icon="star" label="Rata-rata skor" value={fbScore(s.average)} hint="dari 5, semua pertanyaan" />
+          <Kpi icon="checkCircle" label="Skor positif" value={s.positive === null ? "–" : pct(s.positive)} hint="skor 4 atau 5" />
+          <Kpi icon="message" label="Komentar" value={fmtNum(s.toMentor.length + s.toTeam.length)}
+            hint={`${fmtNum(s.toMentor.length)} untuk mentor · ${fmtNum(s.toTeam.length)} untuk Tim Teknis`} />
+        </div>
+        <section className="card">
+          <div className="card-head"><div><h2 className="card-title">Skor per pertanyaan</h2>
+            <div className="card-sub">Rata-rata skor 1–5 · persentase menjawab 4 atau 5</div></div></div>
+          <ul className="kr-bars kr-fb-q">
+            {s.questions.map((x) => (
+              <li key={x.q}>
+                <span>{x.q}</span>
+                <Bar value={((x.average ?? 0) / 5) * 100} tone={fbTone(x.average)} />
+                <b>{fbScore(x.average)}<small>{x.positive === null ? "" : `${pct(x.positive)} positif`}</small></b>
+              </li>
+            ))}
+          </ul>
+        </section>
+        <div className="grid g-2">
+          <section className="card">
+            <div className="card-head"><div><h2 className="card-title">Untuk kakak mentor</h2>
+              <div className="card-sub">{fmtNum(s.toMentor.length)} komentar · kode kelompok dari jawaban mahasiswa</div></div></div>
+            <FeedbackQuotes items={s.toMentor} text={(r) => r.toMentor} caption={(r) => r.group && `Kelompok ${groupCode(r.group)}`}
+              empty="Belum ada komentar untuk mentor." />
+          </section>
+          <section className="card">
+            <div className="card-head"><div><h2 className="card-title">Untuk Ditsama ITB / Tim Teknis TTB</h2>
+              <div className="card-sub">{fmtNum(s.toTeam.length)} komentar</div></div></div>
+            <FeedbackQuotes items={s.toTeam} text={(r) => r.toTeam} empty="Belum ada komentar untuk Tim Teknis." />
+          </section>
+        </div>
+      </>}
     </>
   );
 }

@@ -131,6 +131,19 @@ Pemasangan (sekali, oleh pemilik proyek Apps Script):
 4. (Opsional) jalankan `pasangWaktuCatatanOtomatis` sekali: centang dan catatan yang diubah langsung di file Tim Humas
    juga mendapat waktu otomatis (pemicu "saat diedit" di file itu).
 
+#### Umpan balik mahasiswa TTB (Google Form)
+Bagian **Umpan balik mahasiswa** di bawah halaman Teman Tumbuh (tahun berjalan) membaca file jawaban Google Form
+feedback TTB (`TTB_FEEDBACK_ID` di `dashboard-karakter.gs`, atau link/ID di properti dokumen `LINK_FEEDBACK_TTB`):
+skor 1–5 per pertanyaan (kolom berjudul `Apakah "…"?`), komentar untuk kakak mentor (dengan kode kelompok) dan untuk
+Ditsama ITB / Tim Teknis TTB. Karena berisi komentar mahasiswa, data ini tidak bisa dibaca lewat `GET` URL `/exec`:
+halaman memintanya lewat `POST {action:'feedback'}` dengan token login, dan Apps Script memeriksanya ke backend
+(`GET /auth/me`, akun yang sudah disetujui). Data tidak disalin ke kode; cadangannya hanya data terakhir di tab browser
+yang sama (sessionStorage).
+Pemasangan (sekali, oleh pemilik proyek Apps Script): tempel versi terbaru `apps-script/dashboard-karakter.gs` ke file
+**`Dashboard_TTB`** (bukan `Kode`), jalankan `cobaLihatDataFeedback` sekali dari editor untuk mengizinkan akses ke file
+feedback, lalu **Kelola deployment → Edit → Versi baru**. Akun yang men-deploy harus bisa membuka file feedback, dan
+`DITSAMA_API_URL` harus sudah diisi (lihat di atas).
+
 ## Publikasi di GitHub Pages
 Workflow `.github/workflows/deploy.yml` otomatis build & deploy setiap push ke `main`.
 1. Repo → **Settings → Pages** → Source: **GitHub Actions**.

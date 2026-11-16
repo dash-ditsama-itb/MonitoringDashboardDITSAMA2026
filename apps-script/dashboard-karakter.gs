@@ -6,6 +6,8 @@
  *                               nama tab). Bila file itu tidak bisa dibuka: tab "Kampanye_Lokasi" / "Lokasi Kampanye".
  *   POST <URL /exec>           → simpan Catatan lokasi Mapping Banner dari dashboard ke file Tim Humas (lihat
  *                               "CATATAN MAPPING BANNER" di bawah; perlu Properti skrip DITSAMA_API_URL).
+ *   POST {action:'feedback'}   → jawaban Google Form feedback TTB (lihat "FEEDBACK TTB" di bawah); hanya untuk akun
+ *                               yang login di dashboard, karena isinya komentar mahasiswa.
  *
  * Pasang di spreadsheet TTB: Ekstensi → Apps Script → tambah FILE BARU (tombol + → Skrip, mis. "Dashboard_TTB")
  * lalu tempel file ini; jangan menghapus kode lain yang sudah ada (mis. pembaruan dari file klaster).
@@ -48,6 +50,11 @@ function doGet(e) {
   const key = String((e && e.parameter && e.parameter.data) || 'ttb').toLowerCase();
   const build = { ttb: buildTtb, mapping: buildMapping }[key];
   if (!build) return ttbJson_({ ok: false, error: 'Parameter data tidak dikenal: ' + key + ' (pakai ttb atau mapping)' });
+  return ttbCached_(key, build);
+}
+
+// hasil build() dari cache bila masih ada; error tidak disimpan di cache
+function ttbCached_(key, build) {
   const cache = CacheService.getScriptCache();
   let body = ttbCacheGet_(cache, key);
   if (!body) {
@@ -307,6 +314,14 @@ function doPost(e) {
   } catch (err) {
     return ttbJson_({ ok: false, code: 'request', error: 'Isi permintaan bukan JSON' });
   }
+  if (req.action === 'feedback') {
+    try {
+      ttbFetchUser_(req.token);
+    } catch (err) {
+      return ttbJson_({ ok: false, code: err.code || 'auth', error: String(err && err.message || err) });
+    }
+    return ttbCached_('feedback', buildTtbFeedback);
+  }
   if (req.action !== 'mapping-update' && req.action !== 'mapping-notes') return ttbJson_({ ok: false, code: 'request', error: 'Aksi tidak dikenal: ' + req.action });
   if (!Array.isArray(req.changes) || !req.changes.length) return ttbJson_({ ok: false, code: 'request', error: 'Tidak ada perubahan' });
 
@@ -337,7 +352,7 @@ function mapAuthError_(code, message) {
 }
 
 // akun dari token login dashboard; melempar error ber-code login / forbidden / config
-function mapVerifyUser_(token) {
+function ttbFetchUser_(token) {
   if (!token) throw mapAuthError_('login', 'Token login tidak dikirim');
   const api = PropertiesService.getScriptProperties().getProperty('DITSAMA_API_URL');
   if (!api) throw mapAuthError_('config', 'Properti skrip DITSAMA_API_URL belum diisi');
@@ -346,9 +361,17 @@ function mapVerifyUser_(token) {
     muteHttpExceptions: true,
   });
   if (res.getResponseCode() === 401) throw mapAuthError_('login', 'Sesi login tidak valid atau sudah berakhir');
+  if (res.getResponseCode() === 403) throw mapAuthError_('forbidden', 'Akun belum disetujui untuk membuka dashboard');
   if (res.getResponseCode() !== 200) throw mapAuthError_('config', 'Backend menjawab HTTP ' + res.getResponseCode());
   const user = (JSON.parse(res.getContentText()).data || {}).user;
-  if (!user || !user.permissions || !user.permissions.manageReports) {
+  if (!user) throw mapAuthError_('login', 'Akun tidak ditemukan');
+  return user;
+}
+
+// akun yang boleh menulis Mapping Banner: izin Kelola laporan
+function mapVerifyUser_(token) {
+  const user = ttbFetchUser_(token);
+  if (!user.permissions || !user.permissions.manageReports) {
     throw mapAuthError_('forbidden', 'Akun ' + (user && user.email) + ' tidak punya izin Kelola laporan');
   }
   return user;
@@ -451,6 +474,46 @@ function mapCatatanDiubah(e) {
   CacheService.getScriptCache().remove('mapping');
 }
 
+/* ---------- FEEDBACK TTB (Google Form mahasiswa) ---------- */
+
+// File jawaban Google Form feedback TTB. Properti dokumen LINK_FEEDBACK_TTB (link atau ID file) dipakai lebih dulu,
+// agar file lain bisa dipakai tanpa mengubah kode. Akun yang menerapkan web app harus bisa membuka file ini.
+const TTB_FEEDBACK_ID = '10UMKdoMxI50KYnymBD3Z63FkHn7GamGg';
+
+// Kolom dikenali dari judul pertanyaannya, bukan urutannya. Pertanyaan skala 1–5 berjudul
+// Apakah "pernyataan"? — pernyataan di dalam tanda kutip jadi nama pertanyaan.
+function buildTtbFeedback() {
+  const link = PropertiesService.getDocumentProperties().getProperty('LINK_FEEDBACK_TTB') || TTB_FEEDBACK_ID;
+  const m = String(link).match(/\/d\/([a-zA-Z0-9_-]+)/);
+  const file = SpreadsheetApp.openById(m ? m[1] : String(link).trim());
+  const sh = file.getSheets().find((s) => /form responses|jawaban formulir/i.test(s.getName())) || file.getSheets()[0];
+  const values = sh.getDataRange().getValues();
+  const header = values[0].map((h) => String(h).trim());
+  const col = (re) => header.findIndex((h) => re.test(h));
+  const scoreCols = header
+    .map((h, i) => [i, (h.match(/^apakah\s*["“](.+?)["”]\s*\??$/i) || [])[1]])
+    .filter((c) => c[1]);
+  const at = col(/^(timestamp|stempel waktu)/i);
+  const group = col(/kelompok berapa/i);
+  const toMentor = col(/^sampaikan feedback/i);
+  const toTeam = col(/^sampaikan di sini/i);
+  const text = (row, i) => (i < 0 ? '' : String(row[i]).trim());
+  const responses = values.slice(1).filter((row) => row.some((v) => v !== '')).map((row) => ({
+    at: at >= 0 && Object.prototype.toString.call(row[at]) === '[object Date]' ? row[at].toISOString() : text(row, at),
+    scores: scoreCols.map((c) => {
+      const n = Number(row[c[0]]);
+      return row[c[0]] !== '' && n >= 1 && n <= 5 ? n : null;
+    }),
+    group: text(row, group),
+    toMentor: text(row, toMentor),
+    toTeam: text(row, toTeam),
+  }));
+  return {
+    ok: true, updatedAt: new Date().toISOString(), sheet: file.getName(),
+    questions: scoreCols.map((c) => c[1]), responses: responses,
+  };
+}
+
 // Jalankan dari editor Apps Script untuk melihat hasilnya di Log eksekusi.
 function cobaLihatDataTtb() {
   Logger.log(JSON.stringify(buildTtb(), null, 2));
@@ -460,4 +523,10 @@ function cobaLihatDataMapping() {
   const d = buildMapping();
   Logger.log(d.items.length + ' baris dari ' + d.sheet + (d.tabs ? ' — tab: ' + d.tabs.join(', ') : '') +
     (d.warning ? '\nPERINGATAN: ' + d.warning : '') + '\ncontoh: ' + JSON.stringify(d.items.slice(0, 3), null, 2));
+}
+
+function cobaLihatDataFeedback() {
+  const d = buildTtbFeedback();
+  Logger.log(d.responses.length + ' jawaban dari ' + d.sheet + '\npertanyaan: ' + d.questions.join(' | ') +
+    '\ncontoh: ' + JSON.stringify(d.responses.slice(0, 3), null, 2));
 }
