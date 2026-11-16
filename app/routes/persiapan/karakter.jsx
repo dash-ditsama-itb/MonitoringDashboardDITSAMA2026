@@ -11,6 +11,7 @@ import {
   KARAKTER_ABOUT, KARAKTER_BASE, KARAKTER_API_URL, KARAKTER_PROGRAMS, KARAKTER_YEARS, MAPPING_FALLBACK, TTB, TTB_LIVE_YEAR, mappingFallbackItems,
   driveFile, driveFolder, driveThumb, drivePlayer,
 } from "../../lib/karakter.js";
+import { api } from "../../lib/api.js";
 import { canManageReports, fmtNum } from "../../lib/format.js";
 import { useAuthStore } from "../../stores/auth.js";
 import karakterCss from "../../styles/karakter.css?url";
@@ -394,14 +395,46 @@ function feedbackStats(d) {
   };
 }
 
-function FeedbackQuotes({ items, text, caption, empty }) {
+// sentimen komentar dari backend (AI Groq); backend menyimpan hasilnya, jadi teks yang sama tidak dianalisis ulang
+const SENTIMENT_LABELS = { positive: "Positif", neutral: "Netral", negative: "Negatif" };
+function useSentiments(texts) {
+  const [byText, setByText] = useState({});
+  const key = texts.join("\u0000");
+  useEffect(() => {
+    if (!texts.length) return undefined;
+    let off = false;
+    const batches = [];
+    for (let i = 0; i < texts.length; i += 100) batches.push(texts.slice(i, i + 100)); // backend menerima maks. 100 teks
+    Promise.all(batches.map((batch) => api("/persiapan/feedback-sentiments", { method: "POST", body: { texts: batch } })))
+      .then((outs) => {
+        if (off) return;
+        const sentiments = outs.flatMap((out) => out.data.sentiments);
+        setByText(Object.fromEntries(texts.map((t, i) => [t, sentiments[i]])));
+      })
+      .catch((err) => console.error("[sentimen feedback]", err));
+    return () => { off = true; };
+  }, [key]);
+  return byText;
+}
+
+const sentimentCounts = (texts, byText) => ["positive", "neutral", "negative"]
+  .map((s) => [s, texts.filter((t) => byText[t] === s).length])
+  .filter(([, n]) => n)
+  .map(([s, n]) => `${fmtNum(n)} ${SENTIMENT_LABELS[s].toLowerCase()}`)
+  .join(" · ");
+
+function FeedbackQuotes({ items, text, caption, empty, sentiments }) {
   if (!items.length) return <p className="kr-muted">{empty}</p>;
   return (
     <div className="kr-fb-quotes">
-      {items.map((r, i) => (
-        <figure className="quote" key={i}><blockquote>{text(r)}</blockquote>
-          <figcaption>{[caption?.(r), r.at && fmtDate(r.at, { day: "numeric", month: "short", year: "numeric" })].filter(Boolean).join(" · ")}</figcaption></figure>
-      ))}
+      {items.map((r, i) => {
+        const s = sentiments[text(r)];
+        return (
+          <figure className="quote" key={i}><blockquote>{text(r)}</blockquote>
+            <figcaption>{s && <span className={"kr-sent " + s}>{SENTIMENT_LABELS[s]}</span>}
+              {[caption?.(r), r.at && fmtDate(r.at, { day: "numeric", month: "short", year: "numeric" })].filter(Boolean).join(" · ")}</figcaption></figure>
+        );
+      })}
     </div>
   );
 }
@@ -410,11 +443,14 @@ function FeedbackQuotes({ items, text, caption, empty }) {
 function TtbFeedback() {
   const { data, source, error } = useTtbFeedback(true);
   const s = useMemo(() => (data ? feedbackStats(data) : null), [data]);
+  const mentorTexts = s ? s.toMentor.map((r) => r.toMentor) : [];
+  const teamTexts = s ? s.toTeam.map((r) => r.toTeam) : [];
+  const sentiments = useSentiments([...mentorTexts, ...teamTexts]);
   return (
     <>
       <div className="sec-head">
         <h2><Icon name="message" size={18} />Umpan balik mahasiswa</h2>
-        <p>Google Form feedback TTB{data ? ` · ${data.sheet}` : ""} · skala 1–5</p>
+        <p>Google Form feedback TTB{data ? ` · ${data.sheet}` : ""} · skala 1–5 · sentimen komentar dianalisis AI (Groq)</p>
       </div>
       {data && <div className="kr-status"><SourceChip source={source} updatedAt={data.updatedAt} /></div>}
       {!data && (error
@@ -444,14 +480,14 @@ function TtbFeedback() {
         <div className="grid g-2">
           <section className="card">
             <div className="card-head"><div><h2 className="card-title">Untuk kakak mentor</h2>
-              <div className="card-sub">{fmtNum(s.toMentor.length)} komentar · kode kelompok dari jawaban mahasiswa</div></div></div>
+              <div className="card-sub">{fmtNum(s.toMentor.length)} komentar{sentimentCounts(mentorTexts, sentiments) && ` · ${sentimentCounts(mentorTexts, sentiments)}`} · kode kelompok dari jawaban mahasiswa</div></div></div>
             <FeedbackQuotes items={s.toMentor} text={(r) => r.toMentor} caption={(r) => r.group && `Kelompok ${groupCode(r.group)}`}
-              empty="Belum ada komentar untuk mentor." />
+              empty="Belum ada komentar untuk mentor." sentiments={sentiments} />
           </section>
           <section className="card">
             <div className="card-head"><div><h2 className="card-title">Untuk Ditsama ITB / Tim Teknis TTB</h2>
-              <div className="card-sub">{fmtNum(s.toTeam.length)} komentar</div></div></div>
-            <FeedbackQuotes items={s.toTeam} text={(r) => r.toTeam} empty="Belum ada komentar untuk Tim Teknis." />
+              <div className="card-sub">{fmtNum(s.toTeam.length)} komentar{sentimentCounts(teamTexts, sentiments) && ` · ${sentimentCounts(teamTexts, sentiments)}`}</div></div></div>
+            <FeedbackQuotes items={s.toTeam} text={(r) => r.toTeam} empty="Belum ada komentar untuk Tim Teknis." sentiments={sentiments} />
           </section>
         </div>
       </>}

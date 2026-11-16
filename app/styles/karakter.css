@@ -161,6 +161,8 @@ a.kr-prog-head:hover b,a.kr-go:hover{text-decoration:underline}
 .kr-fb-q li{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) 110px;gap:14px}
 .kr-fb-q b{display:flex;flex-direction:column;font-size:15px}.kr-fb-q b small{font-size:11.5px;font-weight:500;color:var(--muted)}
 .kr-fb-quotes{max-height:440px;overflow:auto;padding-right:4px}
+.kr-sent{display:inline-block;margin-right:6px;font-size:11px;font-weight:700;border-radius:999px;padding:1px 8px;background:var(--pale);color:var(--navy)}
+.kr-sent.positive{background:var(--ok-bg);color:var(--ok-ink)}.kr-sent.negative{background:var(--crit-bg);color:var(--crit-ink)}
 .kr-matrix th.c,.kr-matrix td.c{text-align:center;white-space:normal}
 .kr-matrix th.c{font-size:11.5px;min-width:72px}
 .kr-group td{background:var(--subtle);font-weight:800;color:var(--navy)}
