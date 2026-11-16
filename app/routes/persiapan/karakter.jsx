@@ -417,6 +417,35 @@ function useSentiments(texts) {
   return byText;
 }
 
+// analisis AI keseluruhan (Groq); backend menyimpan hasilnya per isi data, jadi baru dianalisis ulang bila feedback berubah
+function useFeedbackSummary(input) {
+  const [state, setState] = useState({ summary: null, loading: false, error: false });
+  const key = input ? JSON.stringify(input) : "";
+  useEffect(() => {
+    if (!input) return undefined;
+    let off = false;
+    setState({ summary: null, loading: true, error: false });
+    api("/persiapan/feedback-summary", { method: "POST", body: input })
+      .then((out) => { if (!off) setState({ summary: out.data.summary, loading: false, error: false }); })
+      .catch((err) => {
+        console.error("[analisis AI feedback]", err);
+        if (!off) setState({ summary: null, loading: false, error: true });
+      });
+    return () => { off = true; };
+  }, [key]);
+  return state;
+}
+
+function AiList({ title, items, tone }) {
+  if (!items?.length) return null;
+  return (
+    <div className={"kr-ai-list " + tone}>
+      <h3>{title}</h3>
+      <ul>{items.map((x, i) => <li key={i}>{x}</li>)}</ul>
+    </div>
+  );
+}
+
 const sentimentCounts = (texts, byText) => ["positive", "neutral", "negative"]
   .map((s) => [s, texts.filter((t) => byText[t] === s).length])
   .filter(([, n]) => n)
@@ -446,6 +475,12 @@ function TtbFeedback() {
   const mentorTexts = s ? s.toMentor.map((r) => r.toMentor) : [];
   const teamTexts = s ? s.toTeam.map((r) => r.toTeam) : [];
   const sentiments = useSentiments([...mentorTexts, ...teamTexts]);
+  const round2 = (v) => (v === null ? null : Math.round(v * 100) / 100);
+  const ai = useFeedbackSummary(s && {
+    responseCount: data.responses.length,
+    questions: s.questions.map((x) => ({ question: x.q, average: round2(x.average), positive: round2(x.positive) })),
+    comments: [...mentorTexts.map((text) => ({ to: "mentor", text })), ...teamTexts.map((text) => ({ to: "team", text }))].slice(0, 200),
+  });
   return (
     <>
       <div className="sec-head">
@@ -476,6 +511,20 @@ function TtbFeedback() {
               </li>
             ))}
           </ul>
+        </section>
+        <section className="card kr-ai">
+          <div className="card-head"><div><h2 className="card-title"><Icon name="star" size={16} />Analisis AI</h2>
+            <div className="card-sub">Ringkasan seluruh skor dan komentar oleh AI (Groq) · dianalisis ulang hanya bila ada feedback baru · periksa kembali sebelum dipakai</div></div></div>
+          {ai.loading && <p className="kr-muted"><Spinner size={14} /> Menganalisis feedback…</p>}
+          {ai.error && <p className="kr-muted">Analisis AI belum bisa dimuat. Coba muat ulang halaman nanti.</p>}
+          {ai.summary && <>
+            <p className="kr-ai-overview">{ai.summary.overview}</p>
+            <div className="kr-ai-grid">
+              <AiList title="Kekuatan" items={ai.summary.strengths} tone="ok" />
+              <AiList title="Perlu perhatian" items={ai.summary.concerns} tone="crit" />
+              <AiList title="Rekomendasi" items={ai.summary.recommendations} tone="" />
+            </div>
+          </>}
         </section>
         <div className="grid g-2">
           <section className="card">
