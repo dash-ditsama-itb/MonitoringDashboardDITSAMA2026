@@ -395,26 +395,30 @@ function feedbackStats(d) {
   };
 }
 
-// sentimen komentar dari backend (AI Groq); backend menyimpan hasilnya, jadi teks yang sama tidak dianalisis ulang
+// sentimen dan kata kunci komentar dari backend (AI Groq); backend menyimpan hasilnya, jadi teks yang sama tidak dianalisis
+// ulang. Dikirim per 10 komentar sekaligus (paralel) agar setiap permintaan ke backend tetap singkat.
 const SENTIMENT_LABELS = { positive: "Positif", neutral: "Netral", negative: "Negatif" };
 function useSentiments(texts) {
-  const [byText, setByText] = useState({});
+  const [result, setResult] = useState({ sentiments: {}, keywords: {} });
   const key = texts.join("\u0000");
   useEffect(() => {
     if (!texts.length) return undefined;
     let off = false;
     const batches = [];
-    for (let i = 0; i < texts.length; i += 100) batches.push(texts.slice(i, i + 100)); // backend menerima maks. 100 teks
-    Promise.all(batches.map((batch) => api("/persiapan/feedback-sentiments", { method: "POST", body: { texts: batch } })))
+    for (let i = 0; i < texts.length; i += 10) batches.push(texts.slice(i, i + 10));
+    Promise.allSettled(batches.map((batch) => api("/persiapan/feedback-sentiments", { method: "POST", body: { texts: batch } })))
       .then((outs) => {
         if (off) return;
-        const sentiments = outs.flatMap((out) => out.data.sentiments);
-        setByText(Object.fromEntries(texts.map((t, i) => [t, sentiments[i]])));
-      })
-      .catch((err) => console.error("[sentimen feedback]", err));
+        const sentiments = {}, keywords = {};
+        outs.forEach((out, b) => {
+          if (out.status !== "fulfilled") return console.error("[sentimen feedback]", out.reason);
+          batches[b].forEach((t, i) => { sentiments[t] = out.value.data.sentiments[i]; keywords[t] = out.value.data.keywords[i]; });
+        });
+        setResult({ sentiments, keywords });
+      });
     return () => { off = true; };
   }, [key]);
-  return byText;
+  return result;
 }
 
 const sentimentCounts = (texts, byText) => ["positive", "neutral", "negative"]
@@ -440,39 +444,24 @@ function FeedbackQuotes({ items, text, caption, empty, sentiments }) {
 }
 
 // Umpan balik mahasiswa dari Google Form feedback TTB: skor 1–5 per pertanyaan + komentar untuk mentor dan Tim Teknis
-// Kata kunci komentar positif / negatif (sentimen AI per komentar): kata sambung, sapaan, dan kata gaul umum dibuang;
-// satu kata dihitung sekali per komentar agar satu komentar panjang tidak mendominasi.
-const STOPWORDS = new Set((
-  "yang dan di ke dari untuk dengan ini itu ada tidak tak gak ga nggak enggak bukan saya aku gue gw kami kita kamu adik dik " +
-  "kakak kak kaka kakk ka bang abang mas mbak teh kang ttb jadi juga lebih bisa sudah udah udh sdh karena krn tapi tetapi " +
-  "atau dalam pada akan agar supaya sangat banget bgt ya yaa yah aja saja apa kalau kalo klo mungkin semoga sama oleh para " +
-  "semua setiap tiap lagi masih belum hanya cuma terus buat bagi jika hal kayak kaya banyak sih deh dong kok nih tuh lah " +
-  "pun nya yg dgn utk sm jg tp kalo biar mau ingin sebagai seperti bahwa namun sehingga adalah ialah tersebut sedang " +
-  "selama setelah sebelum saat ketika sekali kali hari minggu pekan sesi kelompok mentor mentee mahasiswa maba itb ditsama " +
-  "you the and menurut mana lain sendiri adanya malah cuman cuma menjadi memberikan diberikan dilakukan kedepan kedepannya baru"
-).split(" "));
-function keywordCounts(texts) {
+// kata kunci dari AI per komentar (yang dipuji / dikeluhkan); satu kata kunci dihitung sekali per komentar
+function keywordCounts(lists) {
   const counts = new Map();
-  for (const t of texts) {
-    const words = new Set(t.toLowerCase().replace(/terima\s*kasi\w*|makasi\w*|thanks?\b|thx/g, " terimakasih ")
-      .replace(/[^a-z\s]/g, " ").split(/\s+/)
-      .map((w) => w.replace(/(.)\1+$/, "$1"))
-      .map((w) => (w.length > 6 && w.endsWith("nya") ? w.slice(0, -3) : w))
-      .filter((w) => w.length > 2 && !STOPWORDS.has(w)));
-    for (const w of words) counts.set(w, (counts.get(w) || 0) + 1);
+  for (const list of lists) {
+    for (const k of new Set(list.map((x) => x.toLowerCase().trim()).filter(Boolean))) counts.set(k, (counts.get(k) || 0) + 1);
   }
   return [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 30);
 }
 
 // kata terbesar di tengah: urutan besar-kecil disusun bergantian kiri-kanan
-function WordCloud({ title, texts, tone, empty }) {
-  const words = keywordCounts(texts);
+function WordCloud({ title, lists, tone, empty }) {
+  const words = keywordCounts(lists);
   const max = words[0]?.[1] || 1;
   const arranged = words.reduce((out, w, i) => (i % 2 ? [...out, w] : [w, ...out]), []);
   return (
     <section className="card">
       <div className="card-head"><div><h2 className="card-title">{title}</h2>
-        <div className="card-sub">Dari {fmtNum(texts.length)} komentar · makin besar = makin banyak komentar yang menyebut kata itu · 30 kata teratas</div></div></div>
+        <div className="card-sub">Diambil AI dari {fmtNum(lists.filter((l) => l.length).length)} komentar · makin besar = makin banyak komentar yang menyebutnya · 30 teratas</div></div></div>
       {words.length ? (
         <ul className={"kr-cloud " + tone}>
           {arranged.map(([w, n]) => (
@@ -490,12 +479,13 @@ function TtbFeedback() {
   const s = useMemo(() => (data ? feedbackStats(data) : null), [data]);
   const mentorTexts = s ? s.toMentor.map((r) => r.toMentor) : [];
   const teamTexts = s ? s.toTeam.map((r) => r.toTeam) : [];
-  const sentiments = useSentiments([...mentorTexts, ...teamTexts]);
+  const { sentiments, keywords } = useSentiments([...mentorTexts, ...teamTexts]);
+  const analysed = [...mentorTexts, ...teamTexts].map((t) => keywords[t]).filter(Boolean);
   return (
     <>
       <div className="sec-head">
         <h2><Icon name="message" size={18} />Umpan balik mahasiswa</h2>
-        <p>Google Form feedback TTB{data ? ` · ${data.sheet}` : ""} · skala 1–5 · sentimen komentar (positif / netral / negatif) dianalisis AI (Groq)</p>
+        <p>Google Form feedback TTB{data ? ` · ${data.sheet}` : ""} · skala 1–5 · sentimen dan kata kunci komentar dianalisis AI (Groq)</p>
       </div>
       {data && <div className="kr-status"><SourceChip source={source} updatedAt={data.updatedAt} /></div>}
       {!data && (error
@@ -523,10 +513,10 @@ function TtbFeedback() {
           </ul>
         </section>
         <div className="grid g-2">
-          <WordCloud title="Kata kunci komentar positif" tone="ok" empty="Belum ada komentar positif, atau sentimen komentar belum dianalisis."
-            texts={[...mentorTexts, ...teamTexts].filter((t) => sentiments[t] === "positive")} />
-          <WordCloud title="Kata kunci komentar negatif" tone="crit" empty="Belum ada komentar negatif, atau sentimen komentar belum dianalisis."
-            texts={[...mentorTexts, ...teamTexts].filter((t) => sentiments[t] === "negative")} />
+          <WordCloud title="Kata kunci positif" tone="ok" empty="Belum ada pujian di komentar, atau komentar belum dianalisis."
+            lists={analysed.map((k) => k.positive)} />
+          <WordCloud title="Kata kunci negatif" tone="crit" empty="Belum ada keluhan di komentar, atau komentar belum dianalisis."
+            lists={analysed.map((k) => k.negative)} />
         </div>
         <div className="grid g-2">
           <section className="card">
