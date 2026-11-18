@@ -417,35 +417,6 @@ function useSentiments(texts) {
   return byText;
 }
 
-// analisis AI keseluruhan (Groq); backend menyimpan hasilnya per isi data, jadi baru dianalisis ulang bila feedback berubah
-function useFeedbackSummary(input) {
-  const [state, setState] = useState({ summary: null, loading: false, error: false });
-  const key = input ? JSON.stringify(input) : "";
-  useEffect(() => {
-    if (!input) return undefined;
-    let off = false;
-    setState({ summary: null, loading: true, error: false });
-    api("/persiapan/feedback-summary", { method: "POST", body: input })
-      .then((out) => { if (!off) setState({ summary: out.data.summary, loading: false, error: false }); })
-      .catch((err) => {
-        console.error("[analisis AI feedback]", err);
-        if (!off) setState({ summary: null, loading: false, error: true });
-      });
-    return () => { off = true; };
-  }, [key]);
-  return state;
-}
-
-function AiList({ title, items, tone }) {
-  if (!items?.length) return null;
-  return (
-    <div className={"kr-ai-list " + tone}>
-      <h3>{title}</h3>
-      <ul>{items.map((x, i) => <li key={i}>{x}</li>)}</ul>
-    </div>
-  );
-}
-
 const sentimentCounts = (texts, byText) => ["positive", "neutral", "negative"]
   .map((s) => [s, texts.filter((t) => byText[t] === s).length])
   .filter(([, n]) => n)
@@ -469,23 +440,62 @@ function FeedbackQuotes({ items, text, caption, empty, sentiments }) {
 }
 
 // Umpan balik mahasiswa dari Google Form feedback TTB: skor 1–5 per pertanyaan + komentar untuk mentor dan Tim Teknis
+// Kata kunci komentar positif / negatif (sentimen AI per komentar): kata sambung, sapaan, dan kata gaul umum dibuang;
+// satu kata dihitung sekali per komentar agar satu komentar panjang tidak mendominasi.
+const STOPWORDS = new Set((
+  "yang dan di ke dari untuk dengan ini itu ada tidak tak gak ga nggak enggak bukan saya aku gue gw kami kita kamu adik dik " +
+  "kakak kak kaka kakk ka bang abang mas mbak teh kang ttb jadi juga lebih bisa sudah udah udh sdh karena krn tapi tetapi " +
+  "atau dalam pada akan agar supaya sangat banget bgt ya yaa yah aja saja apa kalau kalo klo mungkin semoga sama oleh para " +
+  "semua setiap tiap lagi masih belum hanya cuma terus buat bagi jika hal kayak kaya banyak sih deh dong kok nih tuh lah " +
+  "pun nya yg dgn utk sm jg tp kalo biar mau ingin sebagai seperti bahwa namun sehingga adalah ialah tersebut sedang " +
+  "selama setelah sebelum saat ketika sekali kali hari minggu pekan sesi kelompok mentor mentee mahasiswa maba itb ditsama " +
+  "you the and menurut mana lain sendiri adanya malah cuman cuma menjadi memberikan diberikan dilakukan kedepan kedepannya baru"
+).split(" "));
+function keywordCounts(texts) {
+  const counts = new Map();
+  for (const t of texts) {
+    const words = new Set(t.toLowerCase().replace(/terima\s*kasi\w*|makasi\w*|thanks?\b|thx/g, " terimakasih ")
+      .replace(/[^a-z\s]/g, " ").split(/\s+/)
+      .map((w) => w.replace(/(.)\1+$/, "$1"))
+      .map((w) => (w.length > 6 && w.endsWith("nya") ? w.slice(0, -3) : w))
+      .filter((w) => w.length > 2 && !STOPWORDS.has(w)));
+    for (const w of words) counts.set(w, (counts.get(w) || 0) + 1);
+  }
+  return [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 30);
+}
+
+// kata terbesar di tengah: urutan besar-kecil disusun bergantian kiri-kanan
+function WordCloud({ title, texts, tone, empty }) {
+  const words = keywordCounts(texts);
+  const max = words[0]?.[1] || 1;
+  const arranged = words.reduce((out, w, i) => (i % 2 ? [...out, w] : [w, ...out]), []);
+  return (
+    <section className="card">
+      <div className="card-head"><div><h2 className="card-title">{title}</h2>
+        <div className="card-sub">Dari {fmtNum(texts.length)} komentar · makin besar = makin banyak komentar yang menyebut kata itu · 30 kata teratas</div></div></div>
+      {words.length ? (
+        <ul className={"kr-cloud " + tone}>
+          {arranged.map(([w, n]) => (
+            <li key={w} style={{ fontSize: 12 + Math.round(Math.sqrt(n / max) * 22), opacity: 0.55 + (0.45 * n) / max }}
+              title={`${w}: ${n} komentar`}><span className="sr-only">{`${n} komentar: `}</span>{w}</li>
+          ))}
+        </ul>
+      ) : <p className="kr-muted">{empty}</p>}
+    </section>
+  );
+}
+
 function TtbFeedback() {
   const { data, source, error } = useTtbFeedback(true);
   const s = useMemo(() => (data ? feedbackStats(data) : null), [data]);
   const mentorTexts = s ? s.toMentor.map((r) => r.toMentor) : [];
   const teamTexts = s ? s.toTeam.map((r) => r.toTeam) : [];
   const sentiments = useSentiments([...mentorTexts, ...teamTexts]);
-  const round2 = (v) => (v === null ? null : Math.round(v * 100) / 100);
-  const ai = useFeedbackSummary(s && {
-    responseCount: data.responses.length,
-    questions: s.questions.map((x) => ({ question: x.q, average: round2(x.average), positive: round2(x.positive) })),
-    comments: [...mentorTexts.map((text) => ({ to: "mentor", text })), ...teamTexts.map((text) => ({ to: "team", text }))].slice(0, 200),
-  });
   return (
     <>
       <div className="sec-head">
         <h2><Icon name="message" size={18} />Umpan balik mahasiswa</h2>
-        <p>Google Form feedback TTB{data ? ` · ${data.sheet}` : ""} · skala 1–5 · sentimen komentar dianalisis AI (Groq)</p>
+        <p>Google Form feedback TTB{data ? ` · ${data.sheet}` : ""} · skala 1–5 · sentimen komentar (positif / netral / negatif) dianalisis AI (Groq)</p>
       </div>
       {data && <div className="kr-status"><SourceChip source={source} updatedAt={data.updatedAt} /></div>}
       {!data && (error
@@ -512,20 +522,12 @@ function TtbFeedback() {
             ))}
           </ul>
         </section>
-        <section className="card kr-ai">
-          <div className="card-head"><div><h2 className="card-title"><Icon name="star" size={16} />Analisis AI</h2>
-            <div className="card-sub">Ringkasan seluruh skor dan komentar oleh AI (Groq) · dianalisis ulang hanya bila ada feedback baru · periksa kembali sebelum dipakai</div></div></div>
-          {ai.loading && <p className="kr-muted"><Spinner size={14} /> Menganalisis feedback…</p>}
-          {ai.error && <p className="kr-muted">Analisis AI belum bisa dimuat. Coba muat ulang halaman nanti.</p>}
-          {ai.summary && <>
-            <p className="kr-ai-overview">{ai.summary.overview}</p>
-            <div className="kr-ai-grid">
-              <AiList title="Kekuatan" items={ai.summary.strengths} tone="ok" />
-              <AiList title="Perlu perhatian" items={ai.summary.concerns} tone="crit" />
-              <AiList title="Rekomendasi" items={ai.summary.recommendations} tone="" />
-            </div>
-          </>}
-        </section>
+        <div className="grid g-2">
+          <WordCloud title="Kata kunci komentar positif" tone="ok" empty="Belum ada komentar positif, atau sentimen komentar belum dianalisis."
+            texts={[...mentorTexts, ...teamTexts].filter((t) => sentiments[t] === "positive")} />
+          <WordCloud title="Kata kunci komentar negatif" tone="crit" empty="Belum ada komentar negatif, atau sentimen komentar belum dianalisis."
+            texts={[...mentorTexts, ...teamTexts].filter((t) => sentiments[t] === "negative")} />
+        </div>
         <div className="grid g-2">
           <section className="card">
             <div className="card-head"><div><h2 className="card-title">Untuk kakak mentor</h2>
