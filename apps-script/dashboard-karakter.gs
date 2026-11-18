@@ -478,7 +478,7 @@ function mapCatatanDiubah(e) {
 
 // File jawaban Google Form feedback TTB. Properti dokumen LINK_FEEDBACK_TTB (link atau ID file) dipakai lebih dulu,
 // agar file lain bisa dipakai tanpa mengubah kode. Akun yang menerapkan web app harus bisa membuka file ini.
-const TTB_FEEDBACK_ID = '10UMKdoMxI50KYnymBD3Z63FkHn7GamGg';
+const TTB_FEEDBACK_ID = '1Rpspm6wWJof4Duwxb0d3PW-obUbEhgFvFEJ0T0le-yU';
 
 // Kolom dikenali dari judul pertanyaannya, bukan urutannya. Pertanyaan skala 1–5 berjudul
 // Apakah "pernyataan"? — pernyataan di dalam tanda kutip jadi nama pertanyaan.

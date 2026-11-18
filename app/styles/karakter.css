@@ -250,3 +250,36 @@ a.kr-prog-head:hover b,a.kr-go:hover{text-decoration:underline}
   .kpi-row.kr-two,.kpi-row.kr-three{grid-template-columns:minmax(0,1fr)}
 }
 @media (prefers-reduced-motion:reduce){ .kr-prog,.kr-cover,.kr-book,.kr-leaf,.kr-flip-in,.kr-poster-open img,.kr-tile img{transition:none} }
+
+/* peta kampus Mapping Banner */
+.kr-map-zoom{display:flex;gap:6px}
+.kr-map-zoom .btn{min-width:34px;justify-content:center;font-size:16px}
+.kr-map-legend{display:flex;flex-wrap:wrap;gap:14px;margin:-4px 0 12px;font-size:12px;color:var(--muted)}
+.kr-map-legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+.kr-map-legend i.crit{background:var(--crit)}.kr-map-legend i.warn{background:var(--warn)}.kr-map-legend i.ok{background:var(--ok)}
+.kr-pin.crit{background:var(--crit-ink)}.kr-pin.warn{background:var(--warn-ink)}.kr-pin.ok{background:var(--ok-ink)}
+.kr-map-wrap{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(250px,1fr);gap:16px;align-items:start}
+.kr-map-scroll{overflow:auto;max-height:680px;border:1px solid var(--line);border-radius:var(--r);background:#fff}
+.kr-map{position:relative;min-width:max(100%,560px)}
+.kr-map img{display:block;width:100%;height:auto}
+.kr-pin{position:absolute;transform:translate(-50%,-50%);min-width:36px;height:24px;padding:0 7px;border-radius:999px;border:2px solid #fff;
+  color:#fff;font-size:11px;font-weight:800;line-height:20px;cursor:pointer;box-shadow:0 1px 5px rgba(0,0,0,.4)}
+.kr-pin:hover,.kr-pin.on,.kr-pin:focus-visible{z-index:2;outline:3px solid var(--navy);outline-offset:0}
+.kr-map-side{display:flex;flex-direction:column;gap:12px;min-width:0}
+.kr-map-h,.kr-map-detail h3{margin:0;font-size:14.5px;font-weight:800;color:var(--navy)}
+.kr-map-detail>small{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
+.kr-map-detail ul,.kr-map-need,.kr-map-off ul{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column}
+.kr-map-detail li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 8px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
+.kr-map-detail li small{grid-column:1/-1;color:var(--muted);font-size:12px}
+.kr-map-detail .kr-row{margin-top:10px}
+.kr-map-need li,.kr-map-off li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px}
+.kr-map-off li small{display:block;color:var(--muted);font-size:11.5px}
+.kr-map-off summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--ink-2)}
+.kr-map-n{flex:0 0 auto;font-size:11.5px;font-weight:800;border-radius:999px;padding:1px 8px;font-variant-numeric:tabular-nums}
+.kr-map-n.crit{background:var(--crit-bg);color:var(--crit-ink)}.kr-map-n.warn{background:var(--warn-bg);color:var(--warn-ink)}.kr-map-n.ok{background:var(--ok-bg);color:var(--ok-ink)}
+#kr-matrix{scroll-margin-top:68px}
+.kr-chip-x{display:inline-flex;border:0;background:none;padding:0;margin-left:2px;color:var(--muted);cursor:pointer}
+@media (max-width:900px){
+  .kr-map-wrap{grid-template-columns:minmax(0,1fr)}
+  .kr-map-scroll{max-height:520px}
+}

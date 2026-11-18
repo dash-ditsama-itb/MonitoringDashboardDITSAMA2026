@@ -7,7 +7,7 @@ import { confirmAction, toast } from "../../components/feedback.jsx";
 import { Icon } from "../../components/Icon.jsx";
 import { Bar, EmptyState, ErrorNote, Kpi, PageHead, SearchInput, Segmented, Spinner } from "../../components/ui.jsx";
 import {
-  BANNER_THEMES, CAMPAIGN_BOOK, CAMPAIGN_YEAR, CAMPAIGN_POSTERS, CAMPAIGN_VIDEOS, DISCUSSIONS, DOCUMENTATION, DOCUMENTATION_FOLDER,
+  BANNER_THEMES, CAMPAIGN_BOOK, CAMPUS_MAPS, CAMPAIGN_YEAR, CAMPAIGN_POSTERS, CAMPAIGN_VIDEOS, DISCUSSIONS, DOCUMENTATION, DOCUMENTATION_FOLDER,
   KARAKTER_ABOUT, KARAKTER_BASE, KARAKTER_API_URL, KARAKTER_PROGRAMS, KARAKTER_YEARS, MAPPING_FALLBACK, TTB, TTB_LIVE_YEAR, mappingFallbackItems,
   driveFile, driveFolder, driveThumb, drivePlayer,
 } from "../../lib/karakter.js";
@@ -776,6 +776,12 @@ function Mapping({ year, picker }) {
   const map = useMapping(year, saved);
   const [campus, setCampus] = useState(null);
   const c = map.campuses.find((x) => x.key === campus) || map.campuses[0];
+  const [only, setOnly] = useState(null); // filter tabel ke satu gedung dari peta: { label, keys }
+  useEffect(() => { setOnly(null); }, [c?.key, year]);
+  const showInTable = (filter) => {
+    setOnly(filter);
+    document.getElementById("kr-matrix")?.scrollIntoView({ block: "start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  };
   const edits = useMappingEdits(map, setSaved);
   // hanya jenis banner yang dipakai di kampus & tahun ini (mis. 2025 hanya 4 jenis)
   const themes = c ? map.themes.filter((t) => c.rooms.some((r) => t in r.st)) : [];
@@ -803,6 +809,7 @@ function Mapping({ year, picker }) {
             <Kpi icon="star" label="Lokasi sudah lengkap" value={fmtNum(c.complete.length)} hint="semua banner yang direncanakan sudah terpasang" />
             <Kpi icon="alert" label="Lokasi belum ada banner" tone="t-neg" value={fmtNum(c.empty.length)} hint={`dari ${fmtNum(c.rooms.length)} lokasi`} />
           </div>
+          <CampusMap key={c.key} campus={c} themes={themes} onShow={showInTable} />
           <div className="grid g-2">
             <section className="card">
               <div className="card-head"><div><h2 className="card-title">Keterpasangan per tema</h2><div className="card-sub">Banner terpasang dari lokasi yang direncanakan untuk tema itu</div></div></div>
@@ -823,7 +830,7 @@ function Mapping({ year, picker }) {
               ) : <p className="kr-muted">Semua banner yang direncanakan sudah terpasang.</p>}
             </section>
           </div>
-          <MappingMatrix campus={c} themes={themes} edits={edits} />
+          <MappingMatrix campus={c} themes={themes} edits={edits} only={only} onClearOnly={() => setOnly(null)} />
           {edits.dirty.length > 0 && (
             <div className="kr-savebar" role="region" aria-label="Perubahan belum disimpan">
               <div className="kr-savebar-txt">
@@ -837,6 +844,104 @@ function Mapping({ year, picker }) {
         </>
       )}
     </>
+  );
+}
+
+// Peta kampus: satu titik per gedung dari CAMPUS_MAPS (karakter.js). Warna = banner terpasang di gedung itu
+// (merah belum ada, oranye sebagian, hijau lengkap); lokasi yang tidak cocok dengan gedung mana pun didaftar di samping.
+const mapName = (s) => String(s || "").toLowerCase().replace(/\s+/g, " ").trim();
+const MAP_ZOOMS = [1, 1.5, 2, 3];
+const pinTone = (b) => (!b.done ? "crit" : b.done < b.planned ? "warn" : "ok");
+
+function CampusMap({ campus: c, themes, onShow }) {
+  const conf = CAMPUS_MAPS.find((m) => m.campus.test(c.name));
+  const [zoom, setZoom] = useState(0);
+  const [open, setOpen] = useState(null); // nomor gedung yang rinciannya dibuka
+  const scroller = useRef(null);
+  const { buildings, unplaced } = useMemo(() => {
+    if (!conf) return { buildings: [], unplaced: [] };
+    const used = new Set();
+    const list = conf.buildings.map((b) => {
+      const names = new Set(b.match.map(mapName));
+      const rooms = c.rooms.filter((r) => r.planned && !used.has(r.key) && (names.has(mapName(r.name)) || names.has(mapName(r.area))));
+      rooms.forEach((r) => used.add(r.key));
+      return { ...b, rooms, planned: rooms.reduce((n, r) => n + r.planned, 0), done: rooms.reduce((n, r) => n + r.done, 0) };
+    }).filter((b) => b.rooms.length);
+    return { buildings: list, unplaced: c.rooms.filter((r) => r.planned && !used.has(r.key)) };
+  }, [conf, c]);
+  // gambar lebih tinggi dari kotak peta: mulai dari tengah sebaran titik, bukan dari tepi atas foto
+  const centerOnPins = (img) => {
+    const box = scroller.current;
+    if (!box || !buildings.length) return;
+    const y = buildings.reduce((n, b) => n + b.y, 0) / buildings.length;
+    box.scrollTop = (y / 100) * img.clientHeight - box.clientHeight / 2;
+  };
+  if (!conf) return null;
+  const sel = buildings.find((b) => b.no === open);
+  const need = buildings.filter((b) => b.done < b.planned).sort((x, y) => x.done / x.planned - y.done / y.planned);
+  return (
+    <section className="card">
+      <div className="card-head">
+        <div><h2 className="card-title">Peta kampus</h2>
+          <div className="card-sub">Titik = gedung dengan banner yang direncanakan · angka = terpasang / direncanakan · klik titik untuk rinciannya</div></div>
+        <div className="kr-map-zoom">
+          <button type="button" className="btn btn-sm" onClick={() => setZoom(zoom - 1)} disabled={zoom === 0} aria-label="Perkecil peta">−</button>
+          <button type="button" className="btn btn-sm" onClick={() => setZoom(zoom + 1)} disabled={zoom === MAP_ZOOMS.length - 1} aria-label="Perbesar peta">+</button>
+        </div>
+      </div>
+      <div className="kr-map-legend">
+        <span><i className="crit" />belum ada banner</span><span><i className="warn" />sebagian terpasang</span><span><i className="ok" />semua terpasang</span>
+      </div>
+      <div className="kr-map-wrap">
+        <div className="kr-map-scroll" ref={scroller}>
+          <div className="kr-map" style={{ width: MAP_ZOOMS[zoom] * 100 + "%" }}>
+            <img src={import.meta.env.BASE_URL + conf.image} width={conf.width} height={conf.height} alt={`Foto udara ${c.label}`} onLoad={(e) => centerOnPins(e.currentTarget)} />
+            {buildings.map((b) => (
+              <button type="button" key={b.no} className={"kr-pin " + pinTone(b) + (open === b.no ? " on" : "")}
+                style={{ left: b.x + "%", top: b.y + "%" }} onClick={() => setOpen(open === b.no ? null : b.no)} aria-pressed={open === b.no}
+                aria-label={`${b.name}: ${b.done} dari ${b.planned} banner terpasang`} title={b.name}>{b.done}/{b.planned}</button>
+            ))}
+          </div>
+        </div>
+        <aside className="kr-map-side" aria-live="polite">
+          {sel ? (
+            <div className="kr-map-detail">
+              <h3>{sel.name}</h3>
+              <small>No. {sel.no} di peta · {sel.done} dari {sel.planned} banner terpasang</small>
+              <ul>{sel.rooms.map((r) => {
+                const missing = themes.filter((t) => r.st[t] === false).map((t) => t.replace(/^Etika /, ""));
+                return (
+                  <li key={r.key}><b>{r.name}</b><span className={"kr-map-n " + pinTone(r)}>{r.done}/{r.planned}</span>
+                    <small>{missing.length ? `Belum: ${missing.join(", ")}` : "Semua banner terpasang"}</small></li>
+                );
+              })}</ul>
+              <div className="kr-row">
+                <button type="button" className="btn btn-sm" onClick={() => onShow({ label: sel.name, keys: new Set(sel.rooms.map((r) => r.key)) })}>
+                  <Icon name="search" size={14} />Tampilkan di tabel</button>
+                <button type="button" className="btn btn-sm" onClick={() => setOpen(null)}>Tutup</button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <h3 className="kr-map-h">Perlu banner ({need.length} gedung)</h3>
+              {need.length ? <ul className="kr-map-need">{need.map((b) => (
+                <li key={b.no}><button type="button" className="link-btn" onClick={() => setOpen(b.no)}>{b.name}</button>
+                  <span className={"kr-map-n " + pinTone(b)}>{b.done}/{b.planned}</span></li>
+              ))}</ul> : <p className="kr-muted">Semua gedung di peta sudah lengkap.</p>}
+            </>
+          )}
+          {unplaced.length > 0 && (
+            <details className="kr-map-off">
+              <summary>Tidak ada di peta ({unplaced.length} lokasi)</summary>
+              <ul>{unplaced.map((r) => (
+                <li key={r.key}><span>{r.name}<small>{r.area}</small></span><span className={"kr-map-n " + pinTone(r)}>{r.done}/{r.planned}</span></li>
+              ))}</ul>
+            </details>
+          )}
+          <p className="kr-muted kr-small">Foto udara: peta resmi ITB, KK Inderaja &amp; SIG FITB (Desember 2016); gedung baru belum terlihat.</p>
+        </aside>
+      </div>
+    </section>
   );
 }
 
@@ -949,15 +1054,16 @@ function useMappingEdits(map, setSaved) {
   };
 }
 
-function MappingMatrix({ campus: c, themes, edits }) {
+function MappingMatrix({ campus: c, themes, edits, only, onClearOnly }) {
   const [q, setQ] = useState("");
   const [onlyChanged, setOnlyChanged] = useState(false);
   const changedOnly = onlyChanged && edits.dirty.length > 0;
   const term = q.trim().toLowerCase();
-  const show = (a, r) => (!term || r.name.toLowerCase().includes(term) || a.name.toLowerCase().includes(term)) && (!changedOnly || edits.rowDirty(r));
+  const show = (a, r) => (!term || r.name.toLowerCase().includes(term) || a.name.toLowerCase().includes(term))
+    && (!changedOnly || edits.rowDirty(r)) && (!only || only.keys.has(r.key));
   const areas = c.areas.map((a) => ({ ...a, shown: a.rooms.filter((r) => show(a, r)) })).filter((a) => a.shown.length);
   return (
-    <section className="card">
+    <section className="card" id="kr-matrix">
       <div className="card-head"><div>
         <h2 className="card-title">Peta keterpasangan per lokasi{edits.canEdit && <span className="kr-badge">Bisa diubah</span>}</h2>
         <div className="card-sub">{edits.canEdit
@@ -966,6 +1072,11 @@ function MappingMatrix({ campus: c, themes, edits }) {
       </div></div>
       <div className="kr-tools">
         <SearchInput value={q} onChange={setQ} placeholder="Cari lokasi / gedung" className="compact" delay={150} />
+        {only && (
+          <span className="kr-chip">Hanya {only.label}
+            <button type="button" className="kr-chip-x" onClick={onClearOnly} aria-label={`Tampilkan semua gedung, bukan hanya ${only.label}`}><Icon name="x" size={13} /></button>
+          </span>
+        )}
         {edits.dirty.length > 0 && (
           <button type="button" className="btn btn-sm" aria-pressed={changedOnly} onClick={() => setOnlyChanged(!changedOnly)}>
             {changedOnly ? "Tampilkan semua lokasi" : "Tampilkan yang berubah"}
@@ -981,7 +1092,7 @@ function MappingMatrix({ campus: c, themes, edits }) {
             ...a.shown.map((r) => <MappingRow key={r.key} r={r} themes={themes} edits={edits} />),
           ])}</tbody>
         </table></div>
-      ) : <p className="kr-muted kr-empty">Tidak ada lokasi yang cocok dengan pencarian.</p>}
+      ) : <p className="kr-muted kr-empty">{only ? `Tidak ada lokasi ${only.label} yang cocok dengan pencarian.` : "Tidak ada lokasi yang cocok dengan pencarian."}</p>}
     </section>
   );
 }

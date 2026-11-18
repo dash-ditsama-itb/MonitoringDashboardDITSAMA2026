@@ -112,6 +112,51 @@ export const CAMPAIGN_BOOK = {
   desc: "Panduan untuk tumbuh, bukan sekadar bertahan, selama menjalani Tahap Persiapan Bersama di ITB.",
 };
 
+// Peta kampus di Mapping Banner: foto udara dari peta resmi ITB (KK Inderaja & SIG FITB, foto Desember 2016).
+// Satu titik per gedung di nomor gedung peta itu (x, y = % lebar/tinggi gambar). match = nama lokasi atau gedung/area
+// di data Mapping Banner (tidak membedakan huruf besar/kecil); lokasi yang tidak cocok tampil di "Tidak ada di peta".
+// Gedung yang belum ada di peta 2016 (GKU 3, KOICA, Asrama TB, ...) bisa ditambahkan dengan x, y perkiraan.
+export const CAMPUS_MAPS = [
+  {
+    campus: /ganesha/i, image: "assets/peta-ganesha.webp", width: 1600, height: 2360,
+    buildings: [
+      { no: "21", name: "Oktagon", x: 45.6, y: 38.4, match: ["Oktagon"] },
+      { no: "22", name: "TVST", x: 45.9, y: 43.2, match: ["TVST"] },
+      { no: "18", name: "Labtek I", x: 62.3, y: 40.6, match: ["Labtek I"] },
+      { no: "29", name: "Labtek V", x: 41.4, y: 53.8, match: ["Labtek V", "CWS Labtek V FTI", "Kantin Labtek V"] },
+      { no: "30", name: "Labtek VI", x: 40.4, y: 49.5, match: ["Labtek VI"] },
+      { no: "31", name: "Labtek VII", x: 59.4, y: 49.4, match: ["Labtek VII"] },
+      { no: "32", name: "Labtek VIII", x: 59.2, y: 53.9, match: ["Labtek VIII"] },
+      { no: "23 & 24", name: "Labtek X & XI (Labtek Biru)", x: 36.3, y: 40.5, match: ["Area Sekre Himpunan", "Area Kantin Labtek Biru"] },
+      { no: "40", name: "CRCS", x: 21.9, y: 61.7, match: ["CRCS"] },
+      { no: "8", name: "Gedung PAU", x: 45.2, y: 30.6, match: ["PAU"] },
+      { no: "10", name: "CAS (Center for Advanced Sciences)", x: 64.0, y: 31.9, match: ["CAS"] },
+      { no: "7", name: "CADL (Center for Arts, Design and Language)", x: 38.2, y: 31.1, match: ["CADL"] },
+      { no: "9", name: "Perpustakaan Pusat", x: 56.0, y: 30.5, match: ["Kantin Perpustakaan Pusat"] },
+      { no: "45", name: "Campus Center Barat", x: 44.6, y: 60.8, match: ["Kantin CC Barat"] },
+      { no: "48", name: "Campus Center Timur", x: 56.0, y: 60.6, match: ["Kantin CC Timur", "Area Belajar 24 Jam CC Timur"] },
+      { no: "27", name: "GKU Barat", x: 27.2, y: 51.9, match: ["Kantin GKU Barat"] },
+      { no: "34 & 35", name: "GKU Timur", x: 76.4, y: 51.8, match: ["Kantin GKU Timur", "Kantin GKU Timiur"] },
+    ],
+  },
+  {
+    campus: /jatinangor|jtn/i, image: "assets/peta-jatinangor.webp", width: 1600, height: 3118,
+    buildings: [
+      { no: "22", name: "Gedung Kuliah A", x: 58.1, y: 39.5, match: ["GEDUNG A (KULIAH)"] },
+      { no: "21", name: "Gedung Kuliah C", x: 62.8, y: 42.3, match: ["GEDUNG C (LFD + Studio NVD DKV)"] },
+      { no: "20", name: "Gedung Kuliah D", x: 65.1, y: 46.5, match: ["GEDUNG D (KULIAH)"] },
+      { no: "19", name: "Gedung Kuliah E", x: 59.0, y: 48.8, match: ["GEDUNG E (KULIAH)"] },
+      { no: "34", name: "Gedung Kuliah B", x: 50.2, y: 38.3, match: ["Gedung B Lantai 1", "Gedung B Lantai 2"] },
+      { no: "23", name: "Gedung Utama", x: 80.8, y: 43.3, match: ["GEDUNG UTAMA"] },
+      { no: "16", name: "GKU I", x: 66.8, y: 50.6, match: ["GKU 1 (KULIAH)"] },
+      { no: "15", name: "GKU II", x: 53.9, y: 56.7, match: ["GKU 2 (KULIAH)"] },
+      { no: "17", name: "Labtek I (SITH, LFD, LKD)", x: 45.5, y: 50.6, match: ["Labtek IA (SITH dan LFD dan LKD)"] },
+      { no: "18", name: "Labtek I B (FTSL)", x: 53.9, y: 52.8, match: ["Labtek IB (FTSL)"] },
+      { no: "32", name: "Labtek II A (FTI-J)", x: 37.0, y: 37.4, match: ["Labtek IIA dan IIB (FTI-J: TB & PG)"] },
+    ],
+  },
+];
+
 // tema banner Kampanye Etika (urutan kolom di Mapping Banner); Jenis_Materi di sheet dicocokkan tanpa beda huruf besar/kecil
 export const BANNER_THEMES = ["5S", "Etika Sopan Santun", "Etika Bersosmed", "Etika Berpenampilan", "Etika Menghubungi Dosen", "Etika Seksualitas Sehat", "Etika Adab Pergaulan"];
 // Mapping Banner cadangan = isi file Tim Humas "Master Data Lokasi Kampanye" per 25 Okt 2026 (tab Ganesha 2026,
