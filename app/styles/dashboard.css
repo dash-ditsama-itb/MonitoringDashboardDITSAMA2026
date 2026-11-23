@@ -1189,3 +1189,11 @@ span.asp-lab{cursor:default}
 /* periode Keuangan */
 .fin-mitra.fin-plain{margin-left:0}
 .fin-note{margin:-4px 0 0}
+/* sumber dana Keuangan: pemerintah (DP) dan non-pemerintah (Pm, Pd) */
+.fund-bar{display:flex;height:8px;border-radius:4px;overflow:hidden;background:var(--subtle);margin:10px 0 6px}
+.fund-bar .gov,.fund-dot.gov{background:#3a6db0}
+.fund-bar .private,.fund-dot.private{background:#16A34A}
+.fund-legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted)}
+.fund-dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px}
+.tbl tr.fin-head td{background:var(--subtle);color:var(--navy)}
+.tbl tr.fin-total td{border-top:2px solid var(--line-2);font-weight:700}
