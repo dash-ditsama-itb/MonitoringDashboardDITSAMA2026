@@ -1197,3 +1197,14 @@ span.asp-lab{cursor:default}
 .fund-dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px}
 .tbl tr.fin-head td{background:var(--subtle);color:var(--navy)}
 .tbl tr.fin-total td{border-top:2px solid var(--line-2);font-weight:700}
+/* kemajuan per periode */
+.pc-periods{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
+.pc-period{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px}
+.pc-period .pill{margin-left:6px}
+.pc-period-val{display:flex;align-items:center;gap:8px;white-space:nowrap;color:var(--ink-2)}
+.pc-period-val .bar{width:90px}
+.period-chips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+.period-chip{border:1px solid var(--line-2);background:#fff;border-radius:999px;padding:6px 14px;font:inherit;font-size:13px;color:var(--ink-2);cursor:pointer}
+.period-chip small{margin-left:6px;color:var(--muted)}
+.period-chip.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.period-chip.on small{color:#dbe6f5}

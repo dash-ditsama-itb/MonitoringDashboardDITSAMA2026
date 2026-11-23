@@ -15,7 +15,7 @@ export const useUiStore = create((set) => ({
   track: (delta) => set((s) => ({ pending: Math.max(0, s.pending + delta) })),
 
   // filter panel Filter di Portofolio Program (nilai = label dari backend)
-  dash: { program: ALL, year: ALL, month: ALL, phase: ALL, activity: ALL, issueLevel: ALL },
+  dash: { program: ALL, year: ALL, month: ALL, phase: ALL, activity: ALL, issueLevel: ALL, period: "Berjalan" },
   calMonth: null,   // Date (tgl 1) bulan yang tampil di kalender; null = bulan data terbaru
   capSearch: "",
 

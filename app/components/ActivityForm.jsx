@@ -4,7 +4,7 @@ import { ISSUE_LEVELS, PHASES, PROGRESS } from "../config.js";
 import { api, errorText, upload } from "../lib/api.js";
 import { attendance, editablePrograms, fromDateInput, skName, toDateInput } from "../lib/format.js";
 import { useAuthStore } from "../stores/auth.js";
-import { invalidate } from "../stores/data.js";
+import { invalidate, useApi } from "../stores/data.js";
 import { toast } from "./feedback.jsx";
 import { MemberPicker, positionsOf, sdmKey, useMembers } from "./HumanResources.jsx";
 import { Icon } from "./Icon.jsx";
@@ -123,6 +123,9 @@ export function ActivityForm({ open, activity, defaultProgram, initialMode, onCl
   const programs = useMemo(() => editablePrograms(session), [session]);
   const initialProgram = programs.some((p) => p.api === defaultProgram) ? defaultProgram : programs[0]?.api || "";
   const [f, setF] = useState(() => formFrom(activity, session, initialProgram));
+  // periode yang sudah dipakai program ini, ditawarkan supaya penulisannya seragam
+  const knownPeriods = (useApi("/dashboard/activity/program/" + f.program, { period: "Semua periode" }, { enabled: open && !!f.program })
+    .data?.data?.periods || []).map((p) => p.label).filter(Boolean);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const members = useMembers().data?.data;
@@ -220,7 +223,8 @@ export function ActivityForm({ open, activity, defaultProgram, initialMode, onCl
             <select {...field("phase")}><option value="">– Pilih fase –</option>{PHASES.map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select>
           </label>
           <label className="field"><span className="field-lab">Periode</span>
-            <input type="text" placeholder="mis. 2026 atau Periode 1" maxLength={255} {...field("period")} />
+            <input type="text" list="act-periods" placeholder="mis. 2026 atau Periode 1" maxLength={255} {...field("period")} />
+            <datalist id="act-periods">{knownPeriods.map((p) => <option key={p} value={p} />)}</datalist>
           </label>
           <label className="field"><span className="field-lab">Lokasi / alamat</span>
             <input type="text" placeholder="mis. Aula Barat ITB atau Daring" {...field("location")} />
