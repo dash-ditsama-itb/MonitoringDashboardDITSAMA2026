@@ -36,6 +36,8 @@ export function importSummary(d, noun, skipReason) {
   if (d.duplicateCount) parts.push(`${n(d.duplicateCount)} sudah ada (tidak berubah)`);
   if (d.skippedCount) parts.push(`${n(d.skippedCount)} dilewati (${skipReason})`);
   if (d.ambiguousCount) parts.push(`${n(d.ambiguousCount)} dilewati (cocok dengan lebih dari satu data tersimpan)`);
+  // data kegiatan: kegiatan periode sebelumnya yang tanggalnya sudah lewat otomatis ditandai selesai
+  if (d.closedCount) parts.push(`${n(d.closedCount)} ${noun} periode sebelumnya ditandai selesai`);
   return parts.length ? parts.join(", ") + "." : `Tidak ada ${noun} yang diimpor.`;
 }
 
