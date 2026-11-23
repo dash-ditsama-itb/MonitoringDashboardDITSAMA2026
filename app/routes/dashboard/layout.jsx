@@ -8,7 +8,7 @@ import { Refreshing, SelectField } from "../../components/ui.jsx";
 import { DASHBOARDS, PROGRAMS } from "../../config.js";
 import {
   activityStatus, byLabel, canEditFinance, canEditHumanResources, canManageUsers, daysFromToday, editablePrograms, LATE_BADGE_DAYS, levelLabel,
-  monthKeyLabel, progColor, sortLabels, withoutAll,
+  monthKeyLabel, progColor, sortLabels, withoutAll, ALL_PERIODS, CURRENT_PERIOD, periodText,
 } from "../../lib/format.js";
 import { useApi } from "../../stores/data.js";
 import { useUiStore } from "../../stores/ui.js";
@@ -118,7 +118,8 @@ function Shell({ session }) {
 
 // ============== PANEL FILTER (Portofolio Program) ==============
 const ALL = "Semua";
-const activeCount = (dash) => Object.values(dash).filter((v) => v !== ALL).length;
+// periode berjalan = bawaan, tidak dihitung sebagai filter aktif
+const activeCount = (dash) => Object.entries(dash).filter(([k, v]) => v !== ALL && !(k === "period" && v === CURRENT_PERIOD)).length;
 // Muat ulang ada di judul halaman Portofolio (sama seperti Peserta & Umpan Balik); panel ini hanya filter
 function ControlPanel({ open, hidden }) {
   const dash = useUiStore((s) => s.dash);
@@ -144,6 +145,9 @@ function ControlPanel({ open, hidden }) {
         <button className="icon-btn on-dark" type="button" onClick={() => set({ controlOpen: false, controlHidden: !open })} aria-label="Tutup filter"><Icon name="x" size={18} /></button>
       </div>
       <div className="control-body">
+        <SelectField label="Periode" value={[CURRENT_PERIOD, ALL_PERIODS, ...(fo?.periods || [])].includes(dash.period) ? dash.period : CURRENT_PERIOD}
+          options={[[CURRENT_PERIOD, "Periode berjalan"], [ALL_PERIODS, "Semua periode"], ...(fo?.periods || []).map((p) => [p, periodText(p === "Tanpa periode" ? "" : p)])]}
+          onChange={(v) => patch("dash", { period: v })} />
         {sel("program", "Program", programs)}
         {sel("year", "Tahun", fo?.years)}
         {sel("month", "Bulan", fo?.months, monthKeyLabel)}
@@ -152,7 +156,7 @@ function ControlPanel({ open, hidden }) {
         {sel("issueLevel", "Level isu", fo?.issueLevels, (v) => levelLabel(v.toLowerCase()))}
         {active > 0 && (
           <div className="control-actions">
-            <button className="btn btn-sm on-dark" type="button" onClick={() => patch("dash", { program: ALL, year: ALL, month: ALL, phase: ALL, activity: ALL, issueLevel: ALL })}>Reset filter</button>
+            <button className="btn btn-sm on-dark" type="button" onClick={() => patch("dash", { program: ALL, year: ALL, month: ALL, phase: ALL, activity: ALL, issueLevel: ALL, period: CURRENT_PERIOD })}>Reset filter</button>
           </div>
         )}
       </div>

@@ -18,6 +18,10 @@ export function fmtRupiahShort(n) {
 // satuan sumbu grafik rupiah dari nilai terbesar: miliar rupiah bila >= 1 miliar, selain itu juta rupiah
 export const moneyScale = (max) => (Math.abs(max) >= 1e9 ? { div: 1e9, unit: "miliar rupiah" } : { div: 1e6, unit: "juta rupiah" });
 // buang filter bernilai "Semua" (= default backend) agar kunci cache sama dengan permintaan tanpa filter
+// periode kegiatan (teks bebas, mis. "2026" atau "Periode 1") -> "Periode 2026" / "Periode 1"; kosong = Tanpa periode
+export const CURRENT_PERIOD = "Berjalan";
+export const ALL_PERIODS = "Semua periode";
+export const periodText = (label) => (!label ? "Tanpa periode" : /^periode\b/i.test(label.trim()) ? label.trim() : `Periode ${label.trim()}`);
 export const withoutAll = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== "Semua"));
 export const pct = (part, whole) => (whole > 0 ? Math.round((part / whole) * 100) : 0);
 // persen tampilan: bulat, kecuali mendekati 0% atau 100% (0,3% / <0,1% / 99,5%) agar

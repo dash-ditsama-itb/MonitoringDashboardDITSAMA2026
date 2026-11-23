@@ -8,7 +8,7 @@ import { Icon } from "../../components/Icon.jsx";
 import { InfoTip } from "../../components/InfoTip.jsx";
 import { lastPerformed, ProgramProgress } from "../../components/ProgressSummary.jsx";
 import { ErrorNote, PageHead, PageSkeleton, Pending, ProgramAbout } from "../../components/ui.jsx";
-import { activityStatus, canEditActivity, fmtDate, phaseLabel, programByKey, PROG_COLORS } from "../../lib/format.js";
+import { activityStatus, ALL_PERIODS, canEditActivity, CURRENT_PERIOD, fmtDate, periodText, phaseLabel, programByKey, PROG_COLORS } from "../../lib/format.js";
 import { RekapPeserta } from "../../components/RekapPeserta.jsx";
 import { SugtSummary } from "../../components/Sugt.jsx";
 import { PHASES } from "../../config.js";
@@ -32,8 +32,12 @@ export default function ProgramDashboard({ loaderData }) {
 
 function ProgramPage({ loaderData }) {
   const { program } = loaderData;
-  const { data: res, error, loading, reload } = useApi("/dashboard/activity/program/" + program.api);
+  // periode berjalan = bawaan; angka, agenda, dan linimasa mengikuti periode terpilih
+  const [period, setPeriod] = useState(CURRENT_PERIOD);
+  const { data: res, error, loading, reload } = useApi("/dashboard/activity/program/" + program.api, { period });
   const d = res?.data;
+  const all = d?.period?.choice === ALL_PERIODS;
+  const withPeriod = all || new Set((d?.timeline || []).map((t) => t.period ?? "")).size > 1;
 
   return (
     <div className="page">
@@ -42,7 +46,18 @@ function ProgramPage({ loaderData }) {
       <ProgramAbout program={program} />
       {!d ? <PageSkeleton kpis={0} /> : (
         <Pending busy={loading}>
-          <ProgramProgress program={program} kpi={d.kpi} last={lastPerformed(d.activities)} />
+          {d.periods?.length > 1 && (
+            <div className="period-chips" role="group" aria-label="Pilih periode">
+              {d.periods.map((p) => {
+                const value = p.current ? CURRENT_PERIOD : p.label ?? "Tanpa periode";
+                const on = !all && (d.period.label ?? null) === (p.label ?? null) && (p.label !== null || d.period.choice === "Tanpa periode");
+                return <button key={p.label ?? "-"} type="button" className={"period-chip" + (on ? " on" : "")} aria-pressed={on} onClick={() => setPeriod(value)}>
+                  {periodText(p.label)}{p.current && <small>berjalan</small>}</button>;
+              })}
+              <button type="button" className={"period-chip" + (all ? " on" : "")} aria-pressed={all} onClick={() => setPeriod(ALL_PERIODS)}>Semua periode</button>
+            </div>
+          )}
+          <ProgramProgress program={program} kpi={d.kpi} last={lastPerformed(d.activities)} period={d.period} periods={d.periods} />
           {program.api === "sugt" && <SugtSummary />}
           <div className="grid g-2">
             <MilestoneCard title="Sedang berlangsung" info="ongoing" tone="green" items={byStatus(d.activities, "ongoing")} program={program}
@@ -53,9 +68,10 @@ function ProgramPage({ loaderData }) {
           <MilestoneCard title="Agenda mendatang" info="upcoming" tone="yellow" items={byStatus(d.activities, "upcoming")} program={program}
             empty="Belum ada kegiatan yang tanggalnya setelah hari ini." />
           <section className="card">
-            <div className="card-head"><div><h2 className="card-title with-info">Linimasa fase kegiatan<InfoTip k="timeline" /></h2><div className="card-sub">Rentang tanggal tiap fase program ini</div></div></div>
+            <div className="card-head"><div><h2 className="card-title with-info">Linimasa fase kegiatan<InfoTip k="timeline" /></h2><div className="card-sub">Rentang tanggal tiap fase program ini{d.period?.label && !all ? ` · ${periodText(d.period.label)}` : withPeriod ? " · dipisah per periode" : ""}</div></div></div>
             <Gantt rows={d.timeline.map((t) => ({
-              key: t.phase, label: phaseLabel(t.phase), color: phaseColor(t.phase), start: t.startDate, end: t.endDate, count: t.activityCount,
+              key: (t.period ?? "") + t.phase, label: (withPeriod ? periodText(t.period) + " · " : "") + phaseLabel(t.phase),
+              color: phaseColor(t.phase), start: t.startDate, end: t.endDate, count: t.activityCount,
             }))} />
           </section>
         </Pending>

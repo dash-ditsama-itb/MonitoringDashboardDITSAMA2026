@@ -15,7 +15,7 @@ import {
 } from "../../components/ui.jsx";
 import { PROGRAMS, REKAP_PESERTA, TOTAL_PROGRAMS } from "../../config.js";
 import {
-  activityStatus, byLabel, canSeeActivities, fmtDate, fmtNum, levelLabel, monthKeyLabel, pct, phaseLabel, progColor, programLabel, PROGRAMS_AZ, withoutAll,
+  activityStatus, ALL_PERIODS, byLabel, canSeeActivities, CURRENT_PERIOD, periodText, fmtDate, fmtNum, levelLabel, monthKeyLabel, pct, phaseLabel, progColor, programLabel, PROGRAMS_AZ, withoutAll,
 } from "../../lib/format.js";
 import { useAuthStore } from "../../stores/auth.js";
 import { useApi } from "../../stores/data.js";
@@ -47,8 +47,8 @@ function PortfolioPage() {
   if (fresh) dataDash.current = dash;
   const shownDash = dataDash.current;
   const shown = PROGRAMS.find((p) => p.label === shownDash.program);
-  const filters = Object.entries(shownDash).filter(([, v]) => v !== "Semua")
-    .map(([k, v]) => (k === "month" ? monthKeyLabel(v) : k === "issueLevel" ? levelLabel(v.toLowerCase()) : v));
+  const filters = Object.entries(shownDash).filter(([k, v]) => v !== "Semua" && !(k === "period" && v === CURRENT_PERIOD))
+    .map(([k, v]) => (k === "month" ? monthKeyLabel(v) : k === "issueLevel" ? levelLabel(v.toLowerCase()) : k === "period" ? (v === ALL_PERIODS ? v : periodText(v === "Tanpa periode" ? "" : v)) : v));
   const timeline = useMemo(() => [...(d?.timeline || [])].sort(byLabel((t) => t.programLabel)), [d]);
   const performa = d && (
     <div className="grid g-5-7">
@@ -69,7 +69,7 @@ function PortfolioPage() {
       {!d ? <PortfolioSkeleton /> : (
         <Pending busy={loading}>
           {shown && <ProgramAbout program={shown} />}
-          <Progress kpi={d.kpi} portfolio={d.portfolio} sugt={d.sugt} program={shown} last={last} />
+          <Progress kpi={d.kpi} portfolio={d.portfolio} sugt={d.sugt} program={shown} last={last} period={d.period} periods={d.periods} />
           {/* SUGT: performa & kinerja tampil di antara kartu luring/daring dan kartu umpan balik */}
           {shown?.api === "sugt" ? <SugtSummary>{performa}</SugtSummary> : performa}
 
@@ -87,13 +87,13 @@ function PortfolioPage() {
 
           <section className="card">
             <div className="card-head"><div><h2 className="card-title with-info">Linimasa fase kegiatan<InfoTip k="timeline" /></h2>
-              <div className="card-sub">Rentang tanggal tiap fase per program (ikut filter program &amp; bulan)</div></div></div>
+              <div className="card-sub">Rentang tanggal tiap fase per program (ikut filter periode, program &amp; bulan){shownDash.period === CURRENT_PERIOD || !shownDash.period ? " · periode berjalan" : ""}</div></div></div>
             <Gantt
               rows={timeline.flatMap((t) => t.phases.map((ph) => ({
-                key: t.program + ph.phase, label: `${t.programLabel} · ${phaseLabel(ph.phase)}`, color: progColor(t.program),
+                key: t.program + (t.period ?? "") + ph.phase, label: `${t.programLabel}${t.period ? ` · ${periodText(t.period)}` : ""} · ${phaseLabel(ph.phase)}`, color: progColor(t.program),
                 start: ph.startDate, end: ph.endDate, count: ph.count,
               })))}
-              legend={timeline.map((t) => ({ label: t.programLabel, color: progColor(t.program) }))} />
+              legend={[...new Map(timeline.map((t) => [t.program, { label: t.programLabel, color: progColor(t.program) }])).values()]} />
           </section>
 
           <Calendar events={d.calendar} />
@@ -119,8 +119,8 @@ function PortfolioSkeleton() {
 }
 
 // semua program: jumlah program selesai (termasuk SUGT) / total program; satu program: aktivitas selesai / total aktivitasnya
-function Progress({ kpi, portfolio, sugt, program, last }) {
-  if (program) return <ProgramProgress program={program} kpi={kpi} last={last} showProgram />;
+function Progress({ kpi, portfolio, sugt, program, last, period, periods }) {
+  if (program) return <ProgramProgress program={program} kpi={kpi} last={last} showProgram period={period} periods={periods} />;
   const done = portfolioRows(portfolio, sugt).filter(isProgramDone).length;
   const p = pct(done, TOTAL_PROGRAMS);
   // aktivitas selesai dari semua program, angka kedua di bawah jumlah program selesai

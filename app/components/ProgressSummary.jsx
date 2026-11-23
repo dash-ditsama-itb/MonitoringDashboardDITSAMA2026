@@ -1,7 +1,7 @@
 // Kartu kemajuan: persentase + uraian kegiatan terakhir yang sudah terlaksana.
 import { useState } from "react";
 import {
-  activityStatus, attendance, fmtDate, fmtDateLong, fmtNum, fmtRelative, phaseLabel, programLabel, progressLabel,
+  activityStatus, attendance, fmtDate, fmtDateLong, fmtNum, fmtRelative, pct, periodText, phaseLabel, programLabel, progressLabel,
 } from "../lib/format.js";
 import { ActivityDetail } from "./Activities.jsx";
 import { Icon } from "./Icon.jsx";
@@ -35,7 +35,7 @@ function describe(a) {
  * status opsional: [label, nada] status program, tampil di samping angka.
  * second opsional: angka kedua di bawahnya { label, value, unit, progress } (mis. Kegiatan Selesai).
  */
-export function ProgressSummary({ label, info, progress, value, unit, note, status, second, kpi, last, showProgram }) {
+export function ProgressSummary({ label, info, progress, value, unit, note, status, second, others, othersLabel = "Periode lain", kpi, last, showProgram }) {
   const [open, setOpen] = useState(false);
   const full = !!last?.participants;
   const name = showProgram ? `${programLabel(last?.program)} — ${last?.name}` : last?.name;
@@ -47,6 +47,17 @@ export function ProgressSummary({ label, info, progress, value, unit, note, stat
           {status && <span className={"pill pc-status " + status[1]}>{status[0]}</span>}</div>
         <Bar value={progress} tone={progress >= 80 ? "ok" : progress >= 50 ? "" : "warn"} />
         {note && <span className="pc-note">{note}</span>}
+        {others?.length > 0 && (
+          <div className="pc-periods">
+            <span className="kpi-lab">{othersLabel}</span>
+            {others.map((p) => (
+              <div key={p.label ?? "-"} className="pc-period">
+                <span>{periodText(p.label)}{p.current && <span className="pill">berjalan</span>}</span>
+                <span className="pc-period-val">{fmtNum(p.done)}/{fmtNum(p.total)} ({pct(p.done, p.total)}%)<Bar value={pct(p.done, p.total)} tone={p.done === p.total ? "ok" : ""} /></span>
+              </div>
+            ))}
+          </div>
+        )}
         {second && (
           <div className="pc-second">
             <span className="kpi-lab"><Icon name="checkCircle" size={15} />{second.label}</span>
@@ -120,13 +131,18 @@ export function programStatus(p) {
   return ["Belum dilaksanakan", "idle"];
 }
 
-/** Kemajuan satu program (dashboard utama terfilter & dashboard program): kegiatan selesai / total + status program. */
-export function ProgramProgress({ program, kpi, last, showProgram }) {
+/** Kemajuan satu program (dashboard utama terfilter & dashboard program): kegiatan selesai / total + status program.
+ *  period: { choice, label } periode yang ditampilkan; periods: semua periode program, yang lain tampil sebagai rincian. */
+export function ProgramProgress({ program, kpi, last, showProgram, period, periods }) {
+  const all = period?.choice === "Semua periode";
+  const scope = !period || (!period.label && !all) ? "" : all ? "semua periode" : periodText(period.label).toLowerCase();
   const note = kpi.totalActivities
-    ? `${fmtNum(kpi.totalDone)} dari ${fmtNum(kpi.totalActivities)} total kegiatan program selesai (${kpi.progress}%)`
+    ? `${fmtNum(kpi.totalDone)} dari ${fmtNum(kpi.totalActivities)} kegiatan ${scope ? scope : "program"} selesai (${kpi.progress}%)`
     : "Belum ada kegiatan tercatat";
   const status = programStatus({ completedActivities: kpi.totalDone, ongoingActivities: kpi.totalOngoing, lateActivities: kpi.totalLate, totalActivities: kpi.totalActivities });
-  return <ProgressSummary label={"Kemajuan " + program.label} info="programProgress" kpi={kpi} progress={kpi.progress}
+  // semua periode: rincian tiap periode; satu periode: periode lainnya
+  const others = (periods || []).filter((p) => all || (p.label ?? "") !== (period?.label ?? ""));
+  return <ProgressSummary label={"Kemajuan " + program.label + (scope ? ` · ${all ? "Semua periode" : periodText(period.label)}` : "")} info="programProgress" kpi={kpi} progress={kpi.progress}
     value={`${kpi.totalDone}/${kpi.totalActivities}`} unit={`kegiatan (${kpi.progress}%)`} note={note} status={status}
-    last={last} showProgram={showProgram} />;
+    others={periods?.length > 1 || all ? others : []} othersLabel={all ? "Rincian per periode" : "Periode lain"} last={last} showProgram={showProgram} />;
 }
