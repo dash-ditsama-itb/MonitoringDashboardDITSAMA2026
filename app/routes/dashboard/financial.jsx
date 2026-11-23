@@ -8,6 +8,12 @@ import { finAllPeriods, finGroupOf, finGroups, finMitra, finPeriod, finPeriodDat
 import { useApi } from "../../stores/data.js";
 import { useUiStore } from "../../stores/ui.js";
 
+// sumber dana dibaca dari jenis PKS Awal tiap periode: DP = dana pemerintah, Pm dan Pd = non-pemerintah
+const FUNDINGS = [["gov", "Pemerintah", "DP"], ["private", "Non-pemerintah", "Pm, Pd"], ["none", "Belum ada PKS Awal", ""]];
+const fundingOf = (p) => (!p?.pksType ? "none" : p.pksType === "DP" ? "gov" : "private");
+// filter sumber dana tanpa periode yang cocok: id yang tidak dimiliki periode mana pun, jadi hasilnya kosong
+const NO_PERIOD = "00000000-0000-0000-0000-000000000000";
+
 const monthName = (ym) => { const [y, m] = ym.split("-"); return MONTHS[Number(m) - 1].slice(0, 3) + " " + y; };
 
 export default function Financial() {
@@ -30,16 +36,18 @@ function FinancialPage() {
     : [periodYearOptions.includes(thisYear) ? thisYear : periodYearOptions[0] ?? thisYear];
   const year = years.length === 1 ? years[0] : undefined;
   setFinDataYears(years);
-  // filter Program = kelompok program (mis. INSPIRASI SCD = YPK + Toraja), hanya yang punya periode di tahun terpilih
-  const inYears = (apis) => !catalogReady || finAllPeriods(apis).some((p) => years.includes(finPeriodYear(p)));
+  const funding = catalogReady ? ui.funding || "" : "";
+  const fits = (p) => years.includes(finPeriodYear(p)) && (!funding || fundingOf(p) === funding);
+  // filter Program = kelompok program (mis. INSPIRASI SCD = YPK + Toraja), hanya yang punya periode di tahun dan sumber dana terpilih
+  const inYears = (apis) => !catalogReady || finAllPeriods(apis).some(fits);
   const groupOptions = finGroups(year).filter((g) => inYears(g.apis));
   const picked = ui.program && ui.program !== "all" ? finGroupOf(ui.program.split(",")[0], year) : null;
   const group = picked && groupOptions.some((g) => g.key === picked.key) ? picked : null;
-  const selectedPeriods = catalogReady ? finAllPeriods(group?.apis).filter((p) => years.includes(finPeriodYear(p))) : [];
+  const selectedPeriods = catalogReady ? finAllPeriods(group?.apis).filter(fits) : [];
   const selectedIds = selectedPeriods.map((p) => p.id);
   const filters = {
     programs: group ? group.apis : ["all"],
-    year: year ?? years,
+    ...(funding ? { periodIds: selectedIds.length ? selectedIds : [NO_PERIOD] } : { year: year ?? years }),
     ...(catalogReady && /^\d{4}-\d{2}$/.test(ui.month) ? { month: Number(ui.month.slice(5)), calendarYear: Number(ui.month.slice(0, 4)) } : {}),
     ...(!catalogReady && year && ui.month ? { month: Number(ui.month) } : {}),
     ...(ui.submissionType ? { submissionType: ui.submissionType } : {}),
@@ -59,7 +67,7 @@ function FinancialPage() {
   const period = catalogReady
     ? (month ? monthLabel(month) : `periode ${[...years].sort().join(" & ")}`)
     : (month ? `${MONTHS[Number(month) - 1]} ${year}` : years.join(" & "));
-  const active = !!(group || month || ui.submissionType || (catalogReady ? pickedYears.length : years.length !== 1 || year !== thisYear));
+  const active = !!(group || funding || month || ui.submissionType || (catalogReady ? pickedYears.length : years.length !== 1 || year !== thisYear));
   const picker = <YearChecks years={years} options={yearOptions.length ? yearOptions : years} onChange={setYears} />;
 
   return (
@@ -70,6 +78,10 @@ function FinancialPage() {
         <div className="field"><span className="field-lab">{catalogReady ? "Periode" : "Tahun"}</span>
           {picker}
         </div>
+        {catalogReady && (
+          <SelectField label="Sumber dana" value={funding} onChange={(v) => setFilter({ funding: v })}
+            options={[["", "Semua"], ...FUNDINGS.slice(0, 2).map(([k, label, types]) => [k, `${label} (${types})`])]} />
+        )}
         <SelectField label="Program" value={group ? group.key : "all"} onChange={(v) => setFilter({ program: v })}
           options={[["all", "Semua program"], ...groupOptions.map((g) => [g.key, g.label])]} />
         <SelectField label="Bulan" value={month} onChange={(v) => setFilter({ month: v })} disabled={!catalogReady && !year}
@@ -78,7 +90,7 @@ function FinancialPage() {
             : [...new Set(months.map((m) => m.month))].map((m) => [String(m), MONTHS[m - 1]]))]} />
         <SelectField label="Jenis pengajuan" value={ui.submissionType} onChange={(v) => setFilter({ submissionType: v })}
           options={[["", "Semua jenis"], ...(fo?.submissionTypes || []).map((t) => [t, t])]} />
-        {active && <button type="button" className="btn btn-sm filter-reset" onClick={() => setFilter({ program: "all", years: [thisYear], periodYears: null, month: "", submissionType: "" })}>Reset filter</button>}
+        {active && <button type="button" className="btn btn-sm filter-reset" onClick={() => setFilter({ program: "all", years: [thisYear], periodYears: null, funding: "", month: "", submissionType: "" })}>Reset filter</button>}
       </section>
 
       <ErrorNote error={error} onRetry={() => reload()} />
@@ -97,8 +109,9 @@ function FinancialPage() {
               <Bar value={d.kpi.absorptionPercentage} tone={d.kpi.absorptionPercentage > 95 ? "crit" : ""} />
             </div>
           </div>
+          {catalogReady && !funding && <FundingSplit rows={d.summary} />}
           <FinCharts d={d} period={month ? period : ""} year={year} catalogReady={catalogReady} />
-          <Summary rows={d.summary} period={month ? period : ""} year={year} />
+          <Summary rows={d.summary} period={month ? period : ""} year={year} split={catalogReady} />
         </Pending>
       )}
 
@@ -216,15 +229,70 @@ const Money = ({ v }) => <><span className="sm-hide">{fmtRupiah(v)}</span><span 
 const netOf = (v) => (Number(v.totalPks) || 0) - (Number(v.totalDpks) || 0);
 const absorption = (net, sub) => (net > 0 ? Math.round((sub / net) * 1000) / 10 : 0);
 const absorbedOf = (v) => v.absorbed ?? v.totalSubmission;
+const sumValues = (list) => {
+  const v = Object.fromEntries(["totalPks", "totalTax", "totalDpks", "totalSubmission", "balance", "absorbed"].map((k) => [k, list.reduce((s, x) => s + (Number(k === "absorbed" ? absorbedOf(x) : x[k]) || 0), 0)]));
+  v.absorptionPercentage = absorption(netOf(v), v.absorbed);
+  return v;
+};
+// nilai satu program dari periode satu sumber dana saja; null = program itu tidak punya periode sumber dana tsb.
+function onlyFunding(row, kind) {
+  const list = (row.periods || []).filter((x) => fundingOf(finPeriod(x.periodId)) === kind);
+  if (!list.length) return null;
+  const recipients = new Map();
+  list.forEach((x) => (x.recipients || []).forEach((r) => recipients.set(r.program, (recipients.get(r.program) || 0) + r.submission)));
+  return { program: row.program, ...sumValues(list), periods: list, recipients: [...recipients].map(([program, submission]) => ({ program, submission })) };
+}
+const fundingRows = (rows) => FUNDINGS.map(([kind, label, types]) => ({ kind, label, types, rows: rows.map((r) => onlyFunding(r, kind)).filter(Boolean) }))
+  .filter((s) => s.rows.length);
+
+// angka utama dipecah: total, pemerintah, non-pemerintah (dan periode tanpa PKS Awal bila ada)
+function FundingSplit({ rows }) {
+  const cols = fundingRows(rows).map((s) => ({ ...s, v: sumValues(s.rows), periods: s.rows.reduce((n, r) => n + r.periods.length, 0) }));
+  if (!cols.length) return null;
+  const all = { v: sumValues(cols.map((c) => c.v)), periods: cols.reduce((n, c) => n + c.periods, 0) };
+  const pks = (kind) => cols.find((c) => c.kind === kind)?.v.totalPks || 0;
+  const base = pks("gov") + pks("private");
+  const share = (kind) => (base > 0 ? Math.round((pks(kind) / base) * 1000) / 10 : 0);
+  const measures = [
+    ["Nilai PKS", (x) => fmtRupiah(x.v.totalPks)], ["DPKS", (x) => fmtRupiah(x.v.totalDpks)], ["Dana bersih", (x) => fmtRupiah(netOf(x.v))],
+    ["Pengajuan", (x) => fmtRupiah(x.v.totalSubmission)], ["Saldo", (x) => fmtRupiah(x.v.balance)], ["Serapan", (x) => fmtPct(x.v.absorptionPercentage)],
+    ["Jumlah periode", (x) => x.periods],
+  ];
+  return (
+    <section className="card">
+      <div className="card-head"><div><h2 className="card-title">Sumber dana</h2>
+        <div className="card-sub">Dibaca dari jenis PKS Awal tiap periode: DP = pemerintah, Pm dan Pd = non-pemerintah</div></div></div>
+      <div className="tbl-scroll"><table className="tbl compact">
+        <thead><tr><th />{[["Total"], ...cols.map((c) => [c.types ? `${c.label} (${c.types})` : c.label])].map(([h]) => <th key={h} className="num">{h}</th>)}</tr></thead>
+        <tbody>{measures.map(([label, fmt]) => (
+          <tr key={label}><td>{label}</td><td className="num cell-strong">{fmt(all)}</td>{cols.map((c) => <td key={c.kind} className="num">{fmt(c)}</td>)}</tr>
+        ))}</tbody>
+      </table></div>
+      {base > 0 && (
+        <>
+          <div className="fund-bar" role="img" aria-label={`Nilai PKS: pemerintah ${fmtPct(share("gov"))}, non-pemerintah ${fmtPct(share("private"))}`}>
+            <span className="gov" style={{ width: `${share("gov")}%` }} /><span className="private" style={{ width: `${share("private")}%` }} />
+          </div>
+          <div className="fund-legend"><span><span className="fund-dot gov" />Pemerintah {fmtPct(share("gov"))} dari nilai PKS</span><span><span className="fund-dot private" />Non-pemerintah {fmtPct(share("private"))}</span></div>
+        </>
+      )}
+    </section>
+  );
+}
 
 // ringkasan per kelompok program; kelompok bermitra menampilkan mitranya, dan rincian per mitra bila lebih dari satu
-function Summary({ rows, period, year }) {
-  const used = byGroup(rows.filter((r) => r.totalPks || r.totalSubmission), (r) => r.program, (r) => r, year);
+function Summary({ rows, period, year, split }) {
+  const usedOf = (list) => byGroup(list.filter((r) => r.totalPks || r.totalSubmission), (r) => r.program, (r) => r, year);
+  const used = usedOf(rows);
   const idle = finGroups(year).filter((g) => rows.some((r) => g.apis.includes(r.program))).length - used.length;
   // backend lama belum punya pajak dan periode
   const showTax = rows.some((r) => "totalTax" in r);
-  const line = (key, label, v, sub) => (
-    <tr key={key} className={sub ? "fin-sub" : ""}>
+  // dikelompokkan per sumber dana (jenis PKS Awal tiap periode), masing-masing dengan subtotal
+  const sections = split && rows.some((r) => r.periods?.length)
+    ? fundingRows(rows).map((s) => ({ ...s, used: usedOf(s.rows) })).filter((s) => s.used.length)
+    : [{ kind: "all", used }];
+  const line = (key, label, v, sub, cls = "") => (
+    <tr key={key} className={[sub ? "fin-sub" : "", cls].join(" ").trim() || undefined}>
       <td className={sub ? "" : "cell-strong"}>{label}</td>
       <td className="num"><Money v={v.totalPks} /></td>
       {showTax && <td className="num sm-hide">{v.totalTax ? fmtRupiah(v.totalTax) : "–"}</td>}
@@ -241,7 +309,10 @@ function Summary({ rows, period, year }) {
       {!used.length ? <div className="empty-inline">Belum ada transaksi untuk filter ini.</div> : (
         <div className="tbl-scroll"><table className="tbl compact">
           <thead><tr><th>{showTax ? "Program dan periode" : "Program"}</th><th className="num">Nilai PKS</th>{showTax && <th className="num sm-hide">Pajak</th>}<th className="num sm-hide">DPKS</th>{showTax && <th className="num sm-hide">Dana bersih</th>}<th className="num sm-hide">{period ? `Pengajuan ${period}` : "Pengajuan"}</th><th className="num">{period ? "Saldo akhir bulan" : "Saldo"}</th><th className="c-abs">{period ? "Serapan s.d. bulan" : "Serapan"}</th></tr></thead>
-          <tbody>{used.map(({ group: g, parts }) => {
+          <tbody>{sections.flatMap((s) => [
+            ...(s.kind === "all" ? [] : [line(`h:${s.kind}`, s.types ? `${s.label} (${s.types})` : s.label, sumValues(s.rows), false, "fin-head")]),
+            ...s.used.flatMap(({ group: g, parts }) => {
+            const pre = `${s.kind}:`;
             const t = Object.fromEntries(["totalPks", "totalTax", "totalDpks", "totalSubmission", "balance"].map((k) => [k, sumOf(parts, k)]));
             t.absorptionPercentage = absorption(netOf(t), parts.reduce((s, p) => s + (Number(absorbedOf(p.values)) || 0), 0));
             const mitras = parts.map((p) => finMitra(p.api)).filter(Boolean);
@@ -255,26 +326,27 @@ function Summary({ rows, period, year }) {
                 {only ? <span className="fin-mitra">{finPeriodOption(only)}</span> : periodCount > 1 && <span className="fin-mitra">{periodCount} periode</span>}</>
             );
             // satu periode digabung dengan baris program/mitranya; beberapa periode dirinci
-            const periodRows = (p) => { const list = periodsOf(p); return list.length > 1 ? list.map((x) => line(p.api + x.periodId,
+            const periodRows = (p) => { const list = periodsOf(p); return list.length > 1 ? list.map((x) => line(pre + p.api + x.periodId,
               <>{finPeriodName(x.period)}<span className="fin-mitra fin-plain">{finPeriodDates(x.period)}</span></>, x, true)) : []; };
             const mitraName = (p) => { const list = periodsOf(p); return (
               <>Mitra {finMitra(p.api) || "–"}{list.length === 1 && <span className="fin-mitra fin-plain">{finPeriodOption(list[0].period)}</span>}</>
             ); };
             // pengajuan mitra yang membiayai beberapa program (TN, Freeport) dirinci per program penerima
-            const split = (p) => (finRecipients(p.api, year).length > 1 ? [...(p.values.recipients || [])]
+            const splitRows = (p) => (finRecipients(p.api, year).length > 1 ? [...(p.values.recipients || [])]
               .sort((a, b) => (a.program ? finRecipients(p.api, year).indexOf(a.program) : 99) - (b.program ? finRecipients(p.api, year).indexOf(b.program) : 99))
               .map((x) => (
-                <tr key={p.api + (x.program || "bersama")} className="fin-sub fin-rec">
+                <tr key={pre + p.api + (x.program || "bersama")} className="fin-sub fin-rec">
                   <td>{recipientText(p.api, x.program, year)}</td><td colSpan={showTax ? 7 : 5}>Pengajuan {fmtRupiah(x.submission)}</td>
                 </tr>
               )) : []);
             return [
-              line(g.key, name, t),
+              line(pre + g.key, name, t),
               ...(parts.length > 1
-                ? parts.flatMap((p) => [line(p.api, mitraName(p), p.values, true), ...periodRows(p), ...split(p)])
-                : [...periodRows(parts[0]), ...split(parts[0])]),
+                ? parts.flatMap((p) => [line(pre + p.api, mitraName(p), p.values, true), ...periodRows(p), ...splitRows(p)])
+                : [...periodRows(parts[0]), ...splitRows(parts[0])]),
             ];
-          })}</tbody>
+          }),
+          ]).concat(sections.length > 1 ? [line("total", "Total", sumValues(sections.flatMap((s) => s.rows)), false, "fin-total")] : [])}</tbody>
         </table></div>
       )}
       <p className="hint"><Icon name="info" size={14} />{showTax
