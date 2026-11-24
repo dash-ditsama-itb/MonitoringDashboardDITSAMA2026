@@ -1,7 +1,7 @@
 // Kartu "Rekap kepesertaan": batang horizontal per program, dipisah Terlayani / Proses PKS.
 // Data dari REKAP_PESERTA (config.js). `program` (kode backend) -> hanya batang program itu.
 import { REKAP_PESERTA } from "../config.js";
-import { byLabel, fmtNum, programLabel } from "../lib/format.js";
+import { byLabel, fmtNum, inPickedPeriod, periodText, programLabel } from "../lib/format.js";
 
 const SECTIONS = [
   { status: "Terlayani", title: "Terlayani", step: 500 },
@@ -15,8 +15,9 @@ const rowLabel = (r) => r.programs.map(programLabel).sort(byLabel()).join(" + ")
 
 // scope: nama di judul (mis. "semua program" / "Eduquest"); hideEmpty: tanpa data rekap -> kartu tidak ditampilkan;
 // highlight (kode backend): semua program tetap tampil, program itu berwarna dan sisanya abu-abu
-export function RekapPeserta({ program, programLabel, scope, hideEmpty, highlight, highlightLabel }) {
-  const rows = program ? REKAP_PESERTA.filter((r) => r.programs.includes(program)) : REKAP_PESERTA;
+// period: periode terpilih di dashboard; rekap periode lain disembunyikan
+export function RekapPeserta({ program, programLabel, scope, hideEmpty, highlight, highlightLabel, period }) {
+  const rows = (program ? REKAP_PESERTA.filter((r) => r.programs.includes(program)) : REKAP_PESERTA).filter((r) => inPickedPeriod(period, r.period));
   if (hideEmpty && !rows.length) return null;
   const titleScope = scope ?? (program ? programLabel : null);
   const terlayani = sum(REKAP_PESERTA.filter((r) => r.status === "Terlayani"));
@@ -34,7 +35,7 @@ export function RekapPeserta({ program, programLabel, scope, hideEmpty, highligh
     <section className="card">
       <div className="card-head"><div><h2 className="card-title">Rekap kepesertaan{titleScope && <> <span className="title-prog">{titleScope}</span></>}</h2>
         <div className="card-sub">{sub}</div></div></div>
-      {!rows.length ? <div className="empty-inline">Belum ada data rekap untuk program ini.</div> : (
+      {!rows.length ? <div className="empty-inline">{inPickedPeriod(period, REKAP_PESERTA[0]?.period) ? "Belum ada data rekap untuk program ini." : `Belum ada data rekap kepesertaan untuk ${periodText(period.label)}; rekap yang ada untuk ${periodText(REKAP_PESERTA[0]?.period)}.`}</div> : (
         <>
           <div className="rp-legend">
             <span><i />terlayani</span>
