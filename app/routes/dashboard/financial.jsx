@@ -5,12 +5,13 @@ import { RequireAccess } from "../../components/Access.jsx";
 import { Icon } from "../../components/Icon.jsx";
 import { Bar, ErrorNote, Kpi, PageHead, PageSkeleton, Pending, SelectField, YearChecks } from "../../components/ui.jsx";
 import { finAllPeriods, finGroupOf, finGroups, finMitra, finPeriod, finPeriodDates, finPeriodName, finPeriodOption, finPeriodYear, finPeriodYears, finRecipients, setFinDataYears, fmtPct, fmtRupiah, recipientText, fmtRupiahShort, moneyScale, MONTHS, progColor } from "../../lib/format.js";
+import { FIN_FUNDING } from "../../config.js";
 import { useApi } from "../../stores/data.js";
 import { useUiStore } from "../../stores/ui.js";
 
-// sumber dana dibaca dari jenis PKS Awal tiap periode: DP = dana pemerintah, Pm dan Pd = non-pemerintah
-const FUNDINGS = [["gov", "Pemerintah", "DP"], ["private", "Non-pemerintah", "Pm, Pd"], ["none", "Belum ada PKS Awal", ""]];
-const fundingOf = (p) => (!p?.pksType ? "none" : p.pksType === "DP" ? "gov" : "private");
+// sumber dana dilihat dari mitranya (FIN_FUNDING di config.js)
+const FUNDINGS = [["gov", "Pemerintah"], ["private", "Non-pemerintah"], ["none", "Belum ditentukan"]];
+const fundingOf = (api) => FIN_FUNDING[api] || "none";
 // filter sumber dana tanpa periode yang cocok: id yang tidak dimiliki periode mana pun, jadi hasilnya kosong
 const NO_PERIOD = "00000000-0000-0000-0000-000000000000";
 
@@ -37,7 +38,7 @@ function FinancialPage() {
   const year = years.length === 1 ? years[0] : undefined;
   setFinDataYears(years);
   const funding = catalogReady ? ui.funding || "" : "";
-  const fits = (p) => years.includes(finPeriodYear(p)) && (!funding || fundingOf(p) === funding);
+  const fits = (p) => years.includes(finPeriodYear(p)) && (!funding || fundingOf(p.api) === funding);
   // filter Program = kelompok program (mis. INSPIRASI SCD = YPK + Toraja), hanya yang punya periode di tahun dan sumber dana terpilih
   const inYears = (apis) => !catalogReady || finAllPeriods(apis).some(fits);
   const groupOptions = finGroups(year).filter((g) => inYears(g.apis));
@@ -80,7 +81,7 @@ function FinancialPage() {
         </div>
         {catalogReady && (
           <SelectField label="Sumber dana" value={funding} onChange={(v) => setFilter({ funding: v })}
-            options={[["", "Semua"], ...FUNDINGS.slice(0, 2).map(([k, label, types]) => [k, `${label} (${types})`])]} />
+            options={[["", "Semua"], ...FUNDINGS.slice(0, 2).map(([k, label]) => [k, label])]} />
         )}
         <SelectField label="Program" value={group ? group.key : "all"} onChange={(v) => setFilter({ program: v })}
           options={[["all", "Semua program"], ...groupOptions.map((g) => [g.key, g.label])]} />
@@ -234,15 +235,8 @@ const sumValues = (list) => {
   v.absorptionPercentage = absorption(netOf(v), v.absorbed);
   return v;
 };
-// nilai satu program dari periode satu sumber dana saja; null = program itu tidak punya periode sumber dana tsb.
-function onlyFunding(row, kind) {
-  const list = (row.periods || []).filter((x) => fundingOf(finPeriod(x.periodId)) === kind);
-  if (!list.length) return null;
-  const recipients = new Map();
-  list.forEach((x) => (x.recipients || []).forEach((r) => recipients.set(r.program, (recipients.get(r.program) || 0) + r.submission)));
-  return { program: row.program, ...sumValues(list), periods: list, recipients: [...recipients].map(([program, submission]) => ({ program, submission })) };
-}
-const fundingRows = (rows) => FUNDINGS.map(([kind, label, types]) => ({ kind, label, types, rows: rows.map((r) => onlyFunding(r, kind)).filter(Boolean) }))
+// baris ringkasan per sumber dana: satu mitra selalu satu kelompok
+const fundingRows = (rows) => FUNDINGS.map(([kind, label]) => ({ kind, label, rows: rows.filter((r) => fundingOf(r.program) === kind).map((r) => ({ ...r, periods: r.periods || [] })) }))
   .filter((s) => s.rows.length);
 
 // angka utama dipecah: total, pemerintah, non-pemerintah (dan periode tanpa PKS Awal bila ada)
@@ -261,7 +255,7 @@ function FundingSplit({ rows }) {
   return (
     <section className="card">
       <div className="card-head"><div><h2 className="card-title">Sumber dana</h2>
-        <div className="card-sub">Dibaca dari jenis PKS Awal tiap periode: DP = pemerintah, Pm dan Pd = non-pemerintah</div></div></div>
+        <div className="card-sub">Menurut mitra: pemerintah = BTI (Kemendikdasmen), MAUNG, SUGT, dan Toraja (sementara); mitra lain non-pemerintah</div></div></div>
       <div className="tbl-scroll"><table className="tbl compact">
         <thead><tr><th />{[["Total"], ...cols.map((c) => [c.types ? `${c.label} (${c.types})` : c.label])].map(([h]) => <th key={h} className="num">{h}</th>)}</tr></thead>
         <tbody>{measures.map(([label, fmt]) => (
