@@ -1,6 +1,6 @@
 // Tabel transaksi Keuangan (PKS & pengajuan) + form tambah/ubah.
 import { useEffect, useState } from "react";
-import { PKS_TYPES } from "../config.js";
+import { FIN_FUNDING, PKS_TYPES } from "../config.js";
 import { api, errorText } from "../lib/api.js";
 import {
   canEditFinance, finFunders, finMitra, finPartnerName, finPartnerPrograms, finPeriod, finPeriodDates, finPeriodHas, finPeriodName, finPeriodOption, finPeriodYear, finPeriods, finPeriodsFor, finProgramLabel, finProgramNames, finRecipients, finSourceLabel, finSources, finTypeLabel, finYears, recipientText, setFinCatalog, fmtDate, fmtDateTime, fmtRelative, fmtRupiah, fromDateInput, isPks, toDateInput,
@@ -106,7 +106,7 @@ export function FinanceTable({ filters: pageFilters, ui, update, labelYear, pick
         <div className="tbl-actions">
           {canEdit && (
             <ImportButton path={"/financial/import" + (singleProgram ? "/" + singleProgram : "")}
-              hint="Unggah .xlsx/.csv. Semua tab sheet yang punya kolom Nilai PKS atau Nilai Pengajuan ikut diimpor; mitra dibaca dari kolom Program atau nama tab (mis. SIAP_2026), periode dari kolom Kode Kerja Sama, Mulai Periode, Periode, atau tahun di nama tab (kalau tidak ada, dari tanggalnya), pajak dari kolom Pajak, program penerima dari kolom Program Penerima. Baris yang ID-nya sudah ada akan memperbarui transaksi tersebut"
+              hint="Unggah .xlsx/.csv. Semua tab sheet yang punya kolom Nilai PKS atau Nilai Pengajuan ikut diimpor; mitra dibaca dari kolom Program atau nama tab (mis. SIAP_2026), periode dari kolom Kode Kerja Sama, Mulai Periode, Periode, atau tahun di nama tab (kalau tidak ada, dari tanggalnya), pajak dari kolom Pajak, kategori (Pemerintah/Non-pemerintah) dari kolom Kategori Sumber Dana di baris PKS Awal, program penerima dari kolom Program Penerima. Baris yang ID-nya sudah ada akan memperbarui transaksi tersebut"
               describe={(d) => importSummary(d, "transaksi", "program tidak dikenal")} onDone={refreshFinance} />
           )}
           {canEdit && <KermaImportButton onDone={refreshFinance} />}
@@ -250,13 +250,13 @@ function RecipientTag({ r }) {
 function formFrom(kind, r, program, session) {
   if (!r) {
     return kind === "pks"
-      ? { program, prog: finPartnerPrograms(program)[0] || "", periodId: "", code: "", periodStart: "", periodEnd: "", tax: "", type: "initial_pks", pksType: "Pm", value: "", date: today(), text: "", pic: session?.name || "" }
+      ? { program, prog: finPartnerPrograms(program)[0] || "", periodId: "", code: "", funding: "", periodStart: "", periodEnd: "", tax: "", type: "initial_pks", pksType: "Pm", value: "", date: today(), text: "", pic: session?.name || "" }
       : { program, prog: finPartnerPrograms(program)[0] || "", periodId: "", date: today(), invoiceNumber: "", submissionType: "", text: "", value: "", pic: session?.name || "", recipient: finPartnerPrograms(program)[0] || "" };
   }
   const p = finPeriod(r.periodId);
   const prog = r.recipientProgram || p?.programs[0] || finPartnerPrograms(r.program)[0] || "";
   return isPks(r)
-    ? { program: r.program, prog, periodId: r.periodId || "", code: p?.code || "", periodStart: p ? toDateInput(p.start) : "", periodEnd: p ? toDateInput(p.end) : "", tax: String(r.taxValue || ""), type: r.type, pksType: r.pksType || "Pm", value: String(r.pksValue ?? ""), date: toDateInput(r.date), text: r.information || "", pic: r.pic || "" }
+    ? { program: r.program, prog, periodId: r.periodId || "", code: p?.code || "", funding: p?.funding || "", periodStart: p ? toDateInput(p.start) : "", periodEnd: p ? toDateInput(p.end) : "", tax: String(r.taxValue || ""), type: r.type, pksType: r.pksType || "Pm", value: String(r.pksValue ?? ""), date: toDateInput(r.date), text: r.information || "", pic: r.pic || "" }
     : { program: r.program, prog, periodId: r.periodId || "", date: toDateInput(r.date), invoiceNumber: r.invoiceNumber || "", submissionType: r.submissionType || "", text: r.description || "", value: String(r.submissionValue ?? ""), pic: r.pic || "", recipient: r.recipientProgram || "" };
 }
 
@@ -310,6 +310,8 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
   const periods = current && !listed.some((p) => p.id === current.id) ? [...listed, current] : listed;
   const newest = [...periods].sort((a, b) => new Date(b.start) - new Date(a.start));
   const orphans = isAwal && !isEdit ? newest.filter((p) => !p.hasInitialPks) : [];
+  // kategori sumber dana periode: pilihan di form, lalu kategori periode lama yang dipakai, lalu bawaan mitra
+  const fundingPick = f.funding || finPeriod(f.periodId)?.funding || FIN_FUNDING[f.program] || "";
   const period = periods.find((p) => p.id === f.periodId) ?? null;
   const year = !ready ? yearOfDate(f.date) || thisYear : period ? finPeriodYear(period) : yearOfDate(f.periodStart) || thisYear;
   const recipients = period ? period.programs : ready ? finPartnerPrograms(f.program) : finRecipients(f.program, year);
@@ -378,6 +380,7 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
     if (tax > value) return setErr("Pajak tidak boleh melebihi nilai PKS.");
     if (isAwal) {
       if (!f.periodStart || !f.periodEnd) return setErr("Isi tanggal mulai dan selesai periode.");
+      if (ready && !fundingPick) return setErr("Pilih kategori sumber dana.");
       if (f.periodEnd < f.periodStart) return setErr("Tanggal selesai tidak boleh sebelum tanggal mulai periode.");
     } else {
       if (ready && !period) return setErr(periods.length ? "Pilih periode." : "Mitra ini belum punya periode untuk program ini. Input PKS Awal dulu.");
@@ -388,7 +391,7 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
     try {
       if (!isEdit) {
         const periodBody = !ready ? {} : isAwal
-          ? { ...(f.periodId ? { periodId: f.periodId } : {}), ...(f.code.trim() ? { periodCode: f.code.trim() } : {}), periodStart: fromDateInput(f.periodStart), periodEnd: fromDateInput(f.periodEnd) }
+          ? { ...(f.periodId ? { periodId: f.periodId } : {}), ...(f.code.trim() ? { periodCode: f.code.trim() } : {}), periodFunding: fundingPick, periodStart: fromDateInput(f.periodStart), periodEnd: fromDateInput(f.periodEnd) }
           : { periodId: period.id };
         const body = isPksForm
           ? { program: f.program, type: f.type, pksType, pksValue: value, date, ...periodBody, ...(tax ? { taxValue: tax } : {}), ...(f.text.trim() ? { information: f.text.trim() } : {}) }
@@ -408,6 +411,7 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
         if (isAwal) {
           const p = finPeriod(r.periodId);
           if (f.code.trim() !== (p?.code || "")) body.periodCode = f.code.trim() || null;
+          if (fundingPick !== (p?.funding || "")) body.periodFunding = fundingPick;
           if (f.periodStart !== (p ? toDateInput(p.start) : "")) body.periodStart = fromDateInput(f.periodStart);
           if (f.periodEnd !== (p ? toDateInput(p.end) : "")) body.periodEnd = fromDateInput(f.periodEnd);
         } else {
@@ -607,6 +611,15 @@ function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) 
                 <label className="field span-2"><span className="field-lab">Kode kerja sama</span>
                   <input type="text" placeholder="mis. PD-7-11-2026" maxLength={100} {...field("code")} />
                 </label>
+                {ready && (
+                  <label className="field span-2"><span className="field-lab">Kategori sumber dana</span>
+                    <select value={fundingPick} onChange={(e) => setF({ ...f, funding: e.target.value })}>
+                      {!fundingPick && <option value="">Pilih kategori</option>}
+                      <option value="gov">Pemerintah</option>
+                      <option value="private">Non-pemerintah</option>
+                    </select>
+                  </label>
+                )}
                 <label className="field"><span className="field-lab">Mulai</span>
                   <input type="date" required {...field("periodStart")} />
                 </label>

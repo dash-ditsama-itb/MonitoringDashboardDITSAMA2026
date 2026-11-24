@@ -9,9 +9,9 @@ import { FIN_FUNDING } from "../../config.js";
 import { useApi } from "../../stores/data.js";
 import { useUiStore } from "../../stores/ui.js";
 
-// sumber dana dilihat dari mitranya (FIN_FUNDING di config.js)
+// sumber dana per periode: kategori yang dipilih di PKS Awal; bila kosong, menurut mitranya (FIN_FUNDING di config.js)
 const FUNDINGS = [["gov", "Pemerintah"], ["private", "Non-pemerintah"], ["none", "Belum ditentukan"]];
-const fundingOf = (api) => FIN_FUNDING[api] || "none";
+const fundingOf = (api, period) => period?.funding || FIN_FUNDING[api] || "none";
 // filter sumber dana tanpa periode yang cocok: id yang tidak dimiliki periode mana pun, jadi hasilnya kosong
 const NO_PERIOD = "00000000-0000-0000-0000-000000000000";
 
@@ -38,7 +38,7 @@ function FinancialPage() {
   const year = years.length === 1 ? years[0] : undefined;
   setFinDataYears(years);
   const funding = catalogReady ? ui.funding || "" : "";
-  const fits = (p) => years.includes(finPeriodYear(p)) && (!funding || fundingOf(p.api) === funding);
+  const fits = (p) => years.includes(finPeriodYear(p)) && (!funding || fundingOf(p.api, p) === funding);
   // filter Program = kelompok program (mis. INSPIRASI SCD = YPK + Toraja), hanya yang punya periode di tahun dan sumber dana terpilih
   const inYears = (apis) => !catalogReady || finAllPeriods(apis).some(fits);
   const groupOptions = finGroups(year).filter((g) => inYears(g.apis));
@@ -235,8 +235,18 @@ const sumValues = (list) => {
   v.absorptionPercentage = absorption(netOf(v), v.absorbed);
   return v;
 };
-// baris ringkasan per sumber dana: satu mitra selalu satu kelompok
-const fundingRows = (rows) => FUNDINGS.map(([kind, label]) => ({ kind, label, rows: rows.filter((r) => fundingOf(r.program) === kind).map((r) => ({ ...r, periods: r.periods || [] })) }))
+// bagian satu baris ringkasan (satu mitra) yang periodenya berkategori `kind`; satu mitra bisa terbagi bila kategorinya beda per periode
+function onlyFunding(row, kind) {
+  const periods = row.periods || [];
+  if (!periods.length) return fundingOf(row.program) === kind ? { ...row, periods } : null;
+  const list = periods.filter((x) => fundingOf(row.program, finPeriod(x.periodId)) === kind);
+  if (!list.length) return null;
+  if (list.length === periods.length) return { ...row, periods };
+  const recipients = new Map();
+  list.forEach((x) => (x.recipients || []).forEach((r) => recipients.set(r.program, (recipients.get(r.program) || 0) + r.submission)));
+  return { program: row.program, ...sumValues(list), periods: list, recipients: [...recipients].map(([program, submission]) => ({ program, submission })) };
+}
+const fundingRows = (rows) => FUNDINGS.map(([kind, label]) => ({ kind, label, rows: rows.map((r) => onlyFunding(r, kind)).filter(Boolean) }))
   .filter((s) => s.rows.length);
 
 // angka utama dipecah: total, pemerintah, non-pemerintah (dan periode tanpa PKS Awal bila ada)
@@ -255,7 +265,7 @@ function FundingSplit({ rows }) {
   return (
     <section className="card">
       <div className="card-head"><div><h2 className="card-title">Sumber dana</h2>
-        <div className="card-sub">Menurut mitra: pemerintah = BTI (Kemendikdasmen), MAUNG, SUGT, dan Toraja (sementara); mitra lain non-pemerintah</div></div></div>
+        <div className="card-sub">Menurut kategori di PKS Awal tiap periode. Bila belum dipilih: pemerintah = BTI (Kemendikdasmen), MAUNG, SUGT, dan Toraja (sementara); mitra lain non-pemerintah</div></div></div>
       <div className="tbl-scroll"><table className="tbl compact">
         <thead><tr><th />{[["Total"], ...cols.map((c) => [c.types ? `${c.label} (${c.types})` : c.label])].map(([h]) => <th key={h} className="num">{h}</th>)}</tr></thead>
         <tbody>{measures.map(([label, fmt]) => (
