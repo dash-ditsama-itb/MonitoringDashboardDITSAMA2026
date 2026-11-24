@@ -15,7 +15,7 @@ import {
 } from "../../components/ui.jsx";
 import { PROGRAMS, REKAP_PESERTA } from "../../config.js";
 import {
-  activityStatus, ALL_PERIODS, byLabel, canSeeActivities, CURRENT_PERIOD, periodText, fmtDate, fmtNum, levelLabel, monthKeyLabel, pct, phaseLabel, progColor, programLabel, PROGRAMS_AZ, withoutAll,
+  activityStatus, ALL_PERIODS, byLabel, canSeeActivities, CURRENT_PERIOD, inPickedPeriod, periodText, fmtDate, fmtNum, levelLabel, monthKeyLabel, pct, phaseLabel, progColor, programLabel, PROGRAMS_AZ, withoutAll,
 } from "../../lib/format.js";
 import { useAuthStore } from "../../stores/auth.js";
 import { useApi } from "../../stores/data.js";
@@ -75,9 +75,9 @@ function PortfolioPage() {
           {/* SUGT: performa & kinerja tampil di antara kartu luring/daring dan kartu umpan balik */}
           {shown?.api === "sugt" ? <SugtSummary>{performa}</SugtSummary> : performa}
 
-          <RekapPeserta program={shown?.api} programLabel={shown?.label} />
+          <RekapPeserta program={shown?.api} programLabel={shown?.label} period={d.period} />
           <ParticipantAnalysis a={d.participantAnalysis}
-            rekapTotal={dash.program === "Semua" && dash.month === "Semua" ? REKAP_PESERTA.reduce((s, r) => s + r.value, 0) : null} />
+            rekapTotal={dash.program === "Semua" && dash.month === "Semua" && inPickedPeriod(d.period, REKAP_PESERTA[0]?.period) ? REKAP_PESERTA.reduce((s, r) => s + r.value, 0) : null} />
 
 
           <Capaian cap={d.capaian} />
@@ -360,7 +360,7 @@ function Capaian({ cap }) {
     <section className="card">
       <div className="card-head">
         <div><h2 className="card-title">Capaian peserta</h2>
-          <div className="card-sub">{cap.totalAchievements} capaian · {cap.totalParticipants} peserta (ikut filter program &amp; tahun)</div></div>
+          <div className="card-sub">{cap.totalAchievements} capaian · {cap.totalParticipants} peserta (ikut filter program, tahun &amp; periode berupa tahun)</div></div>
         <SearchInput className="compact" value={q} onChange={(v) => useUiStore.setState({ capSearch: v })} placeholder="Cari nama / kategori" delay={0} />
       </div>
       {cap.summary.length > 0 && (

@@ -21,6 +21,10 @@ export const moneyScale = (max) => (Math.abs(max) >= 1e9 ? { div: 1e9, unit: "mi
 // periode kegiatan (teks bebas, mis. "2026" atau "Periode 1") -> "Periode 2026" / "Periode 1"; kosong = Tanpa periode
 export const CURRENT_PERIOD = "Berjalan";
 export const ALL_PERIODS = "Semua periode";
+// periode tertentu yang dipilih (bukan periode berjalan / semua periode); null = tidak menyaring
+export const pickedPeriod = (period) => (!period || period.choice === CURRENT_PERIOD || period.choice === ALL_PERIODS ? null : (period.label ?? "").trim().toLowerCase());
+// data yang hanya tersedia untuk satu periode (mis. rekap kepesertaan 2026) ikut tampil bila periode itu dipilih
+export const inPickedPeriod = (period, own) => pickedPeriod(period) === null || pickedPeriod(period) === String(own ?? "").trim().toLowerCase();
 export const periodText = (label) => (!label ? "Tanpa periode" : /^periode\b/i.test(label.trim()) ? label.trim() : `Periode ${label.trim()}`);
 export const withoutAll = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== "Semua"));
 export const pct = (part, whole) => (whole > 0 ? Math.round((part / whole) * 100) : 0);

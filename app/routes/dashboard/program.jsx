@@ -76,7 +76,7 @@ function ProgramPage({ loaderData }) {
           </section>
         </Pending>
       )}
-      <RekapPeserta program={program.api} programLabel={program.label} />
+      <RekapPeserta program={program.api} programLabel={program.label} period={d?.period} />
       <ActivitiesTable fixedProgram={program.api} title={"Kegiatan " + program.label} />
     </div>
   );
