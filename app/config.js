@@ -47,6 +47,13 @@ export const TOTAL_PROGRAMS = PROGRAMS.length;
 // Mitra / sumber dana bawaan menu Keuangan (sama dengan backend); mitra & program tambahan dari GET /financial/catalog.
 // programsByYear = program yang didanai per tahun; "*" = tahun yang tidak punya daftar sendiri. Lebih dari satu = bisa juga "Bersama".
 // Nilai api = nama sumber dana di data (TN, YPK, ...), jadi impor dan ekspor tidak berubah.
+// Sumber dana dilihat dari mitranya. Pemerintah: BTI (Kemendikdasmen), MAUNG, SUGT, dan Toraja (sementara, masih ditinjau).
+// Mitra lain non-pemerintah (swasta). Mitra baru yang belum ada di daftar ini tampil sebagai "Belum ditentukan".
+export const FIN_FUNDING = {
+  bti: "gov", maung: "gov", sugt: "gov", toraja: "gov",
+  inspirasi_eduquest: "private", freeport: "private", ypk: "private", siap_itb: "private", wit: "private", tn: "private",
+};
+
 export const FIN_PROGRAMS = [
   { api: "siap_itb",           name: "SIAP ITB", programsByYear: { "*": ["SIAP ITB"] } },
   { api: "inspirasi_eduquest", name: "INSPIRASI EduQuest", programsByYear: { "*": ["INSPIRASI EduQuest"] } },
