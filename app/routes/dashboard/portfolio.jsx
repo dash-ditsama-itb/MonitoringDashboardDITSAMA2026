@@ -13,7 +13,7 @@ import { SugtSummary, withSugt, withSugtFeedback } from "../../components/Sugt.j
 import {
   Bar, EmptyState, ErrorNote, LevelBadge, PageHead, Pending, ProgramAbout, RefreshButton, SearchInput, SeeMore, Sheet, SkeletonCard,
 } from "../../components/ui.jsx";
-import { PROGRAMS, REKAP_PESERTA, TOTAL_PROGRAMS } from "../../config.js";
+import { PROGRAMS, REKAP_PESERTA } from "../../config.js";
 import {
   activityStatus, ALL_PERIODS, byLabel, canSeeActivities, CURRENT_PERIOD, periodText, fmtDate, fmtNum, levelLabel, monthKeyLabel, pct, phaseLabel, progColor, programLabel, PROGRAMS_AZ, withoutAll,
 } from "../../lib/format.js";
@@ -50,12 +50,14 @@ function PortfolioPage() {
   const filters = Object.entries(shownDash).filter(([k, v]) => v !== "Semua" && !(k === "period" && v === CURRENT_PERIOD))
     .map(([k, v]) => (k === "month" ? monthKeyLabel(v) : k === "issueLevel" ? levelLabel(v.toLowerCase()) : k === "period" ? (v === ALL_PERIODS ? v : periodText(v === "Tanpa periode" ? "" : v)) : v));
   const timeline = useMemo(() => [...(d?.timeline || [])].sort(byLabel((t) => t.programLabel)), [d]);
+  // satu periode tertentu: hanya program yang punya kegiatan di periode itu; periode berjalan / semua periode: semua program
+  const scope = d ? scopedPrograms(d.portfolio, d.period) : PROGRAMS_AZ;
   const performa = d && (
     <div className="grid g-5-7">
-      <Performance strip={!shown ? withProgramFeedback(d.performanceStrip, d.portfolio, d.sugt)
+      <Performance strip={!shown ? withProgramFeedback(d.performanceStrip, d.portfolio, d.sugt, scope)
         : shown.api === "sugt" ? withSugtFeedback(d.performanceStrip, d.sugt) : d.performanceStrip}
         title={"Performa kegiatan " + (shown ? shown.label : "semua program")} />
-      <PortfolioList items={d.portfolio} sugt={d.sugt} program={shown} />
+      <PortfolioList items={d.portfolio} sugt={d.sugt} program={shown} programs={scope} period={d.period} />
     </div>
   );
 
@@ -69,7 +71,7 @@ function PortfolioPage() {
       {!d ? <PortfolioSkeleton /> : (
         <Pending busy={loading}>
           {shown && <ProgramAbout program={shown} />}
-          <Progress kpi={d.kpi} portfolio={d.portfolio} sugt={d.sugt} program={shown} last={last} period={d.period} periods={d.periods} />
+          <Progress kpi={d.kpi} portfolio={d.portfolio} sugt={d.sugt} program={shown} last={last} period={d.period} periods={d.periods} programs={scope} />
           {/* SUGT: performa & kinerja tampil di antara kartu luring/daring dan kartu umpan balik */}
           {shown?.api === "sugt" ? <SugtSummary>{performa}</SugtSummary> : performa}
 
@@ -119,27 +121,36 @@ function PortfolioSkeleton() {
 }
 
 // semua program: jumlah program selesai (termasuk SUGT) / total program; satu program: aktivitas selesai / total aktivitasnya
-function Progress({ kpi, portfolio, sugt, program, last, period, periods }) {
+function Progress({ kpi, portfolio, sugt, program, last, period, periods, programs }) {
   if (program) return <ProgramProgress program={program} kpi={kpi} last={last} showProgram period={period} periods={periods} />;
-  const done = portfolioRows(portfolio, sugt).filter(isProgramDone).length;
-  const p = pct(done, TOTAL_PROGRAMS);
+  const done = portfolioRows(portfolio, sugt, programs).filter(isProgramDone).length;
+  const p = pct(done, programs.length);
   // aktivitas selesai dari semua program, angka kedua di bawah jumlah program selesai
   const activities = kpi.totalActivities
     ? { label: "Kegiatan Selesai", value: `${fmtNum(kpi.totalDone)}/${fmtNum(kpi.totalActivities)}`, unit: `kegiatan (${kpi.progress}%)`, progress: kpi.progress }
     : null;
-  return <ProgressSummary label="Program Selesai" info="progress" kpi={kpi} progress={p}
-    value={`${done}/${TOTAL_PROGRAMS}`} unit={`program (${p}%)`} note={activities ? null : "Belum ada kegiatan tercatat"}
+  return <ProgressSummary label={"Program Selesai" + scopeText(period)} info="progress" kpi={kpi} progress={p}
+    value={`${done}/${programs.length}`} unit={`program (${p}%)`} note={activities ? null : "Belum ada kegiatan tercatat"}
     second={activities} last={last} showProgram />;
 }
 
 // filter Semua program: Umpan Balik Peserta = rata-rata umpan balik tiap program (termasuk SUGT), bobot sama
-function withProgramFeedback(strip, portfolio, sugt) {
-  const vals = portfolioRows(portfolio, sugt).map((p) => p.performanceStrip?.feedback).filter((v) => v > 0);
+function withProgramFeedback(strip, portfolio, sugt, programs) {
+  const vals = portfolioRows(portfolio, sugt, programs).map((p) => p.performanceStrip?.feedback).filter((v) => v > 0);
   return { ...strip, feedback: vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0 };
 }
 
 // semua program monitoring urut abjad (yang belum punya aktivitas tetap muncul);
 // baris SUGT = aktivitas di dashboard ini + kegiatan terlaksana di aplikasi SUGT
+// program yang dihitung di kartu Program Selesai, performa, dan portofolio
+function scopedPrograms(items, period) {
+  if (!period || period.choice === CURRENT_PERIOD || period.choice === ALL_PERIODS) return PROGRAMS_AZ;
+  return PROGRAMS_AZ.filter((pr) => items.some((x) => x.program === pr.api && x.totalActivities > 0));
+}
+// " · Periode 2025" untuk satu periode tertentu; kosong untuk periode berjalan / semua periode
+const scopeText = (period) => (!period || period.choice === CURRENT_PERIOD || period.choice === ALL_PERIODS ? ""
+  : ` · ${periodText(period.choice === "Tanpa periode" ? "" : period.label)}`);
+
 function portfolioRows(items, sugt, programs = PROGRAMS_AZ) {
   return programs.map((pr) => {
     const p = {
@@ -150,11 +161,11 @@ function portfolioRows(items, sugt, programs = PROGRAMS_AZ) {
   });
 }
 
-function PortfolioList({ items, sugt, program }) {
-  const rows = portfolioRows(items, sugt, program ? [program] : PROGRAMS_AZ);
+function PortfolioList({ items, sugt, program, programs, period }) {
+  const rows = portfolioRows(items, sugt, program ? [program] : programs);
   return (
     <section className="card">
-      <div className="card-head"><div><h2 className="card-title">Kinerja portofolio program</h2>
+      <div className="card-head"><div><h2 className="card-title">Kinerja portofolio program{scopeText(period)}</h2>
         <div className="card-sub">Progres = kegiatan selesai / total kegiatan · Performa = rata-rata indikator performa program</div></div></div>
       <ul className="port">
         <li className="port-head">
