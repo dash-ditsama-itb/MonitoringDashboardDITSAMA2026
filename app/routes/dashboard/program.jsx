@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { data } from "react-router";
+import { api } from "../../lib/api.js";
 import { RequireAccess } from "../../components/Access.jsx";
 import { ActivitiesTable, useActivityActions } from "../../components/Activities.jsx";
 import { ActivityForm } from "../../components/ActivityForm.jsx";
@@ -8,15 +9,18 @@ import { Icon } from "../../components/Icon.jsx";
 import { InfoTip } from "../../components/InfoTip.jsx";
 import { lastPerformed, ProgramProgress } from "../../components/ProgressSummary.jsx";
 import { ErrorNote, PageHead, PageSkeleton, Pending, ProgramAbout } from "../../components/ui.jsx";
-import { activityStatus, ALL_PERIODS, canEditActivity, CURRENT_PERIOD, fmtDate, periodText, phaseLabel, programByKey, PROG_COLORS } from "../../lib/format.js";
+import { activityStatus, ALL_PERIODS, canEditActivity, CURRENT_PERIOD, fmtDate, periodText, phaseLabel, programByKey, PROG_COLORS, setActivityPrograms } from "../../lib/format.js";
 import { RekapPeserta } from "../../components/RekapPeserta.jsx";
 import { SugtSummary } from "../../components/Sugt.jsx";
 import { PHASES } from "../../config.js";
 import { useAuthStore } from "../../stores/auth.js";
 import { useApi } from "../../stores/data.js";
 
-export function clientLoader({ params }) {
-  const program = programByKey(params.programKey ?? "SUGT");
+export async function clientLoader({ params }) {
+  const key = params.programKey ?? "SUGT";
+  // program tambahan belum dimuat saat halaman dibuka langsung
+  if (!programByKey(key)) setActivityPrograms(await api("/activity-programs").then((r) => r.data).catch(() => []));
+  const program = programByKey(key);
   if (!program) throw data(`Program "${params.programKey}" tidak dikenal.`, { status: 404 });
   return { program };
 }
@@ -41,7 +45,7 @@ function ProgramPage({ loaderData }) {
 
   return (
     <div className="page">
-      <PageHead title={<>{program.fullName}<span className="title-abbr">{program.label}</span></>} />
+      <PageHead title={<>{program.fullName}{program.label !== program.fullName && <span className="title-abbr">{program.label}</span>}</>} />
       <ErrorNote error={error} onRetry={() => reload()} />
       <ProgramAbout program={program} />
       {!d ? <PageSkeleton kpis={0} /> : (

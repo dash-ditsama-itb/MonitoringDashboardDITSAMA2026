@@ -8,7 +8,7 @@ import { Refreshing, SelectField } from "../../components/ui.jsx";
 import { DASHBOARDS, PROGRAMS } from "../../config.js";
 import {
   activityStatus, byLabel, canEditFinance, canEditHumanResources, canManageUsers, daysFromToday, editablePrograms, LATE_BADGE_DAYS, levelLabel,
-  monthKeyLabel, progColor, sortLabels, withoutAll, ALL_PERIODS, CURRENT_PERIOD, periodText,
+  monthKeyLabel, progColor, setActivityPrograms, sortLabels, withoutAll, ALL_PERIODS, CURRENT_PERIOD, periodText,
 } from "../../lib/format.js";
 import { useApi } from "../../stores/data.js";
 import { useUiStore } from "../../stores/ui.js";
@@ -25,7 +25,7 @@ export function meta() {
 }
 
 // menu "Dashboard program" urut abjad; urutan PROGRAMS tetap karena dipakai untuk warna program
-const NAV_PROGRAMS = PROGRAMS
+const navPrograms = () => PROGRAMS
   .map((p) => ({ api: p.api, label: p.label, to: p.api === "sugt" ? "/dashboard/sugt" : `/dashboard/program/${p.key}` }))
   .sort(byLabel((p) => p.label));
 
@@ -42,6 +42,8 @@ function Shell({ session }) {
   // badge per program dari dashboard utama: hijau = kegiatan hari ini (hari H), oranye = Telat update yang tanggalnya
   // 1–14 hari lalu, kuning = isi Agenda mendatang (tanggal setelah hari ini + agenda belum bertanggal)
   const canActivities = ACCESS.activities.can(session);
+  // program tambahan dari server digabung sebelum halaman di bawahnya digambar
+  setActivityPrograms(useApi("/activity-programs").data?.data);
   const { data } = useApi("/dashboard", {}, { enabled: canActivities });
   const badges = useMemo(() => {
     const out = {};
@@ -86,7 +88,7 @@ function Shell({ session }) {
             </NavItem>
           )}
           <div className="nav-label">Dashboard program</div>
-          {NAV_PROGRAMS.map((p) => {
+          {navPrograms().map((p) => {
             const b = badges[p.api];
             return (
               <NavItem key={p.api} session={session} area="activities" to={p.to}>

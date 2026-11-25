@@ -99,6 +99,18 @@ export const isPks = (r) => r.type === "initial_pks" || r.type === "addition_pks
 export const byLabel = (get = (x) => x) => (a, b) => String(get(a)).localeCompare(String(get(b)), "id", { sensitivity: "base" });
 export const sortLabels = (list) => [...(list || [])].sort(byLabel());
 export const PROGRAMS_AZ = [...PROGRAMS].sort(byLabel((p) => p.label));
+// program kegiatan tambahan (GET /activity-programs) digabung ke PROGRAMS & PROGRAMS_AZ di tempat; warnanya menyusul urutan PROGRAMS.
+// Kunci halaman = kunci API (huruf kecil), jadi tidak bentrok dengan kunci bawaan (huruf besar).
+export function setActivityPrograms(list) {
+  let changed = false;
+  for (const p of list || []) {
+    if (p.builtIn || PROGRAMS.some((x) => x.api === p.key)) continue;
+    PROGRAMS.push({ key: p.key, api: p.key, label: p.name, fullName: p.name, desc: "", custom: true });
+    changed = true;
+  }
+  if (changed) PROGRAMS_AZ.splice(0, PROGRAMS_AZ.length, ...[...PROGRAMS].sort(byLabel((p) => p.label)));
+  return changed;
+}
 
 // Mitra & program Keuangan: daftar bawaan + tambahan pengguna (setFinCatalog, dari GET /financial/catalog).
 let finPartners = FIN_PROGRAMS;
@@ -230,7 +242,8 @@ export const canManageUsers = (s) => !!perms(s).manageUsers;
 // daftar nama SDM & SK dipakai bersama semua program: PIC juga boleh mengubahnya
 export const canEditHumanResources = (s) => !!perms(s).writeHumanResources;
 // program kegiatan yang boleh diisi/diubah
-export const editablePrograms = (s) => PROGRAMS_AZ.filter((p) => (perms(s).writePrograms || []).includes(p.api));
+// administrator boleh mengisi semua program, termasuk program tambahan
+export const editablePrograms = (s) => (perms(s).manageUsers ? [...PROGRAMS_AZ] : PROGRAMS_AZ.filter((p) => (perms(s).writePrograms || []).includes(p.api)));
 export const canEditActivity = (s, programApi) => editablePrograms(s).some((p) => p.api === programApi);
 
 // ------------------------------------------------------------ nama orang ---
