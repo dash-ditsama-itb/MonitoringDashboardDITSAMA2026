@@ -1,6 +1,7 @@
 // Komponen kecil yang dipakai berulang.
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { errorText } from "../lib/api.js";
 import { levelLabel, statusLabel } from "../lib/format.js";
 import { useUiStore } from "../stores/ui.js";
 import { Icon } from "./Icon.jsx";
@@ -387,6 +388,32 @@ export function PageHead({ title, sub, children }) {
         {sub && <div className="page-sub">{sub}</div>}
       </div>
       {children && <div className="page-actions">{children}</div>}
+    </div>
+  );
+}
+
+// isian nama baru (mitra, program) di dalam form; onAdd mengembalikan teks bila nama ditolak
+export function AddName({ label, placeholder, onAdd, onCancel, className = "" }) {
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  async function add() {
+    if (!name.trim()) return setErr(`Isi ${label} dulu.`);
+    setErr(""); setBusy(true);
+    try {
+      const problem = await onAdd(name.trim());   // teks = nama ditolak, form tetap terbuka
+      if (problem) { setErr(problem); setBusy(false); }
+    } catch (e) { setErr(errorText(e)); setBusy(false); }
+  }
+  return (
+    <div className={"fin-add span-2 " + className}>
+      <div className="fin-add-row">
+        <input type="text" autoFocus aria-label={label} placeholder={placeholder} value={name} maxLength={255} onChange={(e) => { setName(e.target.value); setErr(""); }}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }} />
+        <button type="button" className="btn btn-sm btn-primary" onClick={add} disabled={busy}>{busy && <Spinner />}Tambah</button>
+        <button type="button" className="btn btn-sm" onClick={onCancel} disabled={busy}>Batal</button>
+      </div>
+      {err && <p className="field-err" role="alert">{err}</p>}
     </div>
   );
 }

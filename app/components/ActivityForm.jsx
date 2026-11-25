@@ -1,14 +1,14 @@
 // Form tambah / ubah kegiatan (panel samping). Mengirim ke POST /activity atau PATCH /activity/:id.
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { ISSUE_LEVELS, PHASES, PROGRESS } from "../config.js";
 import { api, errorText, upload } from "../lib/api.js";
-import { attendance, editablePrograms, fromDateInput, skName, toDateInput } from "../lib/format.js";
+import { attendance, canManageUsers, editablePrograms, fromDateInput, setActivityPrograms, skName, toDateInput } from "../lib/format.js";
 import { useAuthStore } from "../stores/auth.js";
 import { invalidate, useApi } from "../stores/data.js";
 import { toast } from "./feedback.jsx";
 import { MemberPicker, positionsOf, sdmKey, useMembers } from "./HumanResources.jsx";
 import { Icon } from "./Icon.jsx";
-import { Segmented, Sheet, Spinner } from "./ui.jsx";
+import { AddName, Segmented, Sheet, Spinner } from "./ui.jsx";
 
 const LAINNYA = "__LAINNYA__";
 let uidCounter = 0;
@@ -118,9 +118,14 @@ function buildPatch(f, a) {
   return body;
 }
 
+const NEW_PROGRAM = "__baru__";
+
 export function ActivityForm({ open, activity, defaultProgram, initialMode, onClose }) {
   const session = useAuthStore((s) => s.session);
-  const programs = useMemo(() => editablePrograms(session), [session]);
+  // daftar dihitung tiap render: program tambahan bisa termuat atau ditambahkan setelah form terpasang
+  const [addingProgram, setAddingProgram] = useState(false);
+  const programs = editablePrograms(session);
+  const canAddProgram = canManageUsers(session);
   const initialProgram = programs.some((p) => p.api === defaultProgram) ? defaultProgram : programs[0]?.api || "";
   const [f, setF] = useState(() => formFrom(activity, session, initialProgram));
   // periode yang sudah dipakai program ini, ditawarkan supaya penulisannya seragam
@@ -135,6 +140,7 @@ export function ActivityForm({ open, activity, defaultProgram, initialMode, onCl
     if (open) {
       const base = formFrom(activity, session, initialProgram);
       setF(initialMode ? { ...base, mode: initialMode } : base);
+      setAddingProgram(false);
       setErr("");
     }
   }, [open, activity]);
@@ -193,6 +199,17 @@ export function ActivityForm({ open, activity, defaultProgram, initialMode, onCl
     </>
   );
 
+  // program baru: disimpan ke server, masuk daftar program, lalu langsung terpilih
+  async function addProgram(name) {
+    if (programs.some((p) => p.label.toLowerCase() === name.toLowerCase())) return "Program dengan nama ini sudah ada.";
+    const out = await api("/activity-programs", { method: "POST", body: { name } });
+    setActivityPrograms([out.data]);
+    invalidate("/activity-programs", "/dashboard");
+    setAddingProgram(false);
+    set({ program: out.data.key });
+    toast(`Program ${out.data.name} ditambahkan.`);
+  }
+
   return (
     <Sheet open={open} onClose={onClose} wide title={isEdit ? "Ubah kegiatan" : "Tambah kegiatan"}
       sub={isEdit ? activity.name : "Isi data kegiatan program. Kolom bertanda * wajib diisi."} footer={footer}>
@@ -208,11 +225,18 @@ export function ActivityForm({ open, activity, defaultProgram, initialMode, onCl
 
         <div className="form-grid">
           <label className="field"><span className="field-lab">Program *</span>
-            <select {...field("program")}>{programs.map((p) => <option key={p.api} value={p.api}>{p.label}</option>)}</select>
+            <select value={addingProgram ? NEW_PROGRAM : f.program} onChange={(e) => (e.target.value === NEW_PROGRAM ? setAddingProgram(true) : (setAddingProgram(false), set({ program: e.target.value })))}>
+              {programs.map((p) => <option key={p.api} value={p.api}>{p.label}</option>)}
+              {canAddProgram && <option value={NEW_PROGRAM}>+ Tambah program baru…</option>}
+            </select>
           </label>
           <label className="field"><span className="field-lab">PIC</span>
             <input type="text" placeholder="nama PIC" {...field("pic")} />
           </label>
+          {addingProgram && (
+            <AddName label="nama program baru" placeholder="Ketik nama program baru" onCancel={() => setAddingProgram(false)}
+              onAdd={addProgram} />
+          )}
           <label className="field span-2"><span className="field-lab">Nama kegiatan *</span>
             <input type="text" placeholder="mis. Kelas SIAP 6–10 Juli" required {...field("name")} />
           </label>

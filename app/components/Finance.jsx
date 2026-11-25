@@ -11,7 +11,7 @@ import { confirmAction, toast } from "./feedback.jsx";
 import { Icon } from "./Icon.jsx";
 import { ExportButton, ImportButton, importSummary } from "./ImportExport.jsx";
 import { KermaImportButton } from "./KermaImport.jsx";
-import { EmptyState, ErrorNote, Pagination, SearchInput, Segmented, Sheet, Spinner, TableSkeleton, usePending } from "./ui.jsx";
+import { AddName, EmptyState, ErrorNote, Pagination, SearchInput, Segmented, Sheet, Spinner, TableSkeleton, usePending } from "./ui.jsx";
 
 const SORTS = [
   ["date:desc", "Tanggal (terbaru)"], ["date:asc", "Tanggal (terlama)"],
@@ -258,32 +258,6 @@ function formFrom(kind, r, program, session) {
   return isPks(r)
     ? { program: r.program, prog, periodId: r.periodId || "", code: p?.code || "", funding: p?.funding || "", periodStart: p ? toDateInput(p.start) : "", periodEnd: p ? toDateInput(p.end) : "", tax: String(r.taxValue || ""), type: r.type, pksType: r.pksType || "Pm", value: String(r.pksValue ?? ""), date: toDateInput(r.date), text: r.information || "", pic: r.pic || "" }
     : { program: r.program, prog, periodId: r.periodId || "", date: toDateInput(r.date), invoiceNumber: r.invoiceNumber || "", submissionType: r.submissionType || "", text: r.description || "", value: String(r.submissionValue ?? ""), pic: r.pic || "", recipient: r.recipientProgram || "" };
-}
-
-// isian nama mitra/program baru di dalam form pengajuan & PKS
-function AddName({ label, placeholder, onAdd, onCancel }) {
-  const [name, setName] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
-  async function add() {
-    if (!name.trim()) return setErr(`Isi ${label} dulu.`);
-    setErr(""); setBusy(true);
-    try {
-      const problem = await onAdd(name.trim());   // teks = nama ditolak, form tetap terbuka
-      if (problem) { setErr(problem); setBusy(false); }
-    } catch (e) { setErr(errorText(e)); setBusy(false); }
-  }
-  return (
-    <div className="fin-add span-2">
-      <div className="fin-add-row">
-        <input type="text" autoFocus aria-label={label} placeholder={placeholder} value={name} onChange={(e) => { setName(e.target.value); setErr(""); }}
-          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }} />
-        <button type="button" className="btn btn-sm btn-primary" onClick={add} disabled={busy}>{busy && <Spinner />}Tambah</button>
-        <button type="button" className="btn btn-sm" onClick={onCancel} disabled={busy}>Batal</button>
-      </div>
-      {err && <p className="field-err" role="alert">{err}</p>}
-    </div>
-  );
 }
 
 function FinanceForm({ open, kind, record, defaultProgram, onClose, onDelete }) {
