@@ -68,6 +68,9 @@ const MESSAGES = {
   "A file field containing the spreadsheet is required.": "Pilih file spreadsheet dulu.",
   "Report not found.": "Laporan tidak ditemukan (mungkin sudah dihapus). Muat ulang halaman.",
   "Report order must include every report exactly once.": "Daftar laporan berubah di tempat lain. Muat ulang halaman lalu coba lagi.",
+  "Photo must be a JPEG image.": "File ini bukan foto yang bisa dibaca. Pilih file gambar lain.",
+  "Failed to upload photo.": "Gagal mengunggah foto. Coba lagi.",
+  "Photo not found.": "Foto tidak ditemukan (mungkin sudah dihapus). Muat ulang halaman.",
   "Lecturer not found.": "Dosen tidak ditemukan untuk filter ini.",
   "Something went wrong": "Terjadi kesalahan di server. Coba lagi sebentar lagi.",
   "SUGT dashboard is not configured.": SUGT_DOWN,
@@ -100,7 +103,7 @@ const FIELD_LABELS = {
   newPassword: "Password baru", program: "Program", date: "Tanggal", pksValue: "Nilai PKS",
   submissionValue: "Nilai pengajuan", achievementValue: "Nilai capaian", feedback: "Umpan balik",
   participants: "Peserta", humanResources: "SDM", memberIds: "Nama SDM", targetMemberId: "Nama tujuan", issues: "Isu", sk: "File SK", pic: "PIC", location: "Lokasi", period: "Periode",
-  section: "Bagian", title: "Judul laporan", url: "Link Power BI",
+  section: "Bagian", title: "Judul laporan", url: "Link Power BI", photo: "Foto",
 };
 
 function readableMessage(body, status, retryAfter) {

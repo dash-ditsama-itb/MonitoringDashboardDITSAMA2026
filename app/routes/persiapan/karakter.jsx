@@ -11,9 +11,10 @@ import {
   KARAKTER_ABOUT, KARAKTER_BASE, KARAKTER_API_URL, KARAKTER_PROGRAMS, KARAKTER_YEARS, MAPPING_FALLBACK, TTB, TTB_LIVE_YEAR, mappingFallbackItems,
   driveFile, driveFolder, driveThumb, drivePlayer,
 } from "../../lib/karakter.js";
-import { api } from "../../lib/api.js";
+import { api, errorText, upload } from "../../lib/api.js";
 import { canManageReports, fmtNum } from "../../lib/format.js";
 import { useAuthStore } from "../../stores/auth.js";
+import { useApi } from "../../stores/data.js";
 import karakterCss from "../../styles/karakter.css?url";
 
 export function links() {
@@ -831,7 +832,7 @@ function Mapping({ year, picker }) {
             <Kpi icon="star" label="Lokasi sudah lengkap" value={fmtNum(c.complete.length)} hint="semua banner yang direncanakan sudah terpasang" />
             <Kpi icon="alert" label="Lokasi belum ada banner" tone="t-neg" value={fmtNum(c.empty.length)} hint={`dari ${fmtNum(c.rooms.length)} lokasi`} />
           </div>
-          <CampusMap key={c.key} campus={c} themes={themes} onShow={showInTable} />
+          <CampusMap key={c.key} campus={c} year={year} themes={themes} onShow={showInTable} />
           <div className="grid g-2">
             <section className="card">
               <div className="card-head"><div><h2 className="card-title">Keterpasangan per tema</h2><div className="card-sub">Banner terpasang dari lokasi yang direncanakan untuk tema itu</div></div></div>
@@ -869,77 +870,158 @@ function Mapping({ year, picker }) {
   );
 }
 
-// Peta kampus: satu titik per gedung dari CAMPUS_MAPS (karakter.js). Warna = banner terpasang di gedung itu
-// (merah belum ada, oranye sebagian, hijau lengkap); lokasi yang tidak cocok dengan gedung mana pun didaftar di samping.
+// Peta kampus: semua nomor gedung peta resmi (CAMPUS_MAPS di karakter.js) jadi titik. Gedung dengan rencana banner
+// berwarna (merah belum ada, oranye sebagian, hijau lengkap) dan berisi terpasang/direncanakan; gedung lain abu-abu
+// berisi nomor gedungnya; gedung "same" bernomor dengan warna gedung induknya (angkanya cukup sekali). Klik titik: rincian banner dan foto. Lokasi yang tidak cocok dengan gedung mana pun didaftar di samping.
 const mapName = (s) => String(s || "").toLowerCase().replace(/\s+/g, " ").trim();
 const MAP_ZOOMS = [1, 1.5, 2, 3];
-const pinTone = (b) => (!b.done ? "crit" : b.done < b.planned ? "warn" : "ok");
+const pinTone = (b) => (!b.planned ? "none" : !b.done ? "crit" : b.done < b.planned ? "warn" : "ok");
 
-function CampusMap({ campus: c, themes, onShow }) {
+// foto diperkecil di browser (sisi terpanjang 1600 px, JPEG) supaya muat di batas unggah server dan ringan dibuka
+async function shrinkPhoto(file) {
+  const img = await createImageBitmap(file);
+  const scale = Math.min(1, 1600 / Math.max(img.width, img.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(img.width * scale);
+  canvas.height = Math.round(img.height * scale);
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#fff"; // gambar transparan: latar putih, bukan hitam
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  const blob = await new Promise((done) => canvas.toBlob(done, "image/jpeg", 0.82));
+  return new File([blob], "foto.jpg", { type: "image/jpeg" });
+}
+
+function CampusMap({ campus: c, year, themes, onShow }) {
   const conf = CAMPUS_MAPS.find((m) => m.campus.test(c.name));
+  const canEdit = canManageReports(useAuthStore((s) => s.session));
   const [zoom, setZoom] = useState(0);
-  const [open, setOpen] = useState(null); // nomor gedung yang rinciannya dibuka
+  const [open, setOpen] = useState(null); // nomor titik yang rinciannya dibuka
+  const [busy, setBusy] = useState(false);
   const scroller = useRef(null);
-  const { buildings, unplaced } = useMemo(() => {
-    if (!conf) return { buildings: [], unplaced: [] };
+  const picker = useRef(null);
+  const photos = useApi("/persiapan/mapping-photos", { campus: conf?.key, year }, { enabled: Boolean(conf) });
+  const { points, byNo, unplaced } = useMemo(() => {
+    if (!conf) return { points: [], byNo: {}, unplaced: [] };
     const used = new Set();
     const list = conf.buildings.map((b) => {
-      const names = new Set(b.match.map(mapName));
+      const names = new Set((b.match || []).map(mapName));
       const rooms = c.rooms.filter((r) => r.planned && !used.has(r.key) && (names.has(mapName(r.name)) || names.has(mapName(r.area))));
       rooms.forEach((r) => used.add(r.key));
       return { ...b, rooms, planned: rooms.reduce((n, r) => n + r.planned, 0), done: rooms.reduce((n, r) => n + r.done, 0) };
-    }).filter((b) => b.rooms.length);
-    return { buildings: list, unplaced: c.rooms.filter((r) => r.planned && !used.has(r.key)) };
+    });
+    return { points: list, byNo: Object.fromEntries(list.map((b) => [b.no, b])), unplaced: c.rooms.filter((r) => r.planned && !used.has(r.key)) };
   }, [conf, c]);
-  // gambar lebih tinggi dari kotak peta: mulai dari tengah sebaran titik, bukan dari tepi atas foto
+  // gambar lebih tinggi dari kotak peta: mulai dari tengah sebaran gedung berbanner, bukan dari tepi atas foto
   const centerOnPins = (img) => {
     const box = scroller.current;
-    if (!box || !buildings.length) return;
-    const y = buildings.reduce((n, b) => n + b.y, 0) / buildings.length;
+    const planned = points.filter((b) => b.planned);
+    if (!box || !planned.length) return;
+    const y = planned.reduce((n, b) => n + b.y, 0) / planned.length;
     box.scrollTop = (y / 100) * img.clientHeight - box.clientHeight / 2;
   };
   if (!conf) return null;
-  const sel = buildings.find((b) => b.no === open);
-  const need = buildings.filter((b) => b.done < b.planned).sort((x, y) => x.done / x.planned - y.done / y.planned);
+  const shots = photos.data?.data || [];
+  const withPhoto = new Set(shots.map((p) => p.point));
+  const sel = byNo[open];
+  const need = points.filter((b) => b.done < b.planned).sort((x, y) => x.done / x.planned - y.done / y.planned);
+  const countText = (b) => (b.planned ? `${b.done} dari ${b.planned} banner yang direncanakan sudah terpasang` : "belum ada rencana banner di sini");
+
+  const addPhotos = async (files) => {
+    const point = sel.no;
+    setBusy(true);
+    let saved = 0;
+    for (const file of files) {
+      try {
+        await upload("/persiapan/mapping-photos", await shrinkPhoto(file), "photo", { campus: conf.key, year, point });
+        saved++;
+      } catch (e) {
+        toast(`${file.name}: ${errorText(e, "file ini bukan gambar yang bisa dibaca.")}`, "err");
+      }
+    }
+    setBusy(false);
+    if (saved) {
+      toast(`${saved} foto tersimpan.`);
+      photos.reload();
+    }
+  };
+  const removePhoto = async (p) => {
+    const yes = await confirmAction({ title: "Hapus foto ini?", body: "Foto dihapus permanen dan tidak bisa dikembalikan.", confirmText: "Hapus", danger: true });
+    if (!yes) return;
+    try {
+      await api("/persiapan/mapping-photos/" + p.id, { method: "DELETE" });
+      toast("Foto dihapus.");
+    } catch (e) {
+      toast(errorText(e), "err");
+    }
+    photos.reload();
+  };
+
   return (
     <section className="card">
       <div className="card-head">
         <div><h2 className="card-title">Peta kampus</h2>
-          <div className="card-sub">Titik = gedung dengan banner yang direncanakan · angka = terpasang / direncanakan · klik titik untuk rinciannya</div></div>
+          <div className="card-sub">Semua gedung bernomor di peta resmi ITB · klik titik untuk melihat rincian banner dan fotonya</div></div>
         <div className="kr-map-zoom">
           <button type="button" className="btn btn-sm" onClick={() => setZoom(zoom - 1)} disabled={zoom === 0} aria-label="Perkecil peta">−</button>
           <button type="button" className="btn btn-sm" onClick={() => setZoom(zoom + 1)} disabled={zoom === MAP_ZOOMS.length - 1} aria-label="Perbesar peta">+</button>
         </div>
       </div>
       <div className="kr-map-legend">
-        <span><i className="crit" />belum ada banner</span><span><i className="warn" />sebagian terpasang</span><span><i className="ok" />semua terpasang</span>
+        <span><b className="kr-map-n warn">3/7</b>artinya 3 dari 7 banner yang direncanakan di gedung itu sudah terpasang</span>
+        <span><i className="crit" />belum ada yang terpasang</span><span><i className="warn" />sebagian terpasang</span><span><i className="ok" />semua terpasang</span>
+        <span><i className="none" />nomor gedung di peta, belum ada rencana banner</span><span><i className="pic" />ada foto</span>
       </div>
       <div className="kr-map-wrap">
         <div className="kr-map-scroll" ref={scroller}>
           <div className="kr-map" style={{ width: MAP_ZOOMS[zoom] * 100 + "%" }}>
             <img src={import.meta.env.BASE_URL + conf.image} width={conf.width} height={conf.height} alt={`Foto udara ${c.label}`} onLoad={(e) => centerOnPins(e.currentTarget)} />
-            {buildings.map((b) => (
-              <button type="button" key={b.no} className={"kr-pin " + pinTone(b) + (open === b.no ? " on" : "")}
-                style={{ left: b.x + "%", top: b.y + "%" }} onClick={() => setOpen(open === b.no ? null : b.no)} aria-pressed={open === b.no}
-                aria-label={`${b.name}: ${b.done} dari ${b.planned} banner terpasang`} title={b.name}>{b.done}/{b.planned}</button>
-            ))}
+            {points.map((b) => {
+              const d = byNo[b.same || b.no]; // titik "same" memakai data dan foto titik induknya
+              return (
+                <button type="button" key={b.no} className={"kr-pin " + pinTone(d) + (b.same ? " sub" : "") + (open === d.no ? " on" : "") + (withPhoto.has(d.no) ? " pic" : "")}
+                  style={{ left: b.x + "%", top: b.y + "%" }} onClick={() => setOpen(open === d.no ? null : d.no)} aria-pressed={open === d.no}
+                  aria-label={`${b.no}. ${b.name}: ${countText(d)}`} title={`${b.no}. ${b.name} — ${countText(d)}`}>{d.planned && !b.same ? `${d.done}/${d.planned}` : b.no}</button>
+              );
+            })}
           </div>
         </div>
         <aside className="kr-map-side" aria-live="polite">
           {sel ? (
             <div className="kr-map-detail">
-              <h3>{sel.name}</h3>
-              <small>No. {sel.no} di peta · {sel.done} dari {sel.planned} banner terpasang</small>
-              <ul>{sel.rooms.map((r) => {
-                const missing = themes.filter((t) => r.st[t] === false).map((t) => t.replace(/^Etika /, ""));
-                return (
-                  <li key={r.key}><b>{r.name}</b><span className={"kr-map-n " + pinTone(r)}>{r.done}/{r.planned}</span>
-                    <small>{missing.length ? `Belum: ${missing.join(", ")}` : "Semua banner terpasang"}</small></li>
-                );
-              })}</ul>
+              <h3>{sel.group || sel.name}</h3>
+              <small>No. {points.filter((b) => (b.same || b.no) === sel.no).map((b) => b.no).join(", ")} di peta · {countText(sel)}</small>
+              {sel.rooms.length > 0 && (
+                <ul>{sel.rooms.map((r) => {
+                  const missing = themes.filter((t) => r.st[t] === false).map((t) => t.replace(/^Etika /, ""));
+                  return (
+                    <li key={r.key}><b>{r.name}</b><span className={"kr-map-n " + pinTone(r)}>{r.done}/{r.planned}</span>
+                      <small>{r.done} dari {r.planned} banner terpasang{missing.length ? ` · belum: ${missing.join(", ")}` : ""}</small></li>
+                  );
+                })}</ul>
+              )}
+              <div className="kr-map-photos">
+                <b>Foto ({shots.filter((p) => p.point === sel.no).length})</b>
+                {photos.error && <small className="kr-muted">{photos.error}</small>}
+                <div className="kr-map-thumbs">{shots.filter((p) => p.point === sel.no).map((p, i) => (
+                  <span key={p.id}>
+                    <a href={p.url} target="_blank" rel="noreferrer" title="Buka foto ukuran penuh"><img src={p.url} alt={`Foto ${i + 1} ${sel.group || sel.name}`} loading="lazy" /></a>
+                    {canEdit && <button type="button" onClick={() => removePhoto(p)} aria-label={`Hapus foto ${i + 1}`}><Icon name="trash" size={13} /></button>}
+                  </span>
+                ))}</div>
+                {canEdit && (
+                  <>
+                    <button type="button" className="btn btn-sm" onClick={() => picker.current?.click()} disabled={busy}>
+                      {busy ? <Spinner /> : <Icon name="upload" size={14} />}{busy ? "Mengunggah…" : "Tambah foto"}</button>
+                    <input ref={picker} type="file" accept="image/*" multiple hidden onChange={(e) => { addPhotos([...e.target.files]); e.target.value = ""; }} />
+                  </>
+                )}
+              </div>
               <div className="kr-row">
-                <button type="button" className="btn btn-sm" onClick={() => onShow({ label: sel.name, keys: new Set(sel.rooms.map((r) => r.key)) })}>
-                  <Icon name="search" size={14} />Tampilkan di tabel</button>
+                {sel.rooms.length > 0 && (
+                  <button type="button" className="btn btn-sm" onClick={() => onShow({ label: sel.group || sel.name, keys: new Set(sel.rooms.map((r) => r.key)) })}>
+                    <Icon name="search" size={14} />Tampilkan di tabel</button>
+                )}
                 <button type="button" className="btn btn-sm" onClick={() => setOpen(null)}>Tutup</button>
               </div>
             </div>
@@ -947,8 +1029,8 @@ function CampusMap({ campus: c, themes, onShow }) {
             <>
               <h3 className="kr-map-h">Perlu banner ({need.length} gedung)</h3>
               {need.length ? <ul className="kr-map-need">{need.map((b) => (
-                <li key={b.no}><button type="button" className="link-btn" onClick={() => setOpen(b.no)}>{b.name}</button>
-                  <span className={"kr-map-n " + pinTone(b)}>{b.done}/{b.planned}</span></li>
+                <li key={b.no}><button type="button" className="link-btn" onClick={() => setOpen(b.no)}>{b.group || b.name}</button>
+                  <span className={"kr-map-n " + pinTone(b)} title={countText(b)}>{b.done}/{b.planned}</span></li>
               ))}</ul> : <p className="kr-muted">Semua gedung di peta sudah lengkap.</p>}
             </>
           )}
@@ -956,7 +1038,7 @@ function CampusMap({ campus: c, themes, onShow }) {
             <details className="kr-map-off">
               <summary>Tidak ada di peta ({unplaced.length} lokasi)</summary>
               <ul>{unplaced.map((r) => (
-                <li key={r.key}><span>{r.name}<small>{r.area}</small></span><span className={"kr-map-n " + pinTone(r)}>{r.done}/{r.planned}</span></li>
+                <li key={r.key}><span>{r.name}<small>{r.area}</small></span><span className={"kr-map-n " + pinTone(r)} title={countText(r)}>{r.done}/{r.planned}</span></li>
               ))}</ul>
             </details>
           )}
