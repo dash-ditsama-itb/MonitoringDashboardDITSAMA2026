@@ -1,9 +1,9 @@
-// Pengaturan Akun (akses Administrator): pengguna (beri/cabut akses, undang, hapus) dan peran beserta grant-nya.
+// Pengaturan Akun (akses Administrator): pengguna (beri/cabut akses, undang, hapus), peran beserta grant-nya, dan program kegiatan.
 // Akun & peran Super Admin hanya bisa diubah oleh Super Admin.
 import { useEffect, useState } from "react";
 import { GRANTS } from "../config.js";
 import { api, errorText, refreshUser } from "../lib/api.js";
-import { byLabel, fmtDate, fmtNum, grantLabel, programLabel, PROGRAMS_AZ } from "../lib/format.js";
+import { byLabel, fmtDate, fmtNum, grantLabel, programLabel, PROGRAMS_AZ, setActivityPrograms } from "../lib/format.js";
 import { useAuthStore } from "../stores/auth.js";
 import { invalidate, useApi } from "../stores/data.js";
 import { confirmAction, toast } from "./feedback.jsx";
@@ -28,8 +28,8 @@ export function AccountSettings() {
   const [tab, setTab] = useState("users");
   return (
     <>
-      <Segmented label="Bagian Pengaturan Akun" value={tab} onChange={setTab} options={[["users", "Pengguna"], ["roles", "Peran"]]} />
-      {tab === "users" ? <UsersTable /> : <RolesTable />}
+      <Segmented label="Bagian Pengaturan Akun" value={tab} onChange={setTab} options={[["users", "Pengguna"], ["roles", "Peran"], ["programs", "Program"]]} />
+      {tab === "users" ? <UsersTable /> : tab === "roles" ? <RolesTable /> : <ProgramsTable />}
     </>
   );
 }
@@ -295,6 +295,135 @@ function RolesTable() {
 
       <RoleSheet form={form} onClose={() => setForm(null)} />
     </section>
+  );
+}
+
+// program kegiatan: bawaan (tetap) dan tambahan (bisa diganti nama; dihapus bila belum dipakai kegiatan)
+const refreshPrograms = () => { invalidate("/activity-programs", "/dashboard", "/roles"); refreshUser(); };
+
+function ProgramsTable() {
+  const { data, error, loading, reload } = useApi("/activity-programs", { usage: 1 });
+  const busy = usePending(loading && !!data);
+  const [form, setForm] = useState(null);   // { program } | { program: null }
+  const [busyKey, setBusyKey] = useState(null);
+  const list = [...(data?.data || [])].sort((a, b) => Number(a.builtIn) - Number(b.builtIn) || byLabel()(a.name, b.name));
+
+  async function remove(p) {
+    const ok = await confirmAction({ title: "Hapus program ini?", danger: true, confirmText: "Hapus",
+      body: `Program "${p.name}" akan dihapus dari daftar program dan dari peran yang memakainya.` });
+    if (!ok) return;
+    setBusyKey(p.key);
+    try {
+      await api("/activity-programs/" + p.key, { method: "DELETE" });
+      setActivityPrograms(list.filter((x) => x.key !== p.key));
+      toast(`Program "${p.name}" dihapus.`);
+      refreshPrograms();
+    } catch (e) {
+      toast(errorText(e), "err");
+    } finally { setBusyKey(null); }
+  }
+
+  return (
+    <section className="card tbl-card">
+      <div className="tbl-head">
+        <div>
+          <h2 className="card-title">Program kegiatan</h2>
+          <div className="card-sub">Program bawaan tetap. Program tambahan bisa diganti namanya, dan dihapus selama belum dipakai kegiatan.</div>
+        </div>
+        <div className="tbl-actions">
+          <button type="button" className="btn btn-primary" onClick={() => setForm({ program: null })}><Icon name="plus" size={16} /><span className="btn-txt">Tambah program</span></button>
+        </div>
+      </div>
+
+      <ErrorNote error={error} onRetry={() => reload()} />
+
+      {!data && loading ? <TableSkeleton rows={5} /> : (
+        <div className={"tbl-body" + busy} aria-busy={loading}>
+          <div className="tbl-scroll">
+            <table className="tbl acc-tbl">
+              <thead>
+                <tr>
+                  <th>Program</th>
+                  <th>Jenis</th>
+                  <th className="num">Kegiatan</th>
+                  <th className="c-act"><span className="sr-only">Aksi</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {list.map((p) => (
+                  <tr key={p.key} className={busyKey === p.key ? "busy" : ""}>
+                    <td><b>{p.name}</b></td>
+                    <td>{p.builtIn ? "Bawaan" : "Tambahan"}</td>
+                    <td className="num">{fmtNum(p.activityCount ?? 0)}</td>
+                    <td className="c-act">
+                      {p.builtIn ? <span className="lock" title="Program bawaan tidak bisa diubah"><Icon name="lock" size={14} /></span> : (
+                        <div className="row-actions">
+                          <button type="button" className="icon-btn" title="Ganti nama" aria-label={"Ganti nama " + p.name} onClick={() => setForm({ program: p })}><Icon name="pencil" size={16} /></button>
+                          <button type="button" className="icon-btn danger" disabled={p.activityCount > 0}
+                            title={p.activityCount > 0 ? `Masih dipakai ${p.activityCount} kegiatan. Pindahkan atau hapus kegiatannya dulu.` : "Hapus"}
+                            aria-label={"Hapus " + p.name} onClick={() => remove(p)}><Icon name="trash" size={16} /></button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <ProgramSheet form={form} list={list} onClose={() => setForm(null)} />
+    </section>
+  );
+}
+
+function ProgramSheet({ form, list, onClose }) {
+  const program = form?.program;
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    if (form) { setName(program?.name || ""); setErr(""); }
+  }, [form]);
+
+  async function save() {
+    const clean = name.trim().replace(/\s+/g, " ");
+    if (!clean) return setErr("Nama program wajib diisi.");
+    if (list.some((p) => p.key !== program?.key && p.name.toLowerCase() === clean.toLowerCase())) return setErr("Program dengan nama ini sudah ada.");
+    if (program && clean === program.name) return onClose();
+    setBusy(true); setErr("");
+    try {
+      const out = program
+        ? await api("/activity-programs/" + program.key, { method: "PATCH", body: { name: clean } })
+        : await api("/activity-programs", { method: "POST", body: { name: clean } });
+      setActivityPrograms([out.data], false);
+      toast(program ? `Nama program diganti menjadi "${out.data.name}".` : `Program "${out.data.name}" ditambahkan.`);
+      refreshPrograms();
+      onClose();
+    } catch (e) {
+      setErr(errorText(e));
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <Sheet open={!!form} onClose={onClose} title={program ? "Ganti nama program" : "Tambah program"}
+      sub={program ? "Kegiatan dan peran yang memakai program ini ikut memakai nama baru." : "Program baru langsung bisa dipilih di form kegiatan."}
+      footer={(
+        <>
+          {err && <div className="foot-err" role="alert"><Icon name="alert" size={16} />{err}</div>}
+          <span className="grow" />
+          <button type="button" className="btn" onClick={onClose} disabled={busy}>Batal</button>
+          <button type="button" className="btn btn-primary" onClick={save} disabled={busy}>{busy && <Spinner />}Simpan</button>
+        </>
+      )}>
+      <form className="form" onSubmit={(e) => { e.preventDefault(); save(); }}>
+        <label className="field"><span className="field-lab">Nama program</span>
+          <input type="text" autoFocus maxLength={255} placeholder="Ketik nama program" value={name} onChange={(e) => { setName(e.target.value); setErr(""); }} />
+        </label>
+      </form>
+    </Sheet>
   );
 }
 

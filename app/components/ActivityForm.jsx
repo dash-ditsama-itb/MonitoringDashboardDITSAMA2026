@@ -203,7 +203,7 @@ export function ActivityForm({ open, activity, defaultProgram, initialMode, onCl
   async function addProgram(name) {
     if (programs.some((p) => p.label.toLowerCase() === name.toLowerCase())) return "Program dengan nama ini sudah ada.";
     const out = await api("/activity-programs", { method: "POST", body: { name } });
-    setActivityPrograms([out.data]);
+    setActivityPrograms([out.data], false);
     invalidate("/activity-programs", "/dashboard");
     setAddingProgram(false);
     set({ program: out.data.key });
