@@ -163,6 +163,11 @@ a.kr-prog-head:hover b,a.kr-go:hover{text-decoration:underline}
 .kr-fb-quotes{max-height:440px;overflow:auto;padding-right:4px}
 .kr-sent{display:inline-block;margin-right:6px;font-size:11px;font-weight:700;border-radius:999px;padding:1px 8px;background:var(--pale);color:var(--navy)}
 .kr-sent.positive{background:var(--ok-bg);color:var(--ok-ink)}.kr-sent.negative{background:var(--crit-bg);color:var(--crit-ink)}
+/* lebar pil dan kartu sebanding dengan jumlah komentarnya */
+.kr-sentbar{display:flex;flex-wrap:wrap;gap:6px}
+.kr-sentbar .kr-sent{flex:1 1 0;min-width:max-content;margin:0;padding:6px 12px;font-size:12.5px;text-align:center;white-space:nowrap}
+.kr-clouds{display:flex;flex-wrap:wrap;gap:18px}
+.kr-clouds>.card{flex:1 1 240px}
 .kr-cloud{list-style:none;margin:0;padding:8px 4px;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:4px 14px;min-height:140px}
 .kr-cloud li{font-weight:800;line-height:1.15;cursor:default}
 .kr-cloud.ok li{color:var(--ok-ink)}.kr-cloud.crit li{color:var(--crit-ink)}

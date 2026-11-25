@@ -395,27 +395,32 @@ function feedbackStats(d) {
   };
 }
 
-// sentimen dan kata kunci komentar dari backend (AI Groq); backend menyimpan hasilnya, jadi teks yang sama tidak dianalisis
-// ulang. Dikirim per 10 komentar sekaligus (paralel) agar setiap permintaan ke backend tetap singkat.
+// sentimen dan kata kunci komentar dari backend (AI Groq). Semua komentar dikirim dalam satu permintaan: backend menjawab
+// yang sudah tersimpan dan menganalisis paling banyak 20 komentar baru per permintaan (batas token Groq per menit), jadi
+// permintaan diulang sampai tidak ada yang tertunda, menunggu retryAfter detik bila backend memintanya.
 const SENTIMENT_LABELS = { positive: "Positif", neutral: "Netral", negative: "Negatif" };
 function useSentiments(texts) {
-  const [result, setResult] = useState({ sentiments: {}, keywords: {} });
+  const [result, setResult] = useState({ sentiments: {}, keywords: {}, pending: 0 });
   const key = texts.join("\u0000");
   useEffect(() => {
     if (!texts.length) return undefined;
     let off = false;
-    const batches = [];
-    for (let i = 0; i < texts.length; i += 10) batches.push(texts.slice(i, i + 10));
-    Promise.allSettled(batches.map((batch) => api("/persiapan/feedback-sentiments", { method: "POST", body: { texts: batch } })))
-      .then((outs) => {
+    const sent = texts.slice(0, 1000);
+    (async () => {
+      // shortcut: paling banyak 40 putaran sekali buka (±800 komentar baru); sisanya dilanjutkan saat halaman dibuka lagi
+      for (let round = 0; round < 40 && !off; round++) {
+        const data = await api("/persiapan/feedback-sentiments", { method: "POST", body: { texts: sent.map((t) => t.slice(0, 2000)) } })
+          .then((res) => res.data, (e) => console.error("[sentimen feedback]", e));
         if (off) return;
+        if (!data) break;
         const sentiments = {}, keywords = {};
-        outs.forEach((out, b) => {
-          if (out.status !== "fulfilled") return console.error("[sentimen feedback]", out.reason);
-          batches[b].forEach((t, i) => { sentiments[t] = out.value.data.sentiments[i]; keywords[t] = out.value.data.keywords[i]; });
-        });
-        setResult({ sentiments, keywords });
-      });
+        sent.forEach((t, i) => { sentiments[t] = data.sentiments[i]; keywords[t] = data.keywords[i]; });
+        setResult({ sentiments, keywords, pending: data.pending });
+        if (!data.pending) return;
+        await new Promise((done) => setTimeout(done, (data.retryAfter || 0) * 1000));
+      }
+      if (!off) setResult((r) => ({ ...r, pending: 0 }));
+    })();
     return () => { off = true; };
   }, [key]);
   return result;
@@ -450,19 +455,20 @@ function keywordCounts(lists) {
   for (const list of lists) {
     for (const k of new Set(list.map((x) => x.toLowerCase().trim()).filter(Boolean))) counts.set(k, (counts.get(k) || 0) + 1);
   }
-  return [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 30);
+  return [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
 }
 
-// kata terbesar di tengah: urutan besar-kecil disusun bergantian kiri-kanan
-function WordCloud({ title, lists, tone, empty }) {
-  const words = keywordCounts(lists);
-  const max = words[0]?.[1] || 1;
-  const arranged = words.reduce((out, w, i) => (i % 2 ? [...out, w] : [w, ...out]), []);
+// kata terbesar di tengah: urutan besar-kecil disusun bergantian kiri-kanan. max dan slots dihitung dari kedua kartu
+// sekaligus, supaya ukuran huruf dan banyaknya kata di kartu positif dan negatif sebanding dengan jumlah komentarnya.
+function WordCloud({ title, words, comments, total, max, slots, tone, empty }) {
+  const shown = words.slice(0, slots);
+  const arranged = shown.reduce((out, w, i) => (i % 2 ? [...out, w] : [w, ...out]), []);
   return (
-    <section className="card">
+    <section className="card" style={{ flexGrow: comments || 1 }}>
       <div className="card-head"><div><h2 className="card-title">{title}</h2>
-        <div className="card-sub">Diambil AI dari {fmtNum(lists.filter((l) => l.length).length)} komentar · makin besar = makin banyak komentar yang menyebutnya · 30 teratas</div></div></div>
-      {words.length ? (
+        <div className="card-sub">Dari {fmtNum(comments)} komentar{total ? ` (${pct(Math.round((comments / total) * 100))})` : ""} · makin besar = makin banyak komentar yang menyebutnya
+          {shown.length < words.length && ` · ${shown.length} teratas dari ${words.length}`}</div></div></div>
+      {shown.length ? (
         <ul className={"kr-cloud " + tone}>
           {arranged.map(([w, n]) => (
             <li key={w} style={{ fontSize: 12 + Math.round(Math.sqrt(n / max) * 22), opacity: 0.55 + (0.45 * n) / max }}
@@ -479,8 +485,19 @@ function TtbFeedback() {
   const s = useMemo(() => (data ? feedbackStats(data) : null), [data]);
   const mentorTexts = s ? s.toMentor.map((r) => r.toMentor) : [];
   const teamTexts = s ? s.toTeam.map((r) => r.toTeam) : [];
-  const { sentiments, keywords } = useSentiments([...mentorTexts, ...teamTexts]);
-  const analysed = [...mentorTexts, ...teamTexts].map((t) => keywords[t]).filter(Boolean);
+  const allTexts = [...mentorTexts, ...teamTexts];
+  const { sentiments, keywords, pending } = useSentiments(allTexts);
+  const analysed = allTexts.map((t) => keywords[t]).filter(Boolean);
+  const tones = ["positive", "neutral", "negative"].map((k) => [k, allTexts.filter((t) => sentiments[t] === k).length]);
+  const [positive, negative] = ["positive", "negative"].map((k) => {
+    const lists = analysed.map((x) => x[k]);
+    return { words: keywordCounts(lists), comments: lists.filter((l) => l.length).length };
+  });
+  const cloud = {
+    total: analysed.length,
+    max: Math.max(1, positive.words[0]?.[1] || 0, negative.words[0]?.[1] || 0),
+    slots: (c) => Math.max(5, Math.round((30 * c.comments) / Math.max(1, positive.comments, negative.comments))),
+  };
   return (
     <>
       <div className="sec-head">
@@ -512,11 +529,24 @@ function TtbFeedback() {
             ))}
           </ul>
         </section>
-        <div className="grid g-2">
+        <section className="card">
+          <div className="card-head"><div><h2 className="card-title">Sentimen komentar</h2>
+            <div className="card-sub">{fmtNum(analysed.length)} dari {fmtNum(allTexts.length)} komentar sudah dianalisis AI
+              {pending > 0 && ` · ${fmtNum(pending)} komentar lagi sedang dianalisis, hasilnya bertambah otomatis`}</div></div></div>
+          {analysed.length > 0 && (
+            <div className="kr-sentbar">
+              {tones.filter(([, n]) => n).map(([k, n]) => (
+                <span key={k} className={"kr-sent " + k} style={{ flexGrow: n }}>
+                  {SENTIMENT_LABELS[k]} {pct(Math.round((n / analysed.length) * 100))} · {fmtNum(n)} komentar</span>
+              ))}
+            </div>
+          )}
+        </section>
+        <div className="kr-clouds">
           <WordCloud title="Kata kunci positif" tone="ok" empty="Belum ada pujian di komentar, atau komentar belum dianalisis."
-            lists={analysed.map((k) => k.positive)} />
+            {...positive} total={cloud.total} max={cloud.max} slots={cloud.slots(positive)} />
           <WordCloud title="Kata kunci negatif" tone="crit" empty="Belum ada keluhan di komentar, atau komentar belum dianalisis."
-            lists={analysed.map((k) => k.negative)} />
+            {...negative} total={cloud.total} max={cloud.max} slots={cloud.slots(negative)} />
         </div>
         <div className="grid g-2">
           <section className="card">
