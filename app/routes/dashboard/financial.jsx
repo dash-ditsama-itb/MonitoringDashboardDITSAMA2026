@@ -265,7 +265,7 @@ function FundingSplit({ rows }) {
   return (
     <section className="card">
       <div className="card-head"><div><h2 className="card-title">Sumber dana</h2>
-        <div className="card-sub">Menurut kategori di PKS Awal tiap periode. Bila belum dipilih: pemerintah = BTI (Kemendikdasmen), MAUNG, SUGT, dan Toraja (sementara); mitra lain non-pemerintah</div></div></div>
+        <div className="card-sub">Menurut kategori di PKS Awal tiap periode. Bila belum dipilih: pemerintah = BTI (Kemendikdasmen), MAUNG, dan SUGT; mitra lain (termasuk Toraja) non-pemerintah</div></div></div>
       <div className="tbl-scroll"><table className="tbl compact">
         <thead><tr><th />{[["Total"], ...cols.map((c) => [c.types ? `${c.label} (${c.types})` : c.label])].map(([h]) => <th key={h} className="num">{h}</th>)}</tr></thead>
         <tbody>{measures.map(([label, fmt]) => (
