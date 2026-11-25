@@ -117,6 +117,7 @@ export const REKAP_PESERTA = [
   { label: "Inspirasi",          programs: ["inspirasi_scd"],        value: 8,    status: "Terlayani", period: "2026" },
   { label: "SUGT",               programs: ["sugt"],                 value: 5880, status: "Proses PKS", period: "2026" },
   { label: "WIT",                programs: ["wit"],                  value: 500,  status: "Proses PKS", period: "2026" },
+  { label: "MAUNG",              programs: ["maung"],                value: 3000, status: "Proses PKS", period: "2026" },
 ];
 
 // Dua dashboard DITSAMA (pilihan setelah masuk di "/" dan tombol "Pindah ke …" di menu). Satu login untuk keduanya.
