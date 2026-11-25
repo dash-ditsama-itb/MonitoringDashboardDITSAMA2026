@@ -99,14 +99,22 @@ export const isPks = (r) => r.type === "initial_pks" || r.type === "addition_pks
 export const byLabel = (get = (x) => x) => (a, b) => String(get(a)).localeCompare(String(get(b)), "id", { sensitivity: "base" });
 export const sortLabels = (list) => [...(list || [])].sort(byLabel());
 export const PROGRAMS_AZ = [...PROGRAMS].sort(byLabel((p) => p.label));
-// program kegiatan tambahan (GET /activity-programs) digabung ke PROGRAMS & PROGRAMS_AZ di tempat; warnanya menyusul urutan PROGRAMS.
+// program kegiatan tambahan (GET /activity-programs) disamakan ke PROGRAMS & PROGRAMS_AZ di tempat; warnanya menyusul urutan PROGRAMS.
 // Kunci halaman = kunci API (huruf kecil), jadi tidak bentrok dengan kunci bawaan (huruf besar).
-export function setActivityPrograms(list) {
+// full = daftar lengkap dari server: program tambahan yang tidak ada lagi (dihapus) ikut dibuang.
+export function setActivityPrograms(list, full = true) {
+  if (!list) return false;
+  const added = new Map(list.filter((p) => !p.builtIn).map((p) => [p.key, p]));
   let changed = false;
-  for (const p of list || []) {
-    if (p.builtIn || PROGRAMS.some((x) => x.api === p.key)) continue;
-    PROGRAMS.push({ key: p.key, api: p.key, label: p.name, fullName: p.name, desc: "", custom: true });
-    changed = true;
+  if (full) {
+    for (let i = PROGRAMS.length - 1; i >= 0; i--) {
+      if (PROGRAMS[i].custom && !added.has(PROGRAMS[i].api)) { PROGRAMS.splice(i, 1); changed = true; }
+    }
+  }
+  for (const p of added.values()) {
+    const cur = PROGRAMS.find((x) => x.api === p.key);
+    if (!cur) { PROGRAMS.push({ key: p.key, api: p.key, label: p.name, fullName: p.name, desc: "", custom: true }); changed = true; }
+    else if (cur.custom && cur.label !== p.name) { cur.label = cur.fullName = p.name; changed = true; }
   }
   if (changed) PROGRAMS_AZ.splice(0, PROGRAMS_AZ.length, ...[...PROGRAMS].sort(byLabel((p) => p.label)));
   return changed;
